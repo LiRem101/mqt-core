@@ -53,6 +53,8 @@ void populateToQuantumComputationPatterns(mlir::RewritePatternSet& patterns,
                                           qc::QuantumComputation& circuit);
 void populateFromQuantumComputationPatterns(mlir::RewritePatternSet& patterns,
                                             qc::QuantumComputation& circuit);
+void populateLiftHadamardsAbovePauliGatesPatterns(
+    mlir::RewritePatternSet& patterns);
 
 //===----------------------------------------------------------------------===//
 // Registration

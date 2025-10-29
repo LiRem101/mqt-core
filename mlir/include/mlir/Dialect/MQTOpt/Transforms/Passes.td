@@ -108,6 +108,25 @@ def ReuseQubitsPass : Pass<"reuse-qubits", "mlir::ModuleOp"> {
   }];
 }
 
+def LiftHadamardsPass : Pass<"lift-hadamards", "mlir::ModuleOp"> {
+  let summary = "This pass attempts to lift hadamards as much as possible by flipping them with pauli gates.";
+  let description = [{
+    This pass lifts hadamards away from the measurements in order to apply lift-measurements more effectively. It uses
+    the following commutation rules:
+     ┌───┐ ┌───┐      ┌───┐ ┌───┐
+    ─┤ X ├─┤ H ├─ => ─┤ H ├─┤ Z ├─
+     └───┘ └───┘      └───┘ └───┘
+     ┌───┐ ┌───┐      ┌───┐ ┌───┐
+    ─┤ Z ├─┤ H ├─ => ─┤ H ├─┤ X ├─
+     └───┘ └───┘      └───┘ └───┘
+     ┌───┐ ┌───┐      ┌───┐ ┌───┐
+    ─┤ Y ├─┤ H ├─ => ─┤ H ├─┤ Y ├─
+     └───┘ └───┘      └───┘ └───┘
+
+    Will be potentionally be included into another pass later on.
+  }];
+}
+
 //===----------------------------------------------------------------------===//
 // Transpilation Passes For Superconducting Devices
 //===----------------------------------------------------------------------===//
