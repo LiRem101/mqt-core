@@ -12,6 +12,7 @@
 #include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Passes.h"
 
+#include <iostream>
 #include <list>
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
@@ -45,21 +46,22 @@ static const std::list<std::unordered_set<std::string>> INVERTING_GATES = {
  */
 void swapSingleGates(UnitaryInterface firstGate, UnitaryInterface secondGate,
                      mlir::PatternRewriter& rewriter) {
-  auto gateInput = firstGate.getInQubits()[0];
-  auto secondGateInput = secondGate.getInQubits()[0];
-  rewriter.replaceUsesWithIf(secondGateInput, gateInput,
+  auto firstGateInputs = firstGate.getAllInQubits();
+  auto secondGateInputs = secondGate.getAllInQubits();
+  auto secondGateOutputs = secondGate.getAllOutQubits();
+  rewriter.replaceUsesWithIf(secondGateInputs, firstGateInputs,
                              [&](mlir::OpOperand& operand) {
                                // We only replace the single use by the
                                // second gate
                                return operand.getOwner() == secondGate;
                              });
-  rewriter.replaceUsesWithIf(gateInput, secondGate.getOutQubits()[0],
+  rewriter.replaceUsesWithIf(firstGateInputs, secondGateOutputs,
                              [&](mlir::OpOperand& operand) {
                                // We only replace the single use by the
                                // first gate
                                return operand.getOwner() == firstGate;
                              });
-  rewriter.replaceUsesWithIf(secondGate.getOutQubits()[0], secondGateInput,
+  rewriter.replaceUsesWithIf(secondGateOutputs, secondGateInputs,
                              [&](mlir::OpOperand& operand) {
                                // All further uses of the second gate output now
                                // use the first gate output
@@ -94,16 +96,16 @@ mlir::LogicalResult swapGateWithHadamard(UnitaryInterface gate,
 
     if (gateName == "x") {
       rewriter.replaceOpWithNewOp<ZOp>(
-          gate, qubitType, mlir::TypeRange{}, mlir::TypeRange{},
+          gate, qubitType, qubitType, qubitType,
           mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, gate.getInQubits(), mlir::ValueRange{},
-          mlir::ValueRange{});
+          mlir::ValueRange{}, gate.getInQubits(), gate.getPosCtrlInQubits(),
+          gate.getNegCtrlInQubits());
     } else if (gateName == "z") {
       rewriter.replaceOpWithNewOp<XOp>(
-          gate, qubitType, mlir::TypeRange{}, mlir::TypeRange{},
+          gate, qubitType, qubitType, qubitType,
           mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, gate.getInQubits(), mlir::ValueRange{},
-          mlir::ValueRange{});
+          mlir::ValueRange{}, gate.getInQubits(), gate.getPosCtrlInQubits(),
+          gate.getNegCtrlInQubits());
     }
 
     return mlir::success();
