@@ -217,7 +217,7 @@ module {
 // gate is.
 
 module {
-  func.func @testLiftHadamardOverPauliGateIfControlled() {
+  func.func @testDoNotLiftHadamardOverPauliGateIfControlledByDifferentQubits() {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -340,11 +340,11 @@ module {
     %q2_0 = mqtopt.allocQubit
 
     // CHECK: %[[q0_1:.*]], %[[q1_1:.*]], %[[q2_1:.*]] = mqtopt.x() %[[q0_0]] ctrl %[[q1_0]] nctrl %[[q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q1_2:.*]], %[[q2_2:.*]] = mqtopt.h() %[[q0_1]] nctrl %[[q1_1]] ctrl %[[q2_1]] : !mqtopt.Qubit nctrl !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[q0_2:.*]], %[[q2_2:.*]], %[[q1_2:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q2_1]] nctrl %[[q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     // CHECK: %[[q0_3:.*]], %[[q1_3:.*]], %[[q2_3:.*]] = mqtopt.h() %[[q0_2]] ctrl %[[q1_2]] nctrl %[[q2_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     // CHECK: %[[q0_4:.*]], %[[q1_4:.*]], %[[q2_4:.*]] = mqtopt.x() %[[q0_3]] ctrl %[[q1_3]] nctrl %[[q2_3]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_1, %q1_1, %q2_1 = mqtopt.x() %q0_0 ctrl %q1_0 nctrl %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
-    %q0_2, %q1_2, %q2_2 = mqtopt.h() %q0_1 nctrl %q1_1 ctrl %q2_1 : !mqtopt.Qubit nctrl !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %q0_2, %q2_2, %q1_2 = mqtopt.h() %q0_1 ctrl %q2_1 nctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_3, %q1_3, %q2_3 = mqtopt.z() %q0_2 ctrl %q1_2 nctrl %q2_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_4, %q1_4, %q2_4 = mqtopt.h() %q0_3 ctrl %q1_3 nctrl %q2_3 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
 
