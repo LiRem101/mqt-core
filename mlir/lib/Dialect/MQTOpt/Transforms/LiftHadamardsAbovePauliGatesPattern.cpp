@@ -60,7 +60,7 @@ struct LiftHadamardsAbovePauliGatesPattern final
    * @param rewriter The used rewriter.
    */
   static void swapGates(UnitaryInterface firstGate, UnitaryInterface secondGate,
-                 mlir::PatternRewriter& rewriter) {
+                        mlir::PatternRewriter& rewriter) {
     auto firstGateInputs = firstGate.getAllInQubits();
     auto secondGateInputs = secondGate.getAllInQubits();
     auto secondGateOutputs = secondGate.getAllOutQubits();
