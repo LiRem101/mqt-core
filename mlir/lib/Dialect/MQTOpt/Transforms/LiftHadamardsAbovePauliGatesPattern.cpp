@@ -27,100 +27,15 @@
 #include <unordered_set>
 
 namespace mqt::ir::opt {
-
-// If one gate changes places with a hadamard gate, it is exchanged by the other
-// gate in the same set
-static const std::list<std::unordered_set<std::string>> INVERTING_GATES = {
-    {"x", "z"}, {"y", "y"}};
-
-/**
- * @brief This method swaps two single unitary gates. Does not yet work on
- * controlled gates.
- *
- * This method swaps two unitary gates. The gates need to be applied on one
- * single qubits. The gates may not be controlled.
- *
- * @param firstGate The first unitary gate.
- * @param secondGate The second unitary gate.
- * @param rewriter The used rewriter.
- */
-void swapSingleGates(UnitaryInterface firstGate, UnitaryInterface secondGate,
-                     mlir::PatternRewriter& rewriter) {
-  auto firstGateInputs = firstGate.getAllInQubits();
-  auto secondGateInputs = secondGate.getAllInQubits();
-  auto secondGateOutputs = secondGate.getAllOutQubits();
-  rewriter.replaceUsesWithIf(secondGateInputs, firstGateInputs,
-                             [&](mlir::OpOperand& operand) {
-                               // We only replace the single use by the
-                               // second gate
-                               return operand.getOwner() == secondGate;
-                             });
-  rewriter.replaceUsesWithIf(firstGateInputs, secondGateOutputs,
-                             [&](mlir::OpOperand& operand) {
-                               // We only replace the single use by the
-                               // first gate
-                               return operand.getOwner() == firstGate;
-                             });
-  rewriter.replaceUsesWithIf(secondGateOutputs, secondGateInputs,
-                             [&](mlir::OpOperand& operand) {
-                               // All further uses of the second gate output now
-                               // use the first gate output
-                               return operand.getOwner() != firstGate;
-                             });
-  rewriter.moveOpBefore(secondGate, firstGate);
-}
-
-/**
- * @brief This method swaps a gate with is succeeding hadamard gate, if
- * applicable.
- *
- * This method swaps a gate with its suceeding hadamard gate. This is only done
- * if there is a simple commutation rule to do so. Currently implemented:
- * - X - H - = - H - Z -
- * - Y - H - = - H - Y -
- * - Z - H - = - H - X -
- *
- * @param gate The unitary gate.
- * @param hadamardGate The hadamard gate.
- * @param rewriter The used rewriter.
- */
-static mlir::LogicalResult
-swapGateWithHadamard(UnitaryInterface gate, UnitaryInterface hadamardGate,
-                     mlir::PatternRewriter& rewriter) {
-  const auto gateName = gate->getName().stripDialect().str();
-
-  if (gateName == "x" || gateName == "y" || gateName == "z") {
-    swapSingleGates(gate, hadamardGate, rewriter);
-
-    const auto qubitType = QubitType::get(rewriter.getContext());
-    auto inQubits = gate.getInQubits();
-    auto posCtrlInQubits = gate.getPosCtrlInQubits();
-    auto negCtrlInQubits = gate.getNegCtrlInQubits();
-    auto postCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
-    auto negCtrlOutQubitsType = gate.getNegCtrlOutQubits().getType();
-    if (gateName == "x") {
-      rewriter.replaceOpWithNewOp<ZOp>(
-          gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-          mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
-    } else if (gateName == "z") {
-      rewriter.replaceOpWithNewOp<XOp>(
-          gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-          mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
-    }
-
-    return mlir::success();
-  }
-  return mlir::failure();
-}
-
 /**
  * @brief This pattern is responsible for lifting Hadamard gates above any pauli
  * gate.
  */
 struct LiftHadamardsAbovePauliGatesPattern final
     : mlir::OpInterfaceRewritePattern<UnitaryInterface> {
+
+  explicit LiftHadamardsAbovePauliGatesPattern(mlir::MLIRContext* context)
+      : OpInterfaceRewritePattern(context) {}
 
   /**
    * @brief Checks if a gate is a hadamard gate.
@@ -133,8 +48,88 @@ struct LiftHadamardsAbovePauliGatesPattern final
     return aName == "h";
   }
 
-  explicit LiftHadamardsAbovePauliGatesPattern(mlir::MLIRContext* context)
-      : OpInterfaceRewritePattern(context) {}
+  /**
+   * @brief This method swaps two unitary gates. Does not yet work on
+   * controlled gates.
+   *
+   * This method swaps two unitary gates. The gates need to be applied on one
+   * single qubits. The gates may not be controlled.
+   *
+   * @param firstGate The first unitary gate.
+   * @param secondGate The second unitary gate.
+   * @param rewriter The used rewriter.
+   */
+  static void swapGates(UnitaryInterface firstGate, UnitaryInterface secondGate,
+                 mlir::PatternRewriter& rewriter) {
+    auto firstGateInputs = firstGate.getAllInQubits();
+    auto secondGateInputs = secondGate.getAllInQubits();
+    auto secondGateOutputs = secondGate.getAllOutQubits();
+    rewriter.replaceUsesWithIf(secondGateInputs, firstGateInputs,
+                               [&](mlir::OpOperand& operand) {
+                                 // We only replace the single use by the
+                                 // second gate
+                                 return operand.getOwner() == secondGate;
+                               });
+    rewriter.replaceUsesWithIf(firstGateInputs, secondGateOutputs,
+                               [&](mlir::OpOperand& operand) {
+                                 // We only replace the single use by the
+                                 // first gate
+                                 return operand.getOwner() == firstGate;
+                               });
+    rewriter.replaceUsesWithIf(secondGateOutputs, secondGateInputs,
+                               [&](mlir::OpOperand& operand) {
+                                 // All further uses of the second gate output
+                                 // now use the first gate output
+                                 return operand.getOwner() != firstGate;
+                               });
+    rewriter.moveOpBefore(secondGate, firstGate);
+  }
+
+  /**
+   * @brief This method swaps a gate with is succeeding hadamard gate, if
+   * applicable.
+   *
+   * This method swaps a gate with its suceeding hadamard gate. This is only
+   * done if there is a simple commutation rule to do so.
+   * Currently implemented:
+   * - X - H - = - H - Z -
+   * - Y - H - = - H - Y -
+   * - Z - H - = - H - X -
+   *
+   * @param gate The unitary gate.
+   * @param hadamardGate The hadamard gate.
+   * @param rewriter The used rewriter.
+   */
+  static mlir::LogicalResult
+  swapGateWithHadamard(UnitaryInterface gate, UnitaryInterface hadamardGate,
+                       mlir::PatternRewriter& rewriter) {
+    const auto gateName = gate->getName().stripDialect().str();
+
+    if (gateName == "x" || gateName == "y" || gateName == "z") {
+      swapGates(gate, hadamardGate, rewriter);
+
+      const auto qubitType = QubitType::get(rewriter.getContext());
+      auto inQubits = gate.getInQubits();
+      auto posCtrlInQubits = gate.getPosCtrlInQubits();
+      auto negCtrlInQubits = gate.getNegCtrlInQubits();
+      auto postCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
+      auto negCtrlOutQubitsType = gate.getNegCtrlOutQubits().getType();
+      if (gateName == "x") {
+        rewriter.replaceOpWithNewOp<ZOp>(
+            gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
+            mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
+            mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
+      } else if (gateName == "z") {
+        rewriter.replaceOpWithNewOp<XOp>(
+            gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
+            mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
+            mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
+      }
+
+      return mlir::success();
+    }
+    return mlir::failure();
+  }
 
   mlir::LogicalResult
   matchAndRewrite(UnitaryInterface op,
@@ -146,7 +141,6 @@ struct LiftHadamardsAbovePauliGatesPattern final
       return mlir::failure();
     }
     auto* user = *users.begin();
-    const auto userName = user->getName().stripDialect().str();
     if (!isGateHadamardGate(*user)) {
       return mlir::failure();
     }
