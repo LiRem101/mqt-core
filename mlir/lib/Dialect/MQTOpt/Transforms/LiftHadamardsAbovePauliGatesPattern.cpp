@@ -84,28 +84,30 @@ void swapSingleGates(UnitaryInterface firstGate, UnitaryInterface secondGate,
  * @param hadamardGate The hadamard gate.
  * @param rewriter The used rewriter.
  */
-mlir::LogicalResult swapGateWithHadamard(UnitaryInterface gate,
-                                         UnitaryInterface hadamardGate,
-                                         mlir::PatternRewriter& rewriter) {
+static mlir::LogicalResult
+swapGateWithHadamard(UnitaryInterface gate, UnitaryInterface hadamardGate,
+                     mlir::PatternRewriter& rewriter) {
   const auto gateName = gate->getName().stripDialect().str();
 
   if (gateName == "x" || gateName == "y" || gateName == "z") {
     swapSingleGates(gate, hadamardGate, rewriter);
 
     const auto qubitType = QubitType::get(rewriter.getContext());
-
+    auto inQubits = gate.getInQubits();
+    auto posCtrlInQubits = gate.getPosCtrlInQubits();
+    auto negCtrlInQubits = gate.getNegCtrlInQubits();
+    auto postCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
+    auto negCtrlOutQubitsType = gate.getNegCtrlOutQubits().getType();
     if (gateName == "x") {
       rewriter.replaceOpWithNewOp<ZOp>(
-          gate, qubitType, qubitType, qubitType,
+          gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
           mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, gate.getInQubits(), gate.getPosCtrlInQubits(),
-          gate.getNegCtrlInQubits());
+          mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
     } else if (gateName == "z") {
       rewriter.replaceOpWithNewOp<XOp>(
-          gate, qubitType, qubitType, qubitType,
+          gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
           mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, gate.getInQubits(), gate.getPosCtrlInQubits(),
-          gate.getNegCtrlInQubits());
+          mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
     }
 
     return mlir::success();
