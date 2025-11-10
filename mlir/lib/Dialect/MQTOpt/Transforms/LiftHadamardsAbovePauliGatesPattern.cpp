@@ -49,6 +49,17 @@ struct LiftHadamardsAbovePauliGatesPattern final
   }
 
   /**
+   * @brief Checks if a gate is a z gate.
+   *
+   * @param a The gate.
+   * @return True if the gate is a z gate, false otherwise.
+   */
+  [[nodiscard]] static bool isGateZGate(mlir::Operation& a) {
+    const auto aName = a.getName().stripDialect().str();
+    return aName == "z";
+  }
+
+  /**
    * @brief This method swaps two unitary gates. Does not yet work on
    * controlled gates.
    *
@@ -177,6 +188,21 @@ struct LiftHadamardsAbovePauliGatesPattern final
 
     auto hadamardGate = mlir::dyn_cast<UnitaryInterface>(user);
     if (!areGatesConnectedBySameQubits(op, hadamardGate)) {
+      // check if gate is z gate. If so, check if all qubits between hadamard
+      // and z are the same. If the target qubit of H is a ctrl in Z and vice
+      // versa, move Z's target to H's target and continue with swap
+      if (isGateZGate(*op)) {
+        auto inQubits = hadamardGate.getAllInQubits();
+        auto outQubits = op.getAllOutQubits();
+
+        bool qubitsEqual = std::equal(inQubits.begin(), inQubits.end(),
+                                      outQubits.begin(), outQubits.end());
+
+        if (qubitsEqual) {
+          // If the target qubit of H is a ctrl in Z and vice versa, move Z's
+          // target to H's target and continue with swap
+        }
+      }
       return mlir::failure();
     }
 
