@@ -86,6 +86,36 @@ struct LiftHadamardsAbovePauliGatesPattern final
   }
 
   /**
+   * @brief This method checks if two gates are connected by exactly the same
+   * target, ctrl and nctrl qubits.
+   *
+   * This method checks if the output target/ctrl/nctrl qubits of the first gate
+   * are exactly the input target/ctrl/nctrl qubits of the second gate. There
+   * must be no qubit that is only used by one of the gates.
+   *
+   * @param firstGate The first unitary gate.
+   * @param secondGate The second unitary gate.
+   */
+  static bool areGatesConnectedBySameQubits(UnitaryInterface firstGate,
+                                            UnitaryInterface secondGate) {
+    auto ctrlOutQubits = firstGate.getPosCtrlOutQubits();
+    auto ctrlInQubits = secondGate.getPosCtrlInQubits();
+    auto nctrlOutQubits = firstGate.getNegCtrlOutQubits();
+    auto nctrlInQubits = secondGate.getNegCtrlInQubits();
+    auto targetOutQubits = firstGate.getOutQubits();
+    auto targetInQubits = secondGate.getInQubits();
+
+    bool ctrlEqual = std::equal(ctrlOutQubits.begin(), ctrlOutQubits.end(),
+                                ctrlInQubits.begin(), ctrlInQubits.end());
+    bool nctrlEqual = std::equal(nctrlOutQubits.begin(), nctrlOutQubits.end(),
+                                 nctrlInQubits.begin(), nctrlInQubits.end());
+    bool targetsEqual =
+        std::equal(targetOutQubits.begin(), targetOutQubits.end(),
+                   targetInQubits.begin(), targetInQubits.end());
+    return ctrlEqual && nctrlEqual && targetsEqual;
+  }
+
+  /**
    * @brief This method swaps a gate with is succeeding hadamard gate, if
    * applicable.
    *
@@ -140,13 +170,17 @@ struct LiftHadamardsAbovePauliGatesPattern final
     if (users.empty()) {
       return mlir::failure();
     }
-    auto* user = *users.begin();
+    auto user = *users.begin();
     if (!isGateHadamardGate(*user)) {
       return mlir::failure();
     }
 
-    return swapGateWithHadamard(op, mlir::dyn_cast<UnitaryInterface>(user),
-                                rewriter);
+    auto hadamardGate = mlir::dyn_cast<UnitaryInterface>(user);
+    if (!areGatesConnectedBySameQubits(op, hadamardGate)) {
+      return mlir::failure();
+    }
+
+    return swapGateWithHadamard(op, hadamardGate, rewriter);
   }
 };
 
