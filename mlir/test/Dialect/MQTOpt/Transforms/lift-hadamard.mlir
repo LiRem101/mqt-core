@@ -194,9 +194,9 @@ module {
     %q1_0 = mqtopt.allocQubit
 
     // CHECK: %[[Q0_1:.*]] = mqtopt.x() %[[Q0_0]] : !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q1_1:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[q0_3:.*]], %[[q1_2:.*]] = mqtopt.z() %[[q0_2]] ctrl %[[q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[q0_4:.*]], %[[q1_3:.*]] = mqtopt.x() %[[q0_3]] ctrl %[[q1_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]], %[[Q1_1:.*]] = mqtopt.h() %[[Q0_1]] ctrl %[[Q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_3:.*]], %[[Q1_2:.*]] = mqtopt.z() %[[Q0_2]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_4:.*]], %[[Q1_3:.*]] = mqtopt.x() %[[Q0_3]] ctrl %[[Q1_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
 
     %q0_1 = mqtopt.x() %q0_0 : !mqtopt.Qubit
     %q0_2, %q1_1 = mqtopt.x() %q0_1 ctrl %q1_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
@@ -225,10 +225,10 @@ module {
     %q1_0 = mqtopt.allocQubit
     %q2_0 = mqtopt.allocQubit
 
-    // CHECK: %[[q0_1:.*]], %[[q1_1:.*]] = mqtopt.x() %[[q0_0]] ctrl %[[q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q2_1:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_1:.*]], %[[Q1_1:.*]] = mqtopt.x() %[[Q0_0]] ctrl %[[Q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]], %[[Q2_1:.*]] = mqtopt.h() %[[Q0_1]] ctrl %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     // CHECK: %[[Q0_3:.*]] = mqtopt.z() %[[Q0_2]] : !mqtopt.Qubit
-    // CHECK: %[[q0_4:.*]], %[[q1_2:.*]] = mqtopt.h() %[[q0_3]] ctrl %[[q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_4:.*]], %[[Q1_2:.*]] = mqtopt.h() %[[Q0_3]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_1, %q1_1 = mqtopt.x() %q0_0 ctrl %q1_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_2, %q2_1 = mqtopt.h() %q0_1 ctrl %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_3 = mqtopt.z() %q0_2 : !mqtopt.Qubit
@@ -255,9 +255,9 @@ module {
     %q0_0 = mqtopt.allocQubit
     %q1_0 = mqtopt.allocQubit
 
-    // CHECK: %[[q0_1:.*]], %[[q1_1:.*]] = mqtopt.z() %[[q0_0]] ctrl %[[q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_1:.*]], %[[Q1_1:.*]] = mqtopt.z() %[[Q0_0]] ctrl %[[Q1_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     // CHECK: %[[Q1_2:.*]] = mqtopt.s() %[[Q1_1]] : !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q1_3:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q1_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]], %[[Q1_3:.*]] = mqtopt.h() %[[Q0_1]] ctrl %[[Q1_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_1, %q1_1 = mqtopt.z() %q0_0 ctrl %q1_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q1_2 = mqtopt.s() %q1_1 : !mqtopt.Qubit
     %q0_2, %q1_3 = mqtopt.h() %q0_1 ctrl %q1_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit
@@ -282,14 +282,14 @@ module {
     %q1_0 = mqtopt.allocQubit
     %q2_0 = mqtopt.allocQubit
 
-    // CHECK: %[[q0_1:.*]], %[[q1_1:.*]], %[[q2_1:.*]] = mqtopt.z() %[[q0_0]] ctrl %[[q1_0]], %[[q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q1_2:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_1:.*]], %[[Q12_1:.*]]:2 = mqtopt.z() %[[Q0_0]] ctrl %[[Q1_0]], %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]], %[[Q1_2:.*]] = mqtopt.h() %[[Q0_1]] ctrl %[[Q12_1]]#0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_1, %q1_1, %q2_1 = mqtopt.z() %q0_0 ctrl %q1_0, %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
     %q0_2, %q1_2 = mqtopt.h() %q0_1 ctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
 
     // CHECK: mqtopt.deallocQubit %[[Q0_2]]
     // CHECK: mqtopt.deallocQubit %[[Q1_2]]
-    // CHECK: mqtopt.deallocQubit %[[Q2_1]]
+    // CHECK: mqtopt.deallocQubit %[[Q12_1]]#1
     mqtopt.deallocQubit %q0_2
     mqtopt.deallocQubit %q1_2
     mqtopt.deallocQubit %q2_1
@@ -302,7 +302,7 @@ module {
 // This test checks that a hadamard gate can be lifted over a controlled Pauli Z gate even if the targets are at
 // different places.
 module {
-  func.func @testDoNotLiftHadamardOverPauliGateWithDifferentControls() {
+  func.func @testDoLiftHadamardOverControlledPauliZ() {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -310,8 +310,8 @@ module {
     %q1_0 = mqtopt.allocQubit
     %q2_0 = mqtopt.allocQubit
 
-    // CHECK: %[[q1_1:.*]], %[[q0_1:.*]], %[[q2_1:.*]] = mqtopt.h() %[[q1_0]] ctrl %[[q0_0]], %[[q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
-    // CHECK: %[[q1_2:.*]], %[[q0_2:.*]], %[[q2_2:.*]] = mqtopt.x() %[[q1_1]] ctrl %[[q0_1]], %[[q2_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[Q1_1:.*]], %[[Q0_1:.*]], %[[Q2_1:.*]] = mqtopt.h() %[[Q1_0]] ctrl %[[Q0_0]], %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[Q1_2:.*]], %[[Q0_2:.*]], %[[Q2_2:.*]] = mqtopt.x() %[[Q1_1]] ctrl %[[Q0_1]], %[[Q2_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
     %q0_1, %q1_1, %q2_1 = mqtopt.z() %q0_0 ctrl %q1_0, %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
     %q1_2, %q0_2, %q2_2 = mqtopt.h() %q1_1 ctrl %q0_1, %q2_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
 
@@ -339,10 +339,10 @@ module {
     %q1_0 = mqtopt.allocQubit
     %q2_0 = mqtopt.allocQubit
 
-    // CHECK: %[[q0_1:.*]], %[[q1_1:.*]], %[[q2_1:.*]] = mqtopt.x() %[[q0_0]] ctrl %[[q1_0]] nctrl %[[q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
-    // CHECK: %[[q0_2:.*]], %[[q2_2:.*]], %[[q1_2:.*]] = mqtopt.h() %[[q0_1]] ctrl %[[q2_1]] nctrl %[[q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
-    // CHECK: %[[q0_3:.*]], %[[q1_3:.*]], %[[q2_3:.*]] = mqtopt.h() %[[q0_2]] ctrl %[[q1_2]] nctrl %[[q2_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
-    // CHECK: %[[q0_4:.*]], %[[q1_4:.*]], %[[q2_4:.*]] = mqtopt.x() %[[q0_3]] ctrl %[[q1_3]] nctrl %[[q2_3]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_1:.*]], %[[Q1_1:.*]], %[[Q2_1:.*]] = mqtopt.x() %[[Q0_0]] ctrl %[[Q1_0]] nctrl %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]], %[[Q2_2:.*]], %[[Q1_2:.*]] = mqtopt.h() %[[Q0_1]] ctrl %[[Q2_1]] nctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_3:.*]], %[[Q1_3:.*]], %[[Q2_3:.*]] = mqtopt.h() %[[Q0_2]] ctrl %[[Q1_2]] nctrl %[[Q2_2]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_4:.*]], %[[Q1_4:.*]], %[[Q2_4:.*]] = mqtopt.x() %[[Q0_3]] ctrl %[[Q1_3]] nctrl %[[Q2_3]] : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_1, %q1_1, %q2_1 = mqtopt.x() %q0_0 ctrl %q1_0 nctrl %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_2, %q2_2, %q1_2 = mqtopt.h() %q0_1 ctrl %q2_1 nctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_3, %q1_3, %q2_3 = mqtopt.z() %q0_2 ctrl %q1_2 nctrl %q2_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit nctrl !mqtopt.Qubit
