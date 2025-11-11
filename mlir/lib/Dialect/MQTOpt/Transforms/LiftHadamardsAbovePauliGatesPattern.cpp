@@ -23,6 +23,7 @@
 #include <mlir/IR/Value.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Support/LogicalResult.h>
+#include <set>
 #include <string>
 #include <unordered_set>
 
@@ -195,8 +196,12 @@ struct LiftHadamardsAbovePauliGatesPattern final
         auto inQubits = hadamardGate.getAllInQubits();
         auto outQubits = op.getAllOutQubits();
 
-        bool qubitsEqual = std::equal(inQubits.begin(), inQubits.end(),
-                                      outQubits.begin(), outQubits.end());
+        bool qubitsEqual = true;
+
+        qubitsEqual &= inQubits.size() == outQubits.size();
+        for (auto inQubit : inQubits) {
+          qubitsEqual &= std::find(outQubits.begin(), outQubits.end(), inQubit) != outQubits.end();
+        }
 
         if (qubitsEqual) {
           // If the target qubit of H is a ctrl in Z and vice versa, move Z's
