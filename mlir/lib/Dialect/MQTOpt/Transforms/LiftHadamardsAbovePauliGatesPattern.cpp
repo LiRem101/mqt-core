@@ -200,12 +200,29 @@ struct LiftHadamardsAbovePauliGatesPattern final
 
         qubitsEqual &= inQubits.size() == outQubits.size();
         for (auto inQubit : inQubits) {
-          qubitsEqual &= std::find(outQubits.begin(), outQubits.end(), inQubit) != outQubits.end();
+          qubitsEqual &= std::find(outQubits.begin(), outQubits.end(),
+                                   inQubit) != outQubits.end();
         }
 
         if (qubitsEqual) {
           // If the target qubit of H is a ctrl in Z and vice versa, move Z's
           // target to H's target and continue with swap
+
+          mlir::Value targetQubitHadmard = hadamardGate.getInQubits()[0];
+          mlir::Value targetQubitZ = op.getOutQubits()[0];
+          auto inCtrlHadamards = hadamardGate.getPosCtrlInQubits();
+          auto outCtrlPauliZ = op.getPosCtrlOutQubits();
+
+          bool zIsHadamardCtrlAndHadamardIsZCtrl =
+              std::find(inCtrlHadamards.begin(), inCtrlHadamards.end(),
+                        targetQubitZ) != inCtrlHadamards.end() &&
+              std::find(outCtrlPauliZ.begin(), outCtrlPauliZ.end(),
+                        targetQubitHadmard) != outCtrlPauliZ.end();
+
+          if (zIsHadamardCtrlAndHadamardIsZCtrl) {
+            // Pauli Z target can be moved to where Hadamard target is and
+            // gets a new ctrl where the target used to be
+          }
         }
       }
       return mlir::failure();
