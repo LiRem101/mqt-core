@@ -33,6 +33,7 @@ struct LiftHadamardsPass final
 
     // Define the set of patterns to use.
     mlir::RewritePatternSet patterns(ctx);
+    populateAdaptCtrldPauliZToLiftingPatterns(patterns);
     populateLiftHadamardsAbovePauliGatesPatterns(patterns);
 
     // Apply patterns in an iterative and greedy manner.
