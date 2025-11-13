@@ -37,8 +37,7 @@ struct LiftHadamardsAbovePauliGatesPattern final
    * @brief This method swaps two unitary gates. Does not yet work on
    * controlled gates.
    *
-   * This method swaps two unitary gates. The gates need to be applied on one
-   * single qubits. The gates may not be controlled.
+   * This method swaps two unitary gates.
    *
    * @param firstGate The first unitary gate.
    * @param secondGate The second unitary gate.
