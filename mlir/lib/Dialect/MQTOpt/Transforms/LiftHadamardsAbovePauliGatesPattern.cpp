@@ -12,8 +12,6 @@
 #include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Passes.h"
 
-#include <iostream>
-#include <list>
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/IR/MLIRContext.h>
@@ -21,11 +19,8 @@
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/IR/UseDefLists.h>
 #include <mlir/IR/Value.h>
-#include <mlir/Support/LLVM.h>
 #include <mlir/Support/LogicalResult.h>
-#include <set>
 #include <string>
-#include <unordered_set>
 
 namespace mqt::ir::opt {
 /**
