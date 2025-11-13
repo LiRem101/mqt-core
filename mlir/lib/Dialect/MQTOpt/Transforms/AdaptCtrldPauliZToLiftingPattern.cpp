@@ -57,6 +57,64 @@ struct AdaptCtrldPauliZToLiftingPattern final
     return result;
   }
 
+  /**
+   * @brief Checks if the target qubit of gate 1 is part of the ctrl qubits of
+   * gate 2 and vice versa.
+   *
+   * This method checks if the output target qubit of gate 1 is used as control
+   * qubit of gate 2. Additionally, it checks if the input target of gate 2 is
+   * an output control of gate 2. Returns true if that is the case.
+   * Must only be used on gates that have a single target qubit.
+   *
+   * @param gate1 First gate, predecessor of gate2.
+   * @param gate2 Second gate, successor of gate1.
+   * @return True if target qubit of gate1 is ctrl in gate2 and vice versa.
+   * False otherwise.
+   */
+  static bool areTargetsControlsAtTheOtherGates(UnitaryInterface gate1,
+                                                UnitaryInterface gate2) {
+    mlir::Value targetQubitGate2 = gate2.getInQubits()[0];
+    mlir::Value targetQubitGate1 = gate1.getOutQubits()[0];
+    auto inCtrlGate2 = gate2.getPosCtrlInQubits();
+    auto outCtrlGate1 = gate1.getPosCtrlOutQubits();
+
+    return std::find(inCtrlGate2.begin(), inCtrlGate2.end(),
+                     targetQubitGate1) != inCtrlGate2.end() &&
+           std::find(outCtrlGate1.begin(), outCtrlGate1.end(),
+                     targetQubitGate2) != outCtrlGate1.end();
+  }
+
+  /**
+   * @brief This method exchanges the position of two qubits acting on the same
+   * gate.
+   *
+   * This method exchanges two qubits acting on the same gate. E.g. if qubit 1
+   * is a target qubit and qubit 2 a control qubit, that is exchanged.
+   *
+   *
+   * @param rewriter The rewriter.
+   * @param gate The gate both qubit1 and qubit2 belong to.
+   * @param qubit1 First qubit, exchanged with second.
+   * @param qubit2 Second qubit, exchanged with first.
+   * @param temporary Qubit that is not used on the respective gate. Used as
+   * temporary variable.
+   */
+  static void exchangeTwoQubitsAtGate(mlir::PatternRewriter& rewriter,
+                                      UnitaryInterface gate, mlir::Value qubit1,
+                                      mlir::Value qubit2,
+                                      mlir::Value temporary) {
+
+    rewriter.replaceUsesWithIf(
+        qubit1, temporary,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+    rewriter.replaceUsesWithIf(qubit2, qubit1, [&](mlir::OpOperand& operand) {
+      return operand.getOwner() == gate;
+    });
+    rewriter.replaceUsesWithIf(
+        temporary, qubit2,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+  }
+
   mlir::LogicalResult
   matchAndRewrite(UnitaryInterface op,
                   mlir::PatternRewriter& rewriter) const override {
@@ -83,67 +141,24 @@ struct AdaptCtrldPauliZToLiftingPattern final
 
     // If the target qubit of H is a ctrl in Z and vice versa, we can move Z's
     // target to H's target
-
-    mlir::Value targetQubitHadamard = hadamardGate.getInQubits()[0];
-    mlir::Value targetQubitZ = op.getOutQubits()[0];
-    auto inCtrlHadamards = hadamardGate.getPosCtrlInQubits();
-    auto outCtrlPauliZ = op.getPosCtrlOutQubits();
-
-    bool zIsHadamardCtrlAndHadamardIsZCtrl =
-        std::find(inCtrlHadamards.begin(), inCtrlHadamards.end(),
-                  targetQubitZ) != inCtrlHadamards.end() &&
-        std::find(outCtrlPauliZ.begin(), outCtrlPauliZ.end(),
-                  targetQubitHadamard) != outCtrlPauliZ.end();
-
-    if (!zIsHadamardCtrlAndHadamardIsZCtrl) {
+    if (!areTargetsControlsAtTheOtherGates(op, hadamardGate)) {
       return mlir::failure();
     }
 
-    auto targetQubitIn = op.getInQubits()[0];
-    auto newTargetQubitInZ = op.getCorrespondingInput(targetQubitHadamard);
-    auto between = hadamardGate.getOutQubits()[0];
+    // Put the Z target to the same qubit as the hadamard target is
+    mlir::Value originalTargetQubitZ = op.getInQubits()[0];
+    mlir::Value targetQubitHadamard = hadamardGate.getInQubits()[0];
+    mlir::Value newTargetQubitZ = op.getCorrespondingInput(targetQubitHadamard);
+    mlir::Value temporary = hadamardGate.getOutQubits()[0];
 
-    rewriter.replaceUsesWithIf(targetQubitIn, between,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == op;
-                               });
-    rewriter.replaceUsesWithIf(newTargetQubitInZ, targetQubitIn,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == op;
-                               });
-    rewriter.replaceUsesWithIf(between, newTargetQubitInZ,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == op;
-                               });
+    exchangeTwoQubitsAtGate(rewriter, op, originalTargetQubitZ, newTargetQubitZ,
+                            temporary);
 
-    auto newTargetQubitInH = op.getCorrespondingOutput(newTargetQubitInZ);
+    mlir::Value newTargetQubitH = op.getCorrespondingOutput(newTargetQubitZ);
+    temporary = op.getInQubits()[0];
 
-    auto hadamardBetween = op.getInQubits()[0];
-
-    rewriter.replaceUsesWithIf(targetQubitHadamard, hadamardBetween,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == hadamardGate;
-                               });
-    rewriter.replaceUsesWithIf(newTargetQubitInH, targetQubitHadamard,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == hadamardGate;
-                               });
-    rewriter.replaceUsesWithIf(hadamardBetween, newTargetQubitInH,
-                               [&](mlir::OpOperand& operand) {
-                                 // We only replace the single use by the
-                                 // modified operation.
-                                 return operand.getOwner() == hadamardGate;
-                               });
+    exchangeTwoQubitsAtGate(rewriter, hadamardGate, targetQubitHadamard,
+                            newTargetQubitH, temporary);
 
     return mlir::success();
   }
