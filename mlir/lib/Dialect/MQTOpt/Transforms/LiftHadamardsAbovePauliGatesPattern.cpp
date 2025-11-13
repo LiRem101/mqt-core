@@ -39,28 +39,6 @@ struct LiftHadamardsAbovePauliGatesPattern final
       : OpInterfaceRewritePattern(context) {}
 
   /**
-   * @brief Checks if a gate is a hadamard gate.
-   *
-   * @param a The gate.
-   * @return True if the gate is a hadamard gate, false otherwise.
-   */
-  [[nodiscard]] static bool isGateHadamardGate(mlir::Operation& a) {
-    const auto aName = a.getName().stripDialect().str();
-    return aName == "h";
-  }
-
-  /**
-   * @brief Checks if a gate is a z gate.
-   *
-   * @param a The gate.
-   * @return True if the gate is a z gate, false otherwise.
-   */
-  [[nodiscard]] static bool isGateZGate(mlir::Operation& a) {
-    const auto aName = a.getName().stripDialect().str();
-    return aName == "z";
-  }
-
-  /**
    * @brief This method swaps two unitary gates. Does not yet work on
    * controlled gates.
    *
@@ -98,6 +76,26 @@ struct LiftHadamardsAbovePauliGatesPattern final
   }
 
   /**
+   * @brief This method checks if two ranges contain of exactly the same
+   * elements.
+   *
+   * This method checks if two ranges contain of exactly the same elements.
+   *
+   * @param range1 The first range.
+   * @param range2 The second range.
+   */
+  static bool containRangesOfSameElements(mlir::OperandRange range1,
+                                          mlir::ResultRange range2) {
+    bool result = true;
+    result &= range1.size() == range2.size();
+    for (auto element : range1) {
+      result &=
+          std::find(range2.begin(), range2.end(), element) != range2.end();
+    }
+    return result;
+  }
+
+  /**
    * @brief This method checks if two gates are connected by exactly the same
    * target, ctrl and nctrl qubits.
    *
@@ -108,23 +106,17 @@ struct LiftHadamardsAbovePauliGatesPattern final
    * @param firstGate The first unitary gate.
    * @param secondGate The second unitary gate.
    */
-  static bool areGatesConnectedBySameQubits(UnitaryInterface firstGate,
-                                            UnitaryInterface secondGate) {
-    auto ctrlOutQubits = firstGate.getPosCtrlOutQubits();
-    auto ctrlInQubits = secondGate.getPosCtrlInQubits();
-    auto nctrlOutQubits = firstGate.getNegCtrlOutQubits();
-    auto nctrlInQubits = secondGate.getNegCtrlInQubits();
-    auto targetOutQubits = firstGate.getOutQubits();
-    auto targetInQubits = secondGate.getInQubits();
-
-    bool ctrlEqual = std::equal(ctrlOutQubits.begin(), ctrlOutQubits.end(),
-                                ctrlInQubits.begin(), ctrlInQubits.end());
-    bool nctrlEqual = std::equal(nctrlOutQubits.begin(), nctrlOutQubits.end(),
-                                 nctrlInQubits.begin(), nctrlInQubits.end());
-    bool targetsEqual =
-        std::equal(targetOutQubits.begin(), targetOutQubits.end(),
-                   targetInQubits.begin(), targetInQubits.end());
-    return ctrlEqual && nctrlEqual && targetsEqual;
+  static bool
+  areGatesConnectedExactlyBySameQubits(UnitaryInterface firstGate,
+                                       UnitaryInterface secondGate) {
+    bool result = true;
+    result &= containRangesOfSameElements(secondGate.getPosCtrlInQubits(),
+                                          firstGate.getPosCtrlOutQubits());
+    result &= containRangesOfSameElements(secondGate.getNegCtrlInQubits(),
+                                          firstGate.getNegCtrlOutQubits());
+    result &= containRangesOfSameElements(secondGate.getInQubits(),
+                                          firstGate.getOutQubits());
+    return result;
   }
 
   /**
@@ -150,52 +142,23 @@ struct LiftHadamardsAbovePauliGatesPattern final
     if (gateName == "x" || gateName == "y" || gateName == "z") {
       swapGates(gate, hadamardGate, rewriter);
 
-      // const auto qubitType = QubitType::get(rewriter.getContext());
-      // auto inQubits = gate.getInQubits();
-      // auto posCtrlInQubits = gate.getPosCtrlInQubits();
-      // auto negCtrlInQubits = gate.getNegCtrlInQubits();
-      // auto postCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
-      // auto negCtrlOutQubitsType = gate.getNegCtrlOutQubits().getType();
-      // if (gateName == "x") {
-      //   rewriter.replaceOpWithNewOp<ZOp>(
-      //       gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-      //       mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-      //       mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
-      // } else if (gateName == "z") {
-      //   rewriter.replaceOpWithNewOp<XOp>(
-      //       gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-      //       mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-      //       mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
-      // }
-
-      mlir::Value targetQubitHadamard = hadamardGate.getOutQubits()[0];
-
       const auto qubitType = QubitType::get(rewriter.getContext());
       auto inQubits = gate.getInQubits();
-      auto originalTarget = inQubits[0];
       auto posCtrlInQubits = gate.getPosCtrlInQubits();
-
-      // std::ranges::remove(posCtrlInQubits, newTargetQubit);
-      std::vector<mlir::Value> newInQubits{};
-      newInQubits.insert(newInQubits.begin(), targetQubitHadamard);
-
-      std::vector<mlir::Value> newCtrlInQubits{};
-      newCtrlInQubits.insert(newCtrlInQubits.begin(), originalTarget);
-      for (mlir::Value posCtrlQubit : posCtrlInQubits) {
-        if (posCtrlQubit != targetQubitHadamard) {
-          newCtrlInQubits.insert(newCtrlInQubits.begin(), posCtrlQubit);
-        }
-      }
-
       auto negCtrlInQubits = gate.getNegCtrlInQubits();
-      auto postCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
+      auto posCtrlOutQubitsType = gate.getPosCtrlOutQubits().getType();
       auto negCtrlOutQubitsType = gate.getNegCtrlOutQubits().getType();
-
-      rewriter.replaceOpWithNewOp<ZOp>(
-          gate, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-          mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-          mlir::ValueRange{}, newInQubits, posCtrlInQubits, negCtrlInQubits);
-
+      if (gateName == "x") {
+        rewriter.replaceOpWithNewOp<ZOp>(
+            gate, qubitType, posCtrlOutQubitsType, negCtrlOutQubitsType,
+            mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
+            mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
+      } else if (gateName == "z") {
+        rewriter.replaceOpWithNewOp<XOp>(
+            gate, qubitType, posCtrlOutQubitsType, negCtrlOutQubitsType,
+            mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
+            mlir::ValueRange{}, inQubits, posCtrlInQubits, negCtrlInQubits);
+      }
       return mlir::success();
     }
     return mlir::failure();
@@ -205,84 +168,25 @@ struct LiftHadamardsAbovePauliGatesPattern final
   matchAndRewrite(UnitaryInterface op,
                   mlir::PatternRewriter& rewriter) const override {
 
+    // op needs to be a Pauli gate
+    std::string opName = op->getName().stripDialect().str();
+    if (opName != "x" && opName != "y" && opName != "z") {
+      return mlir::failure();
+    }
+
     // op needs to be in front of a hadamard gate
     const auto& users = op->getUsers();
     if (users.empty()) {
       return mlir::failure();
     }
     auto user = *users.begin();
-    if (!isGateHadamardGate(*user)) {
+    if (user->getName().stripDialect().str() != "h") {
       return mlir::failure();
     }
 
     auto hadamardGate = mlir::dyn_cast<UnitaryInterface>(user);
-    if (!areGatesConnectedBySameQubits(op, hadamardGate)) {
-      // check if gate is z gate. If so, check if all qubits between hadamard
-      // and z are the same. If the target qubit of H is a ctrl in Z and vice
-      // versa, move Z's target to H's target and continue with swap
-      if (isGateZGate(*op)) {
-        auto inQubits = hadamardGate.getAllInQubits();
-        auto outQubits = op.getAllOutQubits();
 
-        bool qubitsEqual = true;
-
-        qubitsEqual &= inQubits.size() == outQubits.size();
-        for (auto inQubit : inQubits) {
-          qubitsEqual &= std::find(outQubits.begin(), outQubits.end(),
-                                   inQubit) != outQubits.end();
-        }
-
-        if (qubitsEqual) {
-          // If the target qubit of H is a ctrl in Z and vice versa, move Z's
-          // target to H's target and continue with swap
-
-          mlir::Value targetQubitHadamard = hadamardGate.getInQubits()[0];
-          mlir::Value targetQubitZ = op.getOutQubits()[0];
-          auto inCtrlHadamards = hadamardGate.getPosCtrlInQubits();
-          auto outCtrlPauliZ = op.getPosCtrlOutQubits();
-
-          bool zIsHadamardCtrlAndHadamardIsZCtrl =
-              std::find(inCtrlHadamards.begin(), inCtrlHadamards.end(),
-                        targetQubitZ) != inCtrlHadamards.end() &&
-              std::find(outCtrlPauliZ.begin(), outCtrlPauliZ.end(),
-                        targetQubitHadamard) != outCtrlPauliZ.end();
-
-          if (zIsHadamardCtrlAndHadamardIsZCtrl) {
-            // Pauli Z target can be moved to where Hadamard target is and
-            // gets a new ctrl where the target used to be
-
-            // const auto qubitType = QubitType::get(rewriter.getContext());
-            // auto inQubits = op.getInQubits();
-            // auto originalTarget = inQubits[0];
-            // auto posCtrlInQubits = op.getPosCtrlInQubits();
-            // auto newTargetQubit =
-            // op.getCorrespondingInput(targetQubitHadamard);
-            //
-            // // std::ranges::remove(posCtrlInQubits, newTargetQubit);
-            // std::vector <mlir::Value> newInQubits {};
-            // newInQubits.insert(newInQubits.begin(), newTargetQubit);
-            //
-            // std::vector <mlir::Value> newCtrlInQubits {};
-            // newCtrlInQubits.insert(newCtrlInQubits.begin(), originalTarget);
-            // for (mlir::Value posCtrlQubit : posCtrlInQubits) {
-            //   if (posCtrlQubit != newTargetQubit) {
-            //     newCtrlInQubits.insert(newCtrlInQubits.begin(),
-            //     posCtrlQubit);
-            //   }
-            // }
-            //
-            // auto negCtrlInQubits = op.getNegCtrlInQubits();
-            // auto postCtrlOutQubitsType = op.getPosCtrlOutQubits().getType();
-            // auto negCtrlOutQubitsType = op.getNegCtrlOutQubits().getType();
-            // rewriter.replaceOpWithNewOp<ZOp>(
-            //     op, qubitType, postCtrlOutQubitsType, negCtrlOutQubitsType,
-            //     mlir::DenseF64ArrayAttr{}, mlir::DenseBoolArrayAttr{},
-            //     mlir::ValueRange{}, newInQubits, posCtrlInQubits,
-            //     negCtrlInQubits);
-            return swapGateWithHadamard(op, hadamardGate, rewriter);
-          }
-        }
-      }
+    if (!areGatesConnectedExactlyBySameQubits(op, hadamardGate)) {
       return mlir::failure();
     }
 
