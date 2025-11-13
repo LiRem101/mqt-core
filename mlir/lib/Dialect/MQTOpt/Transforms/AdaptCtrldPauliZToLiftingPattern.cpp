@@ -100,10 +100,7 @@ struct AdaptCtrldPauliZToLiftingPattern final
     }
 
     auto targetQubitIn = op.getInQubits()[0];
-    auto targetQubitOut = op.getOutQubits()[0];
-
     auto newTargetQubitInZ = op.getCorrespondingInput(targetQubitHadamard);
-
     auto between = hadamardGate.getOutQubits()[0];
 
     rewriter.replaceUsesWithIf(targetQubitIn, between,
@@ -125,7 +122,23 @@ struct AdaptCtrldPauliZToLiftingPattern final
                                  return operand.getOwner() == op;
                                });
 
-    rewriter.replaceUsesWithIf(targetQubitHadamard, targetQubitOut,
+    auto newTargetQubitInH = op.getCorrespondingOutput(newTargetQubitInZ);
+
+    auto hadamardBetween = op.getInQubits()[0];
+
+    rewriter.replaceUsesWithIf(targetQubitHadamard, hadamardBetween,
+                               [&](mlir::OpOperand& operand) {
+                                 // We only replace the single use by the
+                                 // modified operation.
+                                 return operand.getOwner() == hadamardGate;
+                               });
+    rewriter.replaceUsesWithIf(newTargetQubitInH, targetQubitHadamard,
+                               [&](mlir::OpOperand& operand) {
+                                 // We only replace the single use by the
+                                 // modified operation.
+                                 return operand.getOwner() == hadamardGate;
+                               });
+    rewriter.replaceUsesWithIf(hadamardBetween, newTargetQubitInH,
                                [&](mlir::OpOperand& operand) {
                                  // We only replace the single use by the
                                  // modified operation.
