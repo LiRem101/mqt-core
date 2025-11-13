@@ -310,14 +310,14 @@ module {
     %q1_0 = mqtopt.allocQubit
     %q2_0 = mqtopt.allocQubit
 
-    // CHECK: %[[Q1_1:.*]], %[[Q0_1:.*]], %[[Q2_1:.*]] = mqtopt.h() %[[Q1_0]] ctrl %[[Q0_0]], %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
-    // CHECK: %[[Q1_2:.*]], %[[Q0_2:.*]], %[[Q2_2:.*]] = mqtopt.x() %[[Q1_1]] ctrl %[[Q0_1]], %[[Q2_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[Q1_1:.*]], %[[Q02_1:.*]]:2 = mqtopt.h() %[[Q1_0]] ctrl %[[Q0_0]], %[[Q2_0]] : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[Q1_2:.*]], %[[Q02_2:.*]]:2 = mqtopt.x() %[[Q1_1]] ctrl %[[Q02_1]]#0, %[[Q02_1]]#1 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
     %q0_1, %q1_1, %q2_1 = mqtopt.z() %q0_0 ctrl %q1_0, %q2_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
     %q1_2, %q0_2, %q2_2 = mqtopt.h() %q1_1 ctrl %q0_1, %q2_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_2]]
+    // CHECK: mqtopt.deallocQubit %[[Q02_2]]#0
     // CHECK: mqtopt.deallocQubit %[[Q1_2]]
-    // CHECK: mqtopt.deallocQubit %[[Q2_2]]
+    // CHECK: mqtopt.deallocQubit %[[Q02_2]]#1
     mqtopt.deallocQubit %q0_2
     mqtopt.deallocQubit %q1_2
     mqtopt.deallocQubit %q2_2
