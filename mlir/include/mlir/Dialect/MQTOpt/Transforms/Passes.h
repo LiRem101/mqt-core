@@ -57,6 +57,7 @@ void populateLiftHadamardsAbovePauliGatesPatterns(
     mlir::RewritePatternSet& patterns);
 void populateAdaptCtrldPauliZToLiftingPatterns(
     mlir::RewritePatternSet& patterns);
+void populateLiftHadamardAboveCNOTPattern(mlir::RewritePatternSet& patterns);
 
 //===----------------------------------------------------------------------===//
 // Registration

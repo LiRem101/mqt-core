@@ -35,6 +35,7 @@ struct LiftHadamardsPass final
     mlir::RewritePatternSet patterns(ctx);
     populateAdaptCtrldPauliZToLiftingPatterns(patterns);
     populateLiftHadamardsAbovePauliGatesPatterns(patterns);
+    populateLiftHadamardAboveCNOTPattern(patterns);
 
     // Apply patterns in an iterative and greedy manner.
     if (mlir::failed(mlir::applyPatternsGreedily(op, std::move(patterns)))) {
