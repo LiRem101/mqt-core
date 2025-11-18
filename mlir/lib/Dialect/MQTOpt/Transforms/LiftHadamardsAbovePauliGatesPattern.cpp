@@ -34,8 +34,7 @@ struct LiftHadamardsAbovePauliGatesPattern final
       : OpInterfaceRewritePattern(context) {}
 
   /**
-   * @brief This method swaps two unitary gates. Does not yet work on
-   * controlled gates.
+   * @brief This method swaps two unitary gates.
    *
    * This method swaps two unitary gates.
    *
