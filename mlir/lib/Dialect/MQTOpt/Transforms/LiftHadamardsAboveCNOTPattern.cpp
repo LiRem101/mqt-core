@@ -33,6 +33,58 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
   explicit LiftHadamardAboveCNOTPattern(mlir::MLIRContext* context)
       : OpRewritePattern(context) {}
 
+  /**
+   * @brief This method swaps two qubits on a gate.
+   *
+   * This method swaps two qubits on a gate. Input and output are exchanged.
+   *
+   * @param gate The gate that the qubits belong to.
+   * @param inputQubit1 The input qubit of the qubit to be exchanged with 2.
+   * @param inputQubit2 The input qubit of the qubit to be exchanged with 1.
+   * @param dummy A qubit that exists in the circuit but is not used by gate.
+   * Has to be somewhere in the circuit before the respective gate. Needed to do
+   * the exchange, but not changed.
+   * @param rewriter The used rewriter.
+   */
+  static void swapQubits(UnitaryInterface gate, mlir::Value inputQubit1,
+                         mlir::Value inputQubit2, mlir::Value dummy,
+                         mlir::PatternRewriter& rewriter) {
+    mlir::Value outputQubit1 = gate.getCorrespondingOutput(inputQubit1);
+    mlir::Value outputQubit2 = gate.getCorrespondingOutput(inputQubit2);
+    auto dummyGatesUsing = dummy.getUsers();
+    mlir::Operation* dummyGateUsing;
+    for (auto* u : dummyGatesUsing) {
+      auto name = u->getName().stripDialect().str();
+      dummyGateUsing = u;
+    }
+
+    // TODO: Work with users from cnot?
+
+    rewriter.replaceUsesWithIf(outputQubit1, dummy,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() != gate &&
+                                        operand.getOwner() != dummyGateUsing;
+                               });
+    rewriter.replaceUsesWithIf(
+        outputQubit2, outputQubit1,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() != gate; });
+    rewriter.replaceUsesWithIf(
+        dummy, outputQubit2, [&](mlir::OpOperand& operand) {
+          return operand.getOwner() != gate //&& operand.getOwner() != dummyGate
+              ;
+        });
+
+    rewriter.replaceUsesWithIf(
+        inputQubit1, dummy,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+    rewriter.replaceUsesWithIf(
+        inputQubit2, inputQubit1,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+    rewriter.replaceUsesWithIf(
+        dummy, inputQubit2,
+        [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+  }
+
   mlir::LogicalResult
   matchAndRewrite(MeasureOp op,
                   mlir::PatternRewriter& rewriter) const override {
@@ -142,7 +194,49 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
                                         operand.getOwner() != newHOPAfterCtrl;
                                });
 
-    // TODO: Flip CNOT targets and ctrl
+    // Flip CNOT targets and ctrl
+    // swapQubits(cnotGate, cnotGate.getPosCtrlInQubits().front(),
+    //            cnotGate.getInQubits().front(),
+    //            newHOPBeforeCtrl.getInQubits().front(), rewriter);
+
+    auto inputQubit1 = cnotGate.getPosCtrlInQubits().front();
+    auto outputQubit1 = cnotGate.getCorrespondingOutput(inputQubit1);
+    auto inputQubit2 = cnotGate.getInQubits().front();
+    auto outputQubit2 = cnotGate.getCorrespondingOutput(inputQubit2);
+
+    auto dummy = newHOPBeforeCtrl.getInQubits().front();
+
+    rewriter.replaceUsesWithIf(outputQubit1, dummy,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate ||
+                                        operand.getOwner() == newHOPAfterCtrl ||
+                                        operand.getOwner() == op;
+                               });
+    rewriter.replaceUsesWithIf(outputQubit2, outputQubit1,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate ||
+                                        operand.getOwner() == newHOPAfterCtrl ||
+                                        operand.getOwner() == op;
+                               });
+    rewriter.replaceUsesWithIf(dummy, outputQubit2,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate ||
+                                        operand.getOwner() == newHOPAfterCtrl ||
+                                        operand.getOwner() == op;
+                               });
+
+    rewriter.replaceUsesWithIf(inputQubit1, dummy,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate;
+                               });
+    rewriter.replaceUsesWithIf(inputQubit2, inputQubit1,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate;
+                               });
+    rewriter.replaceUsesWithIf(dummy, inputQubit2,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == cnotGate;
+                               });
 
     return mlir::success();
   }
