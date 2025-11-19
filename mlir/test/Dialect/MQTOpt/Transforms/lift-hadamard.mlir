@@ -371,18 +371,20 @@ module {
     %q0_0 = mqtopt.allocQubit
     %q1_0 = mqtopt.allocQubit
 
+    // CHECK: %[[Q0_1:.*]] = mqtopt.s() %[[Q0_0]] : !mqtopt.Qubit
     // CHECK: %[[Q1_1:.*]] = mqtopt.h() %[[Q1_0]] : !mqtopt.Qubit
-    // CHECK: %[[Q0_1:.*]] = mqtopt.h() %[[Q0_0]] : !mqtopt.Qubit
-    // CHECK: %[[Q0_2:.*]], %[[Q1_2:.*]] = mqtopt.x() %[[Q0_1]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[Q0_3:.*]] = mqtopt.h() %[[Q0_2]] : !mqtopt.Qubit
+    // CHECK: %[[Q0_2:.*]] = mqtopt.h() %[[Q0_1]] : !mqtopt.Qubit
+    // CHECK: %[[Q0_3:.*]], %[[Q1_2:.*]] = mqtopt.x() %[[Q0_2]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    // CHECK: %[[Q0_4:.*]] = mqtopt.h() %[[Q0_3]] : !mqtopt.Qubit
     // CHECK: %[[Q1_3:.*]], %[[c0:.*]] = mqtopt.measure %[[Q1_2]]
-    %q1_1, %q0_1 = mqtopt.x() %q1_0 ctrl %q0_0 : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %q0_1 = mqtopt.s() %q0_0 : !mqtopt.Qubit
+    %q1_1, %q0_2 = mqtopt.x() %q1_0 ctrl %q0_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q1_2 = mqtopt.h() %q1_1 : !mqtopt.Qubit
     %q1_3, %c0 = mqtopt.measure %q1_2
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_3]]
+    // CHECK: mqtopt.deallocQubit %[[Q0_4]]
     // CHECK: mqtopt.deallocQubit %[[Q1_3]]
-    mqtopt.deallocQubit %q0_1
+    mqtopt.deallocQubit %q0_2
     mqtopt.deallocQubit %q1_3
 
     // CHECK: return %[[c0]] : i1
