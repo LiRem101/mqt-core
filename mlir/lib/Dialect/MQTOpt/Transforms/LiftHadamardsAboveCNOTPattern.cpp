@@ -41,38 +41,41 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
    * @param gate The gate that the qubits belong to.
    * @param inputQubit1 The input qubit of the qubit to be exchanged with 2.
    * @param inputQubit2 The input qubit of the qubit to be exchanged with 1.
+   * @param succeedingOp1 The operation succeeding gate on the corresponding
+   * output of inputQubit1.
+   * @param succeedingOp2 The operation succeeding gate on the corresponding
+   * output of inputQubit2.
    * @param dummy A qubit that exists in the circuit but is not used by gate.
    * Has to be somewhere in the circuit before the respective gate. Needed to do
    * the exchange, but not changed.
    * @param rewriter The used rewriter.
    */
   static void swapQubits(UnitaryInterface gate, mlir::Value inputQubit1,
-                         mlir::Value inputQubit2, mlir::Value dummy,
+                         mlir::Value inputQubit2,
+                         mlir::Operation* succeedingOp1,
+                         mlir::Operation* succeedingOp2, mlir::Value dummy,
                          mlir::PatternRewriter& rewriter) {
     mlir::Value outputQubit1 = gate.getCorrespondingOutput(inputQubit1);
     mlir::Value outputQubit2 = gate.getCorrespondingOutput(inputQubit2);
-    auto dummyGatesUsing = dummy.getUsers();
-    mlir::Operation* dummyGateUsing;
-    for (auto* u : dummyGatesUsing) {
-      auto name = u->getName().stripDialect().str();
-      dummyGateUsing = u;
-    }
-
-    // TODO: Work with users from cnot?
 
     rewriter.replaceUsesWithIf(outputQubit1, dummy,
                                [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() != gate &&
-                                        operand.getOwner() != dummyGateUsing;
+                                 return operand.getOwner() == gate ||
+                                        operand.getOwner() == succeedingOp1 ||
+                                        operand.getOwner() == succeedingOp2;
                                });
-    rewriter.replaceUsesWithIf(
-        outputQubit2, outputQubit1,
-        [&](mlir::OpOperand& operand) { return operand.getOwner() != gate; });
-    rewriter.replaceUsesWithIf(
-        dummy, outputQubit2, [&](mlir::OpOperand& operand) {
-          return operand.getOwner() != gate //&& operand.getOwner() != dummyGate
-              ;
-        });
+    rewriter.replaceUsesWithIf(outputQubit2, outputQubit1,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == gate ||
+                                        operand.getOwner() == succeedingOp1 ||
+                                        operand.getOwner() == succeedingOp2;
+                               });
+    rewriter.replaceUsesWithIf(dummy, outputQubit2,
+                               [&](mlir::OpOperand& operand) {
+                                 return operand.getOwner() == gate ||
+                                        operand.getOwner() == succeedingOp1 ||
+                                        operand.getOwner() == succeedingOp2;
+                               });
 
     rewriter.replaceUsesWithIf(
         inputQubit1, dummy,
@@ -83,6 +86,85 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
     rewriter.replaceUsesWithIf(
         dummy, inputQubit2,
         [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+  }
+
+  /**
+   * @brief This method adds hadamrad gates before a given gate.
+   *
+   * @param gate The gate before which hadamard gates should be applied.
+   * @param inputQubits The input qubits of gate before which hadamard gates
+   * should be applied.
+   * @param rewriter The used rewriter.
+   *
+   * @returns One of the created hadamard gates.
+   */
+  static HOp addHadamardGatesBeforeGate(UnitaryInterface gate,
+                                        std::vector<mlir::Value> inputQubits,
+                                        mlir::PatternRewriter& rewriter) {
+    HOp newHOP;
+    for (mlir::Value inputQubit : inputQubits) {
+
+      std::vector<mlir::Value> inQubits{inputQubit};
+      std::vector<mlir::Type> outQubits{inputQubit.getType()};
+
+      newHOP = rewriter.create<HOp>(
+          /* location = */ gate->getLoc(),
+          /* out_qubits = */ outQubits,
+          /* pos_ctrl_out_qubits = */ mlir::TypeRange{},
+          /* neg_ctrl_out_qubits = */ mlir::TypeRange{},
+          /* static_params = */ nullptr,
+          /* params_mask = */ nullptr,
+          /* params = */ mlir::ValueRange{},
+          /* in_qubits = */ inQubits,
+          /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
+          /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
+
+      rewriter.moveOpBefore(newHOP, gate);
+
+      rewriter.replaceUsesWithIf(
+          inputQubit, newHOP.getOutQubits().front(),
+          [&](mlir::OpOperand& operand) { return operand.getOwner() == gate; });
+    }
+    return newHOP;
+  }
+
+  /**
+   * @brief This method adds hadamrad gates after a given gate.
+   *
+   * @param gate The gate after which hadamard gates should be applied.
+   * @param outputQubits The output qubits of gate after which hadamard gates
+   * should be applied.
+   * @param rewriter The used rewriter.
+   *
+   * @returns One of the created hadamard gates.
+   */
+  static HOp addHadamardGatesAfterGate(UnitaryInterface gate,
+                                       std::vector<mlir::Value> outputQubits,
+                                       mlir::PatternRewriter& rewriter) {
+    HOp newHOp;
+    for (mlir::Value outputQubit : outputQubits) {
+
+      std::vector<mlir::Value> inQubit{outputQubit};
+      std::vector<mlir::Type> outQubit{outputQubit.getType()};
+
+      newHOp = rewriter.create<HOp>(
+          /* location = */ gate->getLoc(),
+          /* out_qubits = */ outQubit,
+          /* pos_ctrl_out_qubits = */ mlir::TypeRange{},
+          /* neg_ctrl_out_qubits = */ mlir::TypeRange{},
+          /* static_params = */ nullptr,
+          /* params_mask = */ nullptr,
+          /* params = */ mlir::ValueRange{},
+          /* in_qubits = */ inQubit,
+          /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
+          /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
+      rewriter.replaceUsesWithIf(
+          newHOp.getInQubits().front(), newHOp.getOutQubits().front(),
+          [&](mlir::OpOperand& operand) {
+            return operand.getOwner() != gate && operand.getOwner() != newHOp;
+          });
+    }
+    return newHOp;
   }
 
   mlir::LogicalResult
@@ -129,114 +211,20 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
     rewriter.eraseOp(hadamardGate);
 
     // Add hadamard gates to the other in and output gates of cnot
-    std::vector<mlir::Value> inQubitBeforeTarget{
-        cnotGate.getInQubits().front()};
-    std::vector<mlir::Type> outQubitBeforeTarget{
-        cnotGate.getInQubits().front().getType()};
-    auto newHOPBeforeTarget = rewriter.create<HOp>(
-        /* location = */ cnotGate->getLoc(),
-        /* out_qubits = */ outQubitBeforeTarget,
-        /* pos_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* neg_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* static_params = */ nullptr,
-        /* params_mask = */ nullptr,
-        /* params = */ mlir::ValueRange{},
-        /* in_qubits = */ inQubitBeforeTarget,
-        /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
-        /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
-    rewriter.moveOpBefore(newHOPBeforeTarget, cnotGate);
-    rewriter.replaceUsesWithIf(cnotGate.getInQubits().front(),
-                               newHOPBeforeTarget.getOutQubits().front(),
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate;
-                               });
+    std::vector<mlir::Value> relevantInputQubitsForHadamard{
+        cnotGate.getInQubits().front(), cnotGate.getPosCtrlInQubits().front()};
+    HOp newHOPBefore = addHadamardGatesBeforeGate(
+        cnotGate, relevantInputQubitsForHadamard, rewriter);
 
-    std::vector<mlir::Value> inQubitBeforeCtrl{
-        cnotGate.getPosCtrlInQubits().front()};
-    std::vector<mlir::Type> outQubitBeforeCtrl{
-        cnotGate.getPosCtrlInQubits().front().getType()};
-    auto newHOPBeforeCtrl = rewriter.create<HOp>(
-        /* location = */ cnotGate->getLoc(),
-        /* out_qubits = */ outQubitBeforeCtrl,
-        /* pos_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* neg_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* static_params = */ nullptr,
-        /* params_mask = */ nullptr,
-        /* params = */ mlir::ValueRange{},
-        /* in_qubits = */ inQubitBeforeCtrl,
-        /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
-        /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
-    rewriter.moveOpBefore(newHOPBeforeCtrl, cnotGate);
-    rewriter.replaceUsesWithIf(cnotGate.getPosCtrlInQubits().front(),
-                               newHOPBeforeCtrl.getOutQubits().front(),
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate;
-                               });
-
-    auto cnotPosCtrlOutQubit = cnotGate.getPosCtrlOutQubits().front();
-    std::vector<mlir::Value> inQubitAfterCtrl{cnotPosCtrlOutQubit};
-    std::vector<mlir::Type> outQubitAfterCtrl{cnotPosCtrlOutQubit.getType()};
-    auto newHOPAfterCtrl = rewriter.create<HOp>(
-        /* location = */ cnotGate->getLoc(),
-        /* out_qubits = */ outQubitAfterCtrl,
-        /* pos_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* neg_ctrl_out_qubits = */ mlir::TypeRange{},
-        /* static_params = */ nullptr,
-        /* params_mask = */ nullptr,
-        /* params = */ mlir::ValueRange{},
-        /* in_qubits = */ inQubitAfterCtrl,
-        /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
-        /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
-    rewriter.replaceUsesWithIf(newHOPAfterCtrl.getInQubits().front(),
-                               newHOPAfterCtrl.getOutQubits().front(),
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() != cnotGate &&
-                                        operand.getOwner() != newHOPAfterCtrl;
-                               });
+    std::vector<mlir::Value> relevantOutputQubitsFOrHadamard{
+        cnotGate.getPosCtrlOutQubits().front()};
+    HOp newHOPAfterCtrl = addHadamardGatesAfterGate(
+        cnotGate, relevantOutputQubitsFOrHadamard, rewriter);
 
     // Flip CNOT targets and ctrl
-    // swapQubits(cnotGate, cnotGate.getPosCtrlInQubits().front(),
-    //            cnotGate.getInQubits().front(),
-    //            newHOPBeforeCtrl.getInQubits().front(), rewriter);
-
-    auto inputQubit1 = cnotGate.getPosCtrlInQubits().front();
-    auto outputQubit1 = cnotGate.getCorrespondingOutput(inputQubit1);
-    auto inputQubit2 = cnotGate.getInQubits().front();
-    auto outputQubit2 = cnotGate.getCorrespondingOutput(inputQubit2);
-
-    auto dummy = newHOPBeforeCtrl.getInQubits().front();
-
-    rewriter.replaceUsesWithIf(outputQubit1, dummy,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate ||
-                                        operand.getOwner() == newHOPAfterCtrl ||
-                                        operand.getOwner() == op;
-                               });
-    rewriter.replaceUsesWithIf(outputQubit2, outputQubit1,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate ||
-                                        operand.getOwner() == newHOPAfterCtrl ||
-                                        operand.getOwner() == op;
-                               });
-    rewriter.replaceUsesWithIf(dummy, outputQubit2,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate ||
-                                        operand.getOwner() == newHOPAfterCtrl ||
-                                        operand.getOwner() == op;
-                               });
-
-    rewriter.replaceUsesWithIf(inputQubit1, dummy,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate;
-                               });
-    rewriter.replaceUsesWithIf(inputQubit2, inputQubit1,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate;
-                               });
-    rewriter.replaceUsesWithIf(dummy, inputQubit2,
-                               [&](mlir::OpOperand& operand) {
-                                 return operand.getOwner() == cnotGate;
-                               });
+    swapQubits(cnotGate, cnotGate.getPosCtrlInQubits().front(),
+               cnotGate.getInQubits().front(), op, newHOPAfterCtrl,
+               newHOPBefore.getInQubits().front(), rewriter);
 
     return mlir::success();
   }
