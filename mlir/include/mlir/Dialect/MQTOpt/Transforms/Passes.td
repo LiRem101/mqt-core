@@ -127,6 +127,13 @@ def LiftHadamardsPass : Pass<"lift-hadamards", "mlir::ModuleOp"> {
   }];
 }
 
+def QuantumConstantPropagationPass : Pass<"constant-propagation", "mlir::ModuleOp"> {
+  let summary = "This pass attempts to lift hadamards as much as possible by flipping them with pauli gates.";
+  let description = [{
+    This pass implements quantum constant propagation.
+  }];
+}
+
 //===----------------------------------------------------------------------===//
 // Transpilation Passes For Superconducting Devices
 //===----------------------------------------------------------------------===//
