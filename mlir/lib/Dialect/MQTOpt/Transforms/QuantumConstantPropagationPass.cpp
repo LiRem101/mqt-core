@@ -99,12 +99,6 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
   /// Prepare work-list.
   std::vector<Operation*> worklist;
 
-  module.walk<WalkOrder::PreOrder>([&](Operation* op) {
-    auto name = op->getName().stripDialect().str();
-    v.push_back(name);
-    worklist.push_back(op);
-  });
-
   for (const auto func : module.getOps<func::FuncOp>()) {
 
     if (!isEntryPoint(func)) {
@@ -122,8 +116,8 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
     if (curr == nullptr) {
       continue; // Skip erased ops.
     }
-
-    // v.push_back(test);
+    auto n = curr->getName().stripDialect().str();
+    v.push_back(n);
     test++;
   }
 
