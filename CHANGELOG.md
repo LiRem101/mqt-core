@@ -11,6 +11,38 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 ### Added
 
+- ✨ Add bi-directional iterator that traverses the def-use chain of a qubit value ([#1310]) ([**@MatthiasReumann**])
+
+### Changed
+
+- 👷 Use `munich-quantum-software/setup-mlir` to set up MLIR ([#1294]) ([**@denialhaag**])
+- ♻️ Preserve tuple structure and improve site type clarity of the MQT NA Default QDMI Device ([#1299]) ([**@marcelwa
+  **])
+- ♻️ Move DD package evaluation module to standalone script ([#1327]) ([**@burgholzer**])
+
+### Fixed
+
+- 🐛 Fix memory management in dynamic QDMI device by making it explicit ([#1336]) ([**@ystade**])
+
+### Removed
+
+- 🔥 Remove the `evaluation` extra from the MQT Core Python package ([#1327]) ([**@burgholzer**])
+- 🔥 Remove the `mqt-core-dd-compare` entry point from the MQT Core Python package ([#1327]) ([**@burgholzer**])
+
+## [3.3.3] - 2025-11-10
+
+### Added
+
+- ✨ Add support for bridge gates for the neutral atom hybrid mapper ([#1293]) ([**@lsschmid**])
+
+### Fixed
+
+- 🐛 Revert change to `opTypeFromString()` signature made in [#1283] ([#1300]) ([**@denialhaag**])
+
+## [3.3.2] - 2025-11-04
+
+### Added
+
 - ✨ Add DD-based simulator QDMI device ([#1287]) ([**@burgholzer**])
 - ✨ A `--reuse-qubits` pass implementing an advanced form of qubit reuse to reduce the qubit count of quantum circuits ([#1108]) ([**@DRovara**])
 - ✨ A `--lift-measurements` pass that attempts to move measurements up as much as possible, used for instance to enable better qubit reuse ([#1108]) ([**@DRovara**])
@@ -213,9 +245,7 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 <!-- Version links -->
 
 [unreleased]: https://github.com/munich-quantum-toolkit/core/compare/v3.3.3...HEAD
-
 [3.3.3]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.3.3
-
 [3.3.2]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.3.2
 [3.3.1]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.3.1
 [3.3.0]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.3.0
@@ -229,24 +259,26 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 
 <!-- PR links -->
 
+[#1336]: https://github.com/munich-quantum-toolkit/core/pull/1336
+
+[#1327]: https://github.com/munich-quantum-toolkit/core/pull/1327
+
+[#1310]: https://github.com/munich-quantum-toolkit/core/pull/1310
 [#1300]: https://github.com/munich-quantum-toolkit/core/pull/1300
 
+[#1299]: https://github.com/munich-quantum-toolkit/core/pull/1299
+
+[#1294]: https://github.com/munich-quantum-toolkit/core/pull/1294
 [#1293]: https://github.com/munich-quantum-toolkit/core/pull/1293
-
 [#1287]: https://github.com/munich-quantum-toolkit/core/pull/1287
-
 [#1283]: https://github.com/munich-quantum-toolkit/core/pull/1283
-
 [#1279]: https://github.com/munich-quantum-toolkit/core/pull/1279
-
 [#1276]: https://github.com/munich-quantum-toolkit/core/pull/1276
-
 [#1271]: https://github.com/munich-quantum-toolkit/core/pull/1271
 [#1269]: https://github.com/munich-quantum-toolkit/core/pull/1269
 [#1263]: https://github.com/munich-quantum-toolkit/core/pull/1263
 [#1247]: https://github.com/munich-quantum-toolkit/core/pull/1247
 [#1246]: https://github.com/munich-quantum-toolkit/core/pull/1246
-
 [#1237]: https://github.com/munich-quantum-toolkit/core/pull/1237
 [#1236]: https://github.com/munich-quantum-toolkit/core/pull/1236
 [#1235]: https://github.com/munich-quantum-toolkit/core/pull/1235
@@ -256,7 +288,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1211]: https://github.com/munich-quantum-toolkit/core/pull/1211
 [#1210]: https://github.com/munich-quantum-toolkit/core/pull/1210
 [#1209]: https://github.com/munich-quantum-toolkit/core/pull/1209
-
 [#1207]: https://github.com/munich-quantum-toolkit/core/pull/1207
 [#1186]: https://github.com/munich-quantum-toolkit/core/pull/1186
 [#1181]: https://github.com/munich-quantum-toolkit/core/pull/1181
@@ -363,8 +394,9 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [**@lavanya-m-k**]: https://github.com/lavanya-m-k
 [**@taminob**]: https://github.com/taminob
 [**@jannikpflieger**]: https://github.com/jannikpflieger
-
 [**@lsschmid**]: https://github.com/lsschmid
+
+[**@marcelwa**]: https://github.com/marcelwa
 
 <!-- General links -->
 
