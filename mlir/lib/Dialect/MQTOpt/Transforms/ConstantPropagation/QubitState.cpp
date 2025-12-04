@@ -37,12 +37,12 @@ public:
 
   ~QubitState() = default;
 
-  [[nodiscard("QubitsState::getSize called but ignored")]] std::size_t
+  [[nodiscard("QubitState::getSize called but ignored")]] std::size_t
   getSize() const {
     return this->map.size();
   }
 
-  [[nodiscard("QubitsState::getNQubits called but ignored")]] size_t
+  [[nodiscard("QubitState::getNQubits called but ignored")]] size_t
   getNQubits() const {
     return this->nQubits;
   }
@@ -196,28 +196,28 @@ public:
 
   ~QubitStateOrTop() = default;
 
-  [[nodiscard("QubitsStateOrTop::isTop called but ignored")]] bool
+  [[nodiscard("QubitStateOrTop::isTop called but ignored")]] bool
   isTop() const {
     return std::holds_alternative<TOP>(variant);
   }
 
-  [[nodiscard("QubitsStateOrTop::isQubitState called but ignored")]] bool
+  [[nodiscard("QubitStateOrTop::isQubitState called but ignored")]] bool
   isQubitState() const {
     return std::holds_alternative<std::shared_ptr<QubitState>>(variant);
   }
 
-  [[nodiscard("QubitsStateOrTop::getQubitState called but ignored")]] std::
+  [[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] std::
       shared_ptr<QubitState>
       getQubitState() const {
     return std::get<std::shared_ptr<QubitState>>(variant);
   }
 
-  [[nodiscard("QubitsStateOrTop::to_string called but ignored")]] std::string
+  [[nodiscard("QubitStateOrTop::toString called but ignored")]] std::string
   toString() const {
     if (isTop()) {
       return "TOP";
     } else {
-      return getQubitState()->to_string();
+      return getQubitState()->toString();
     }
   }
 
