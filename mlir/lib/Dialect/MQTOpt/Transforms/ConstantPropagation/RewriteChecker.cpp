@@ -8,9 +8,11 @@
  * Licensed under the MIT License
  */
 
-#include "UnionTable.cpp"
+#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
-#include <cstddef>
+#include <optional>
+#include <stdexcept>
+
 /**
  * @brief This class holds a UnionTable and does checks on the rewrite
  * properties.
@@ -31,10 +33,10 @@ public:
    * always positive (negative) are superfluous.
    *
    * @param qubitTargets The indices of the target qubits.
-   * @param qubitPosCtrl The indices of the positively controlling qubits.
-   * @param qubitNegCtrl The indices of the negatively controlling qubits.
-   * @param bitPosCtrl The indices of the positively controlling bits.
-   * @param bitNegCtrl The indices of the negatively controlling bits.
+   * @param qubitPosCtrls The indices of the positively controlling qubits.
+   * @param qubitNegCtrls The indices of the negatively controlling qubits.
+   * @param bitPosCtrls The indices of the positively controlling bits.
+   * @param bitNegCtrls The indices of the negatively controlling bits.
    * @returns A pair of superfluous qubits and superfluous bits.
    */
   std::pair<std::vector<unsigned int>, std::vector<unsigned int>>

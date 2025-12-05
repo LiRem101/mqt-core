@@ -8,3 +8,4 @@
 
 add_subdirectory(translation)
 add_subdirectory(dialect)
+add_subdirectory(ConstantPropagation)
