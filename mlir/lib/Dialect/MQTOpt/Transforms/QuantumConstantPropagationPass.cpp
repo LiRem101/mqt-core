@@ -37,41 +37,78 @@ namespace mqt::ir::opt {
 namespace {
 using namespace mlir;
 
-class Mapper {
-public:
-  explicit Mapper(std::unique_ptr<Architecture> arch,
-                  std::unique_ptr<SchedulerBase> scheduler,
-                  std::unique_ptr<RouterBase> router, Pass::Statistic& numSwaps)
-      : arch_(std::move(arch)), scheduler_(std::move(scheduler)),
-        router_(std::move(router)), numSwaps_(&numSwaps) {}
+/**
+ *
+ */
+WalkResult handleFunc([[maybe_unused]] func::FuncOp op) {
+  // TODO: HandleFuncs, throw not supported if it is not the entry point?
+  return WalkResult::advance();
+}
 
-  /**
-   * @returns reference to the stack object.
-   */
-  [[nodiscard]] LayoutStack<Layout>& stack() { return stack_; }
+/**
+ *
+ */
+WalkResult handleReturn() {
+  // TODO: Handle return
+  // As we only support entry point func, do not support that?
+  return WalkResult::advance();
+}
 
-  /**
-   * @returns reference to the history stack object.
-   */
-  [[nodiscard]] LayoutStack<SmallVector<QubitIndexPair>>& historyStack() {
-    return historyStack_;
-  }
+/**
+ *
+ */
+WalkResult handleFor(scf::ForOp op) {
+  // TODO: Throw exception that for handling is not yet supported
+  return WalkResult::advance();
+}
 
-  /**
-   * @returns reference to architecture object.
-   */
-  [[nodiscard]] Architecture& arch() const { return *arch_; }
+/**
+ *
+ */
+WalkResult handleIf(scf::IfOp op) {
+  // TODO: Handle if (save conditional bits in an additional object?)
+  return WalkResult::advance();
+}
 
-private:
-  std::unique_ptr<Architecture> arch_;
-  std::unique_ptr<SchedulerBase> scheduler_;
-  std::unique_ptr<RouterBase> router_;
+/**
+ * @brief Handle yield/propagate qubit usage.
+ */
+WalkResult handleYield(scf::YieldOp op, PatternRewriter& rewriter) {
+  // TODO: Handle yield, i.e. propagate qubit useage
+  return WalkResult::advance();
+}
 
-  LayoutStack<Layout> stack_{};
-  LayoutStack<SmallVector<QubitIndexPair>> historyStack_{};
+/**
+ *
+ */
+WalkResult handleQubit(QubitOp op) {
+  // TODO: Check usages for QubitOp and handle
+  return WalkResult::advance();
+}
 
-  Pass::Statistic* numSwaps_;
-};
+/**
+ * @brief Propagte the unitary.
+ */
+WalkResult handleUnitary(UnitaryInterface op, PatternRewriter& rewriter) {
+  // TODO: Propagate the unitary
+  return WalkResult::advance();
+}
+
+/**
+ * @brief Propagate the measurement.
+ */
+WalkResult handleReset(ResetOp op, PatternRewriter& rewriter) {
+  // TODO: Propagate the reset
+  return WalkResult::advance();
+}
+
+/**
+ * @brief Propagate the measurement.
+ */
+WalkResult handleMeasure(MeasureOp op, PatternRewriter& rewriter) {
+  // TODO: Propagate the measurement
+  return WalkResult::advance();
+}
 
 /**
  * @brief Do quantum constant propagation.
@@ -119,6 +156,43 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
     auto n = curr->getName().stripDialect().str();
     v.push_back(n);
     test++;
+
+    rewriter.setInsertionPoint(curr);
+
+    /// TypeSwitch performs sequential dyn_cast checks.
+    /// Hence, always put most frequent ops first.
+    // TODO: Handle declaration/initialization of classical bits
+    const auto res =
+        TypeSwitch<Operation*, WalkResult>(curr)
+            /// mqtopt Dialect
+            .Case<UnitaryInterface>([&](UnitaryInterface op) {
+              return handleUnitary(op, rewriter);
+            })
+            .Case<QubitOp>([&](QubitOp op) { return handleQubit(op); })
+            .Case<ResetOp>(
+                [&](ResetOp op) { return handleReset(op, rewriter); })
+            .Case<MeasureOp>(
+                [&](MeasureOp op) { return handleMeasure(op, rewriter); })
+            /// built-in Dialect
+            .Case<ModuleOp>([&]([[maybe_unused]] ModuleOp op) {
+              return WalkResult::advance();
+            })
+            /// func Dialect
+            .Case<func::FuncOp>([&](func::FuncOp op) { return handleFunc(op); })
+            .Case<func::ReturnOp>([&]([[maybe_unused]] func::ReturnOp op) {
+              return handleReturn();
+            })
+            /// scf Dialect
+            .Case<scf::ForOp>([&](scf::ForOp op) { return handleFor(op); })
+            .Case<scf::IfOp>([&](scf::IfOp op) { return handleIf(op); })
+            .Case<scf::YieldOp>(
+                [&](scf::YieldOp op) { return handleYield(op, rewriter); })
+            /// Skip the rest.
+            .Default([](auto) { return WalkResult::skip(); });
+
+    if (res.wasInterrupted()) {
+      return failure();
+    }
   }
 
   return failure();
