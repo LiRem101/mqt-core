@@ -12,4 +12,5 @@ a [QDMI device for a Classical Quantum Circuit Simulator](ddsim_device).
 NA QDMI Device <na_device>
 DDSIM QDMI Device <ddsim_device>
 QDMI Driver <driver>
+QDMI-Qiskit Backend <qdmi_backend>
 ```
