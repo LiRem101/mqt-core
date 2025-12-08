@@ -11,12 +11,7 @@
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
-#include <functional>
 #include <gtest/gtest.h>
-#include <ios>
-#include <llvm/ADT/StringRef.h>
-#include <mlir/Dialect/SCF/IR/SCF.h>
-#include <string>
 
 namespace {
 
