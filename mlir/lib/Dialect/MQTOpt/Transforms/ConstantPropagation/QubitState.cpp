@@ -28,6 +28,23 @@ struct MeasurementResult {
  * complex amplitude.
  */
 class QubitState {
+  std::size_t nQubits;
+  std::unordered_map<unsigned int, std::complex<double>> map;
+
+  std::string qubitStringToBinary(unsigned int q) const {
+    std::string str;
+    for (int i = nQubits - 1; i >= 0; i--) {
+      unsigned int currentDigit = 2 ^ i;
+      if (q >> currentDigit) {
+        str += "1";
+        q -= currentDigit;
+      } else {
+        str += "0";
+      }
+    }
+    return str;
+  }
+
 public:
   explicit QubitState(std::size_t nQubits) {
     this->nQubits = nQubits;
@@ -132,30 +149,11 @@ public:
           return (that.map.contains(key)) && (val == that.map.at(key));
         });
   }
-
-private:
-  std::size_t nQubits;
-  std::unordered_map<unsigned int, std::complex<double>> map;
-
-  std::string qubitStringToBinary(unsigned int q) const {
-    std::string str;
-    for (int i = nQubits - 1; i >= 0; i--) {
-      unsigned int currentDigit = 2 ^ i;
-      if (q >> currentDigit) {
-        str += "1";
-        q -= currentDigit;
-      } else {
-        str += "0";
-      }
-    }
-    return str;
-  }
 };
 
 enum TOP { T };
 
 class QubitStateOrTop {
-private:
   std::variant<TOP, std::shared_ptr<QubitState>> variant;
 
 public:

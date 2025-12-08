@@ -12,6 +12,7 @@
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
 #include <gtest/gtest.h>
+#include <mlir/Dialect/MQTOpt/Transforms/Passes.h>
 
 namespace {
 
@@ -21,13 +22,13 @@ protected:
   RewriteChecker* checker = nullptr;
 
   void SetUp() override {
-    // unionTable = new UnionTable(1, 1);
-    // checker = new RewriteChecker(*unionTable);
+    unionTable = new UnionTable(1, 1);
+    checker = new RewriteChecker(*unionTable);
   }
 
   void TearDown() override {
-    // delete checker;
-    // delete unionTable;
+    delete checker;
+    delete unionTable;
   }
 };
 

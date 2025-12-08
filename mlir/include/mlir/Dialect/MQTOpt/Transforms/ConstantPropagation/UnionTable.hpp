@@ -23,22 +23,64 @@ class HybridStateOrTop;
  * states.
  */
 class UnionTable {
+  std::size_t nQubits;
+  std::size_t nBits;
+  HybridStateOrTop* hReg;
+
 public:
   UnionTable(size_t nQubits, size_t nBits);
 
   ~UnionTable();
 
-  ;
+  /**
+   * @brief This method unifies hybrid states.
+   *
+   * This method unifies the hybrid states that consit of the given bits and
+   * qubits.
+   *
+   * @param qubits The qubits that should be unified.
+   * @param bits The bits that should be unified.
+   */
   void unify(std::vector<unsigned int> qubits, std::vector<unsigned int> bits);
 
   bool allTop();
 
+  /**
+   * @brief This method applies a gate to the qubits.
+   *
+   * This method changes the amplitudes of a QubitsState according to the
+   * applied gate.
+   *
+   * @param gate The name of the gate to be applied.
+   * @param targets An array of the indices of the target qubits.
+   * @param posCtrls An array of the indices of the ctrl qubits.
+   * @param negCtrls An array of the indices of the negative ctrl qubits.
+   */
   void propagateGate(std::string gate, unsigned int targets[],
                      unsigned int posCtrls[], unsigned int negCtrls[]);
 
+  /**
+   * @brief This method applies a measurement.
+   *
+   * This method applies a measurement, changing the qubits and the classical
+   * bit corresponding to the measurement.
+   *
+   * @param quantumTarget The index of the qubit to be measured.
+   * @param classicalTarget The index of the bit to save the measurement result
+   * in.
+   */
   void propagateMeasurement(unsigned int quantumTarget,
                             unsigned int classicalTarget);
 
+  /**
+   * @brief This method propagates a qubit reset.
+   *
+   * This method propagates a qubit reset. This means that the qubit is put into
+   * zero state. It is also put in its own QubitState again if it does not
+   * correspond to already assigned bit values.
+   *
+   * @param target The index of the qubit to be reset.
+   */
   void propagateReset(unsigned int target);
 
   bool isQubitAlwaysOne(size_t q);
@@ -49,13 +91,20 @@ public:
 
   bool isBitAlwaysZero(size_t q);
 
+  /**
+   * @brief Returns whether the given qubits have for value values a nonzero
+   * amplitude.
+   *
+   * This method receives a number of qubit indices and checks whether they have
+   * for a given value a nonzero amplitude.
+   *
+   * @param qubits The qubits which are being checked.
+   * @param value The value for which is tested whether there is a nonzero
+   * amplitude.
+   * @returns True if the amplitude is nonzero, false otherwise.
+   */
   bool hasNonzeroAmplitude(std::vector<unsigned int> qubits,
                            unsigned int value);
-
-private:
-  std::size_t nQubits;
-  std::size_t nBits;
-  HybridStateOrTop* hReg;
 };
 
 #endif // MQT_CORE_UNIONTABLE_H

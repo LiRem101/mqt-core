@@ -24,6 +24,10 @@
  * The class also hold a probability.
  */
 class HybridState {
+  QubitState qState;
+  double probability;
+  std::vector<bool> bitValues;
+
 public:
   explicit HybridState(std::size_t nQubits, std::vector<bool> bitValues,
                        double probability)
@@ -98,15 +102,9 @@ public:
 
     return this->qState == that.qState;
   }
-
-private:
-  QubitState qState;
-  double probability;
-  std::vector<bool> bitValues;
 };
 
 class HybridStateOrTop {
-private:
   std::variant<TOP, std::shared_ptr<HybridState>> variant;
 
 public:
