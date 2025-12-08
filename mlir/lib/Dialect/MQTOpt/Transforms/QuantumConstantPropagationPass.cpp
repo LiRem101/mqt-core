@@ -11,13 +11,9 @@
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Architecture.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Common.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Layout.h"
-#include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Router.h"
-#include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Scheduler.h"
-#include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Stack.h"
 
 #include <chrono>
-#include <llvm/ADT/SmallVector.h>
-#include <memory>
+#include <llvm/ADT/TypeSwitch.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
@@ -26,7 +22,6 @@
 #include <mlir/IR/Visitors.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Support/LLVM.h>
-#include <utility>
 #include <vector>
 
 namespace mqt::ir::opt {
@@ -146,8 +141,6 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
     // auto n = func->getName().stripDialect().str();
   }
 
-  int test = 2;
-
   /// Iterate work-list.
   for (Operation* curr : worklist) {
     if (curr == nullptr) {
@@ -155,12 +148,9 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
     }
     auto n = curr->getName().stripDialect().str();
     v.push_back(n);
-    test++;
 
     rewriter.setInsertionPoint(curr);
 
-    /// TypeSwitch performs sequential dyn_cast checks.
-    /// Hence, always put most frequent ops first.
     // TODO: Handle declaration/initialization of classical bits
     const auto res =
         TypeSwitch<Operation*, WalkResult>(curr)
