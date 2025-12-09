@@ -10,19 +10,14 @@
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
-#include "HybridState.cpp"
-
 namespace mqt::ir::opt::qcp {
-UnionTable::UnionTable(size_t nQubits, size_t nBits) {
-  this->nQubits = nQubits;
-  this->nBits = nBits;
-  this->hReg = new HybridStateOrTop[nQubits];
-  for (size_t i = 0; i < nQubits; i++) {
-    this->hReg[i] = std::make_shared<HybridState>(1, std::vector<bool>(), 1);
-  }
+UnionTable::UnionTable() {
+  this->nQubits = 0;
+  this->nBits = 0;
+  this->hReg = {};
 }
 
-UnionTable::~UnionTable() { delete[] this->hReg; }
+UnionTable::~UnionTable() {}
 
 void UnionTable::unify(std::vector<unsigned int> qubits,
                        std::vector<unsigned int> bits) {

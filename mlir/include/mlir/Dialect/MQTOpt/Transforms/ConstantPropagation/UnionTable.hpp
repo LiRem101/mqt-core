@@ -11,13 +11,13 @@
 #ifndef MQT_CORE_UNIONTABLE_H
 #define MQT_CORE_UNIONTABLE_H
 
+#include "HybridState.hpp"
 #include "ir/operations/OpType.hpp"
 
 #include <cstddef>
 #include <vector>
 
 namespace mqt::ir::opt::qcp {
-class HybridStateOrTop;
 /**
  * @brief This class holds the hybrid states of multiple qubits and bits.
  *
@@ -28,10 +28,10 @@ class HybridStateOrTop;
 class UnionTable {
   std::size_t nQubits;
   std::size_t nBits;
-  HybridStateOrTop* hReg;
+  std::vector<HybridStateOrTop> hReg;
 
 public:
-  UnionTable(size_t nQubits, size_t nBits);
+  UnionTable();
 
   ~UnionTable();
 

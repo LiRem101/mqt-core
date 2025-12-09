@@ -22,7 +22,7 @@ protected:
   RewriteChecker checker;
 
   RewriteCheckerTest()
-      : unionTable(UnionTable(1, 1)), checker(RewriteChecker(unionTable)) {}
+      : unionTable(UnionTable()), checker(RewriteChecker(unionTable)) {}
 
   void SetUp() override {}
 
