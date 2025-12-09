@@ -23,7 +23,7 @@
 namespace mqt::ir::opt::qcp {
 HybridState::HybridState(std::size_t nQubits, std::vector<bool> bitValues,
                          double probability)
-    : qState(QubitState(nQubits)), probability(probability),
+    : qState(QubitState(nQubits, 10)), probability(probability),
       bitValues(std::move(bitValues)) {}
 
 HybridState::~HybridState() = default;

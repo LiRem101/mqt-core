@@ -16,14 +16,16 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <format>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <variant>
 
 namespace mqt::ir::opt::qcp {
-QubitState::QubitState(std::size_t nQubits) {
+QubitState::QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes) {
   this->nQubits = nQubits;
+  this->maxNonzeroAmplitudes = maxNonzeroAmplitudes;
   this->map = std::unordered_map<unsigned int, std::complex<double>>();
   this->map.insert({0, std::complex<double>(1.0, 0.0)});
 }
@@ -47,11 +49,11 @@ std::string QubitState::toString() const {
   for (std::map ordered = std::map<unsigned int, std::complex<double>>(
            this->map.begin(), this->map.end());
        auto const& [key, val] : ordered) {
-    std::string cn = std::to_string(val.real());
+    std::string cn = std::format("{:.2f}", val.real());
     if (val.imag() > 1e-4) {
-      cn += "+ i" + std::to_string(val.imag());
+      cn += "+ i" + std::format("{:.2f}", val.imag());
     } else if (val.imag() < -1e-4) {
-      cn += "- i" + std::to_string(-val.imag());
+      cn += "- i" + std::format("{:.2f}", -val.imag());
     }
     str += "|" + qubitStringToBinary(key) + "> -> " + cn + ", ";
   }
@@ -59,13 +61,14 @@ std::string QubitState::toString() const {
   return str;
 }
 
-QubitState QubitState::unify(const QubitState that) {
+QubitStateOrTop QubitState::unify(QubitState that) {
   throw std::logic_error("Not implemented");
 }
 
-void QubitState::propagateGate(std::string gate, unsigned int targets[],
-                               unsigned int posCtrls[],
-                               unsigned int negCtrls[]) {
+QubitStateOrTop QubitState::propagateGate(qc::OpType gate,
+                                          std::vector<unsigned int> targets,
+                                          std::vector<unsigned int> posCtrls,
+                                          std::vector<unsigned int> negCtrls) {
   throw std::logic_error("Not implemented");
 }
 

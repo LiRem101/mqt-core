@@ -14,16 +14,20 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <ir/operations/OpType.hpp>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
 struct MeasurementResult {
   bool measurementResult;
   double probability;
 };
+
+class QubitStateOrTop;
 
 /**
  * @brief This class represents a qubit state.
@@ -33,6 +37,7 @@ struct MeasurementResult {
  */
 class QubitState {
   std::size_t nQubits;
+  std::size_t maxNonzeroAmplitudes;
   std::unordered_map<unsigned int, std::complex<double>> map;
 
   std::string qubitStringToBinary(unsigned int q) const {
@@ -50,7 +55,7 @@ class QubitState {
   }
 
 public:
-  explicit QubitState(std::size_t nQubits);
+  explicit QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes);
 
   ~QubitState();
 
@@ -68,26 +73,31 @@ public:
    * @brief This method unifies two QubitStates.
    *
    * This method unifies the current QubitState with the given one and returns
-   * a new QubitsState.
+   * a new QubitsState, if the new state has no more than maxNonzeroAmplitude
+   * nonzero amplitudes.
    *
    * @param that The QubitState to unify this with.
-   * @return A new unified QubitState.
+   * @return A new unified QubitState or TOP.
    */
-  QubitState unify(const QubitState that);
+  QubitStateOrTop unify(QubitState that);
 
   /**
    * @brief This method applies a gate to the qubits.
    *
    * This method changes the amplitudes of a QubitsState according to the
-   * applied gate.
+   * applied gate. Returns the current qubitState if it has no more than
+   * maxNonZeroAmplitude nonzero amplitudes. Otherwise, it returns top.
    *
-   * @param gate The name of the gate to be applied.
-   * @param targets An array of the indices of the target qubits.
-   * @param posCtrls An array of the indices of the ctrl qubits.
-   * @param negCtrls An array of the indices of the negative ctrl qubits.
+   * @param gate The gate to be applied.
+   * @param targets A vector of the indices of the target qubits.
+   * @param posCtrls A vector of the indices of the ctrl qubits.
+   * @param negCtrls A vector of the indices of the negative ctrl qubits.
+   * @return A new unified QubitState or TOP.
    */
-  void propagateGate(std::string gate, unsigned int targets[],
-                     unsigned int posCtrls[], unsigned int negCtrls[]);
+  QubitStateOrTop propagateGate(qc::OpType gate,
+                                std::vector<unsigned int> targets,
+                                std::vector<unsigned int> posCtrls = {},
+                                std::vector<unsigned int> negCtrls = {});
 
   /**
    * @brief This method applies a measurement to the qubits.
