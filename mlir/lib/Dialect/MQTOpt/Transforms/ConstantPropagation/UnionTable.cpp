@@ -12,6 +12,7 @@
 
 #include "HybridState.cpp"
 
+namespace mqt::ir::opt::qcp {
 UnionTable::UnionTable(size_t nQubits, size_t nBits) {
   this->nQubits = nQubits;
   this->nBits = nBits;
@@ -37,9 +38,11 @@ bool UnionTable::allTop() {
   return true;
 }
 
-void UnionTable::propagateGate(std::string gate, unsigned int targets[],
-                               unsigned int posCtrls[],
-                               unsigned int negCtrls[]) {
+void UnionTable::propagateGate(qc::OpType gate,
+                               std::vector<unsigned int> targets,
+                               std::vector<unsigned int> posCtrls,
+                               std::vector<unsigned int> negCtrls,
+                               std::vector<double> params) {
   throw std::logic_error("Not implemented");
 }
 
@@ -49,6 +52,14 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
 }
 
 void UnionTable::propagateReset(unsigned int target) {
+  throw std::logic_error("Not implemented");
+}
+
+unsigned int UnionTable::propagateQubitAlloc() {
+  throw std::logic_error("Not implemented");
+}
+
+void UnionTable::propagateQubitDealloc(unsigned int target) {
   throw std::logic_error("Not implemented");
 }
 
@@ -72,3 +83,4 @@ bool UnionTable::hasNonzeroAmplitude(std::vector<unsigned int> qubits,
                                      unsigned int value) {
   throw std::logic_error("Not implemented");
 }
+} // namespace mqt::ir::opt::qcp

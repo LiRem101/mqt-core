@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <variant>
 
+namespace mqt::ir::opt::qcp {
 struct MeasurementResult {
   bool measurementResult;
   double probability;
@@ -221,3 +222,4 @@ public:
 
   void print(std::ostream& os) const { os << this->toString(); }
 };
+} // namespace mqt::ir::opt::qcp

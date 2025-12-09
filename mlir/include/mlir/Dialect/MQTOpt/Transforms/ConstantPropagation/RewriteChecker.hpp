@@ -15,6 +15,7 @@
 
 #include <optional>
 
+namespace mqt::ir::opt::qcp {
 /**
  * @brief This class holds a UnionTable and does checks on the rewrite
  * properties.
@@ -113,5 +114,5 @@ public:
   bool isOnlyOneSetNotZero(std::vector<unsigned int> qubits,
                            std::vector<std::vector<unsigned int>> values);
 };
-
+} // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_REWRITECHECKER_H

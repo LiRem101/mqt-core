@@ -14,22 +14,19 @@
 #include <gtest/gtest.h>
 #include <mlir/Dialect/MQTOpt/Transforms/Passes.h>
 
-namespace {
+using namespace mqt::ir::opt::qcp;
 
 class RewriteCheckerTest : public ::testing::Test {
 protected:
-  UnionTable* unionTable = nullptr;
-  RewriteChecker* checker = nullptr;
+  UnionTable unionTable;
+  RewriteChecker checker;
 
-  void SetUp() override {
-    unionTable = new UnionTable(1, 1);
-    checker = new RewriteChecker(*unionTable);
-  }
+  RewriteCheckerTest()
+      : unionTable(UnionTable(1, 1)), checker(RewriteChecker(unionTable)) {}
 
-  void TearDown() override {
-    delete checker;
-    delete unionTable;
-  }
+  void SetUp() override {}
+
+  void TearDown() override {}
 };
 
 // ##################################################
@@ -41,5 +38,3 @@ protected:
 // ##################################################
 
 TEST_F(RewriteCheckerTest, FirstTest) { ASSERT_TRUE(false); }
-
-} // namespace

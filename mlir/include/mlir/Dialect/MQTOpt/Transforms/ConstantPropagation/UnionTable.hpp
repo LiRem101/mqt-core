@@ -11,9 +11,12 @@
 #ifndef MQT_CORE_UNIONTABLE_H
 #define MQT_CORE_UNIONTABLE_H
 
+#include "ir/operations/OpType.hpp"
+
 #include <cstddef>
-#include <string>
 #include <vector>
+
+namespace mqt::ir::opt::qcp {
 class HybridStateOrTop;
 /**
  * @brief This class holds the hybrid states of multiple qubits and bits.
@@ -56,8 +59,10 @@ public:
    * @param posCtrls An array of the indices of the ctrl qubits.
    * @param negCtrls An array of the indices of the negative ctrl qubits.
    */
-  void propagateGate(std::string gate, unsigned int targets[],
-                     unsigned int posCtrls[], unsigned int negCtrls[]);
+  void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
+                     std::vector<unsigned int> posCtrls,
+                     std::vector<unsigned int> negCtrls,
+                     std::vector<double> params = {});
 
   /**
    * @brief This method applies a measurement.
@@ -83,6 +88,27 @@ public:
    */
   void propagateReset(unsigned int target);
 
+  /**
+   * @brief This method propagates a qubit alloc and returns the qubit's index.
+   *
+   * This method propagates a qubit alloc. This means that the qubit is added to
+   * the UnionTable in zero state. The methos returns the index with which the
+   * qubit can be identified in the UnionTable.
+   *
+   * @return The index with which the qubit can be identified in the UnionTable.
+   */
+  unsigned int propagateQubitAlloc();
+
+  /**
+   * @brief This method propagates a qubit dealloc.
+   *
+   * This method propagates a qubit dealloc. This means that the qubit removed
+   * from the UnionTable.
+   *
+   * @param target The index of the qubit to be removed.
+   */
+  void propagateQubitDealloc(unsigned int target);
+
   bool isQubitAlwaysOne(size_t q);
 
   bool isQubitAlwaysZero(size_t q);
@@ -106,5 +132,5 @@ public:
   bool hasNonzeroAmplitude(std::vector<unsigned int> qubits,
                            unsigned int value);
 };
-
+} // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_UNIONTABLE_H

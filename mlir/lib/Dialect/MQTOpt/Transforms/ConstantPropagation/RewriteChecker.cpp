@@ -15,6 +15,7 @@
 #include <optional>
 #include <stdexcept>
 
+namespace mqt::ir::opt::qcp {
 RewriteChecker::RewriteChecker(UnionTable ut) : unionTable(ut) {}
 
 RewriteChecker::~RewriteChecker() = default;
@@ -50,3 +51,4 @@ bool RewriteChecker::isOnlyOneSetNotZero(
     std::vector<std::vector<unsigned int>> values) {
   throw std::logic_error("Not implemented");
 }
+} // namespace mqt::ir::opt::qcp

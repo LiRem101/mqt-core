@@ -17,6 +17,7 @@
 #include <memory>
 #include <variant>
 
+namespace mqt::ir::opt::qcp {
 /**
  * @brief This class represents a hybrid state.
  *
@@ -173,3 +174,4 @@ public:
 
   void print(std::ostream& os) const { os << this->toString(); }
 };
+} // namespace mqt::ir::opt::qcp
