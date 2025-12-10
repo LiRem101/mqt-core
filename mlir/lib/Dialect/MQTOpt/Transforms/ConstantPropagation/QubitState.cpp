@@ -79,13 +79,14 @@ QubitState QubitState::propagateGate(qc::OpType gate,
     unsigned int mapFrom;
     unsigned int zeroKey;
     unsigned int oneKey;
-    if ((key & target) == 0) {
+    unsigned int currentDigit = pow(2, target);
+    if ((key & currentDigit) == 0) {
       mapFrom = 0;
       zeroKey = key;
-      oneKey = key + pow(2, target);
+      oneKey = key + currentDigit;
     } else {
       mapFrom = 1;
-      zeroKey = key - pow(2, target);
+      zeroKey = key - currentDigit;
       oneKey = key;
     }
     auto mapForThisQubit = gateMapping[mapFrom];

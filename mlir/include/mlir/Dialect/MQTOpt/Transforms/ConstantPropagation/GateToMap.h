@@ -16,11 +16,14 @@ getQubitMappingOfGates(qc::OpType gate) {
   switch (gate) {
   case (qc::H):
     return {{0,
-             {{0, std::complex<double>(0.70, 0)},
-              {1, std::complex<double>(0.70, 0)}}},
+             {{0, std::complex<double>(1 / sqrt(2), 0)},
+              {1, std::complex<double>(1 / sqrt(2), 0)}}},
             {1,
-             {{0, std::complex<double>(0.70, 0)},
-              {1, std::complex<double>(-0.70, 0)}}}};
+             {{0, std::complex<double>(1 / sqrt(2), 0)},
+              {1, std::complex<double>(-1 / sqrt(2), 0)}}}};
+  case (qc::Z):
+    return {{0, {{0, std::complex<double>(1, 0)}}},
+            {1, {{1, std::complex<double>(-1, 0)}}}};
   default:
     throw std::runtime_error(
         "Unsupported gate in mqt::ir::opt::qcp::getQubitMappingOfGates");
