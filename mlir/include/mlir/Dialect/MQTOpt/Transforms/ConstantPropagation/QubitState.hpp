@@ -43,8 +43,8 @@ class QubitState {
   std::string qubitStringToBinary(unsigned int q) const {
     std::string str;
     for (int i = nQubits - 1; i >= 0; i--) {
-      unsigned int currentDigit = 2 ^ i;
-      if (q >> currentDigit) {
+      unsigned int currentDigit = pow(2, i);
+      if (q & currentDigit) {
         str += "1";
         q -= currentDigit;
       } else {
@@ -55,7 +55,7 @@ class QubitState {
   }
 
 public:
-  explicit QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes);
+  QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes);
 
   ~QubitState();
 
@@ -94,10 +94,9 @@ public:
    * @param negCtrls A vector of the indices of the negative ctrl qubits.
    * @return A new unified QubitState or TOP.
    */
-  QubitStateOrTop propagateGate(qc::OpType gate,
-                                std::vector<unsigned int> targets,
-                                std::vector<unsigned int> posCtrls = {},
-                                std::vector<unsigned int> negCtrls = {});
+  QubitState propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
+                           std::vector<unsigned int> posCtrls = {},
+                           std::vector<unsigned int> negCtrls = {});
 
   /**
    * @brief This method applies a measurement to the qubits.

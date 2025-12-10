@@ -13,6 +13,8 @@
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/QubitState.hpp"
 
+#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/GateToMap.h"
+
 #include <algorithm>
 #include <complex>
 #include <cstddef>
@@ -65,11 +67,43 @@ QubitStateOrTop QubitState::unify(QubitState that) {
   throw std::logic_error("Not implemented");
 }
 
-QubitStateOrTop QubitState::propagateGate(qc::OpType gate,
-                                          std::vector<unsigned int> targets,
-                                          std::vector<unsigned int> posCtrls,
-                                          std::vector<unsigned int> negCtrls) {
-  throw std::logic_error("Not implemented");
+QubitState QubitState::propagateGate(qc::OpType gate,
+                                     std::vector<unsigned int> targets,
+                                     std::vector<unsigned int> posCtrls,
+                                     std::vector<unsigned int> negCtrls) {
+  auto gateMapping = getQubitMappingOfGates(gate);
+
+  auto target = targets[0];
+  std::unordered_map<unsigned int, std::complex<double>> newValues;
+  for (const auto& [key, value] : map) {
+    unsigned int mapFrom;
+    unsigned int zeroKey;
+    unsigned int oneKey;
+    if ((key & target) == 0) {
+      mapFrom = 0;
+      zeroKey = key;
+      oneKey = key + pow(2, target);
+    } else {
+      mapFrom = 1;
+      zeroKey = key - pow(2, target);
+      oneKey = key;
+    }
+    auto mapForThisQubit = gateMapping[mapFrom];
+    auto valueToZero = mapForThisQubit[0];
+    auto valueToOne = mapForThisQubit[1];
+    if (abs(valueToZero) > 1e-4) {
+      newValues[zeroKey] += valueToZero * value;
+    }
+    if (abs(valueToOne) > 1e-4) {
+      newValues[oneKey] += valueToOne * value;
+    }
+  }
+  map.clear();
+  for (const auto& [key, value] : newValues) {
+    map.insert({key, value});
+  }
+
+  return *this;
 }
 
 std::map<MeasurementResult, QubitState>
