@@ -94,3 +94,17 @@ TEST_F(QubitStateTest, ApplyParametrizedGateToThirdQubit) {
       qState.toString(),
       testing::HasSubstr("|0000> -> 0.76 - i0.31, |0100> -> -0.20 + i0.53"));
 }
+
+TEST_F(QubitStateTest, ApplyTwoQubitGate) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::S, {1});
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::Tdg, {2});
+  qState.propagateGate(qc::Peres, {2, 1}, {}, {}, {});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr("|0000> -> 0.50, |0010> -> 0.00 + i1.00, |0100> -> "
+                         "0.71 - i0.71, |0110> -> 0.71 + i0.71"));
+}
