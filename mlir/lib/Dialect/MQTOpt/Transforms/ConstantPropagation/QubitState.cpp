@@ -53,9 +53,9 @@ std::string QubitState::toString() const {
        auto const& [key, val] : ordered) {
     std::string cn = std::format("{:.2f}", val.real());
     if (val.imag() > 1e-4) {
-      cn += "+ i" + std::format("{:.2f}", val.imag());
+      cn += " + i" + std::format("{:.2f}", val.imag());
     } else if (val.imag() < -1e-4) {
-      cn += "- i" + std::format("{:.2f}", -val.imag());
+      cn += " - i" + std::format("{:.2f}", -val.imag());
     }
     str += "|" + qubitStringToBinary(key) + "> -> " + cn + ", ";
   }
@@ -70,8 +70,9 @@ QubitStateOrTop QubitState::unify(QubitState that) {
 QubitState QubitState::propagateGate(qc::OpType gate,
                                      std::vector<unsigned int> targets,
                                      std::vector<unsigned int> posCtrls,
-                                     std::vector<unsigned int> negCtrls) {
-  auto gateMapping = getQubitMappingOfGates(gate);
+                                     std::vector<unsigned int> negCtrls,
+                                     std::vector<double> params) {
+  auto gateMapping = getQubitMappingOfGates(gate, params);
 
   auto target = targets[0];
   std::unordered_map<unsigned int, std::complex<double>> newValues;

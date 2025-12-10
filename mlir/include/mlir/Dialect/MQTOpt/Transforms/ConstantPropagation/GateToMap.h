@@ -8,11 +8,12 @@
 
 #include <complex>
 #include <unordered_map>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
 inline std::unordered_map<
     unsigned int, std::unordered_map<unsigned int, std::complex<double>>>
-getQubitMappingOfGates(qc::OpType gate) {
+getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
   switch (gate) {
   case (qc::I):
     return {{0, {{0, std::complex<double>(1, 0)}}},
@@ -59,6 +60,15 @@ getQubitMappingOfGates(qc::OpType gate) {
             {1,
              {{0, std::complex<double>(0, -1 / sqrt(2))},
               {1, std::complex<double>(-1 / sqrt(2), 0)}}}};
+  case (qc::U):
+    return {
+        {0,
+         {{0, std::complex<double>(cos(params[0] / 2), 0)},
+          {1, exp(std::complex<double>(0, params[1])) * sin(params[0] / 2)}}},
+        {1,
+         {{0, -exp(std::complex<double>(0, params[2])) * sin(params[0] / 2)},
+          {1, exp(std::complex<double>(0, params[1] + params[2])) *
+                  cos(params[0] / 2)}}}};
   case (qc::SX):
     return {{0,
              {{0, std::complex<double>(1 / 2, 1 / 2)},

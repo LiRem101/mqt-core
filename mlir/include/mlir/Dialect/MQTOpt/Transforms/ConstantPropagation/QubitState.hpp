@@ -92,11 +92,13 @@ public:
    * @param targets A vector of the indices of the target qubits.
    * @param posCtrls A vector of the indices of the ctrl qubits.
    * @param negCtrls A vector of the indices of the negative ctrl qubits.
+   * @param params The parameter applied to the gate.
    * @return A new unified QubitState or TOP.
    */
   QubitState propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
                            std::vector<unsigned int> posCtrls = {},
-                           std::vector<unsigned int> negCtrls = {});
+                           std::vector<unsigned int> negCtrls = {},
+                           std::vector<double> params = {});
 
   /**
    * @brief This method applies a measurement to the qubits.
