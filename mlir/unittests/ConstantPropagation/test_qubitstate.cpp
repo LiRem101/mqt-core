@@ -73,3 +73,24 @@ TEST_F(QubitStateTest, ApplyHZHGateToThirdQubit) {
 
   EXPECT_THAT(qState.toString(), testing::HasSubstr("|0100> -> 1"));
 }
+
+TEST_F(QubitStateTest, ApplyHGatesToTwoQubits) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::H, {0});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr(
+          "|0000> -> 0.50, |0001> -> 0.50, |0100> -> 0.50, |0101> -> 0.50"));
+}
+
+TEST_F(QubitStateTest, ApplyParametrizedGateToThirdQubit) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::U, {2}, {}, {}, {1, 0.5, 2});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr("|0000> -> 0.76 - i0.31, |0100> -> -0.20 + i0.53"));
+}
