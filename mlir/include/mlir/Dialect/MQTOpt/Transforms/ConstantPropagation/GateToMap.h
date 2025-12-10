@@ -29,8 +29,8 @@ getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
     return {{0, {{1, std::complex<double>(1, 0)}}},
             {1, {{0, std::complex<double>(1, 0)}}}};
   case (qc::Y):
-    return {{0, {{1, std::complex<double>(0, -1)}}},
-            {1, {{0, std::complex<double>(0, 1)}}}};
+    return {{0, {{1, std::complex<double>(0, 1)}}},
+            {1, {{0, std::complex<double>(0, -1)}}}};
   case (qc::Z):
     return {{0, {{0, std::complex<double>(1, 0)}}},
             {1, {{1, std::complex<double>(-1, 0)}}}};
@@ -69,6 +69,16 @@ getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
          {{0, -exp(std::complex<double>(0, params[2])) * sin(params[0] / 2)},
           {1, exp(std::complex<double>(0, params[1] + params[2])) *
                   cos(params[0] / 2)}}}};
+  case (qc::U2):
+    return {{0,
+             {{0, std::complex<double>(1 / sqrt(2), 0)},
+              {1, exp(std::complex<double>(0, params[0]))}}},
+            {1,
+             {{0, -exp(std::complex<double>(0, params[1]))},
+              {1, exp(std::complex<double>(0, params[0] + params[1]))}}}};
+  case (qc::P):
+    return {{0, {{0, std::complex<double>(1, 0)}}},
+            {1, {{1, exp(std::complex<double>(0, params[0]))}}}};
   case (qc::SX):
     return {{0,
              {{0, std::complex<double>(1 / 2, 1 / 2)},
@@ -83,6 +93,32 @@ getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
             {1,
              {{0, std::complex<double>(1 / 2, 1 / 2)},
               {1, std::complex<double>(1 / 2, -1 / 2)}}}};
+  case (qc::RX):
+    return {{0,
+             {{0, std::complex<double>(cos(params[0] / 2), 0)},
+              {1, std::complex<double>(0, -sin(params[0] / 2))}}},
+            {1,
+             {{0, std::complex<double>(0, -sin(params[0] / 2))},
+              {1, std::complex<double>(cos(params[0] / 2), 0)}}}};
+  case (qc::RY):
+    return {{0,
+             {{0, std::complex<double>(cos(params[0] / 2), 0)},
+              {1, std::complex<double>(sin(params[0] / 2), 0)}}},
+            {1,
+             {{0, std::complex<double>(-sin(params[0] / 2), 0)},
+              {1, std::complex<double>(cos(params[0] / 2), 0)}}}};
+  case (qc::RZ):
+    return {{0, {{0, exp(std::complex<double>(0, -params[0] / 2))}}},
+            {1, {{1, exp(std::complex<double>(0, params[0] / 2))}}}};
+  case (qc::R):
+    return {{0,
+             {{0, std::complex<double>(cos(params[0] / 2), 0)},
+              {1, exp(std::complex<double>(0, params[1])) *
+                      std::complex<double>(0, -sin(params[0] / 2))}}},
+            {1,
+             {{0, exp(std::complex<double>(0, -params[1])) *
+                      std::complex<double>(0, -sin(params[0] / 2))},
+              {1, std::complex<double>(cos(params[0] / 2), 0)}}}};
   default:
     throw std::runtime_error(
         "Unsupported gate in mqt::ir::opt::qcp::getQubitMappingOfGates");
