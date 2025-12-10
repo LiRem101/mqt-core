@@ -54,6 +54,92 @@ class QubitState {
     return str;
   }
 
+  std::unordered_map<unsigned int, std::complex<double>>
+  getNewMappingForTwoQubitGate(
+      std::unordered_map<unsigned int,
+                         std::unordered_map<unsigned int, std::complex<double>>>
+          gateMapping,
+      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets) {
+    std::unordered_map<unsigned int, std::complex<double>> newValues;
+
+    for (const auto& [key, value] : map) {
+      unsigned int mapFrom;
+      std::vector<unsigned int> keysForNewValue(4);
+
+      if ((key & bitmaskForQubitTargets[3]) == bitmaskForQubitTargets[3]) {
+        mapFrom = 3;
+        keysForNewValue[3] = key;
+        keysForNewValue[2] = key - bitmaskForQubitTargets[1];
+        keysForNewValue[1] = key - bitmaskForQubitTargets[2];
+        keysForNewValue[0] = key - bitmaskForQubitTargets[3];
+      } else if ((key & bitmaskForQubitTargets[2]) ==
+                 bitmaskForQubitTargets[2]) {
+        mapFrom = 2;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[2] = key;
+        keysForNewValue[1] = key ^ bitmaskForQubitTargets[3];
+        keysForNewValue[0] = key - bitmaskForQubitTargets[2];
+      } else if ((key & bitmaskForQubitTargets[1]) ==
+                 bitmaskForQubitTargets[1]) {
+        mapFrom = 1;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[2];
+        keysForNewValue[2] = key ^ bitmaskForQubitTargets[3];
+        keysForNewValue[1] = key;
+        keysForNewValue[0] = key - bitmaskForQubitTargets[1];
+      } else {
+        mapFrom = 0;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[3];
+        keysForNewValue[2] = key + bitmaskForQubitTargets[2];
+        keysForNewValue[1] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[0] = key;
+      }
+
+      auto mapForThisQubit = gateMapping[mapFrom];
+      for (int i = 0; i < 4; i++) {
+        auto valueToI = mapForThisQubit[i];
+        if (abs(valueToI) > 1e-4) {
+          newValues[keysForNewValue[i]] += valueToI * value;
+        }
+      }
+    }
+
+    return newValues;
+  }
+
+  std::unordered_map<unsigned int, std::complex<double>>
+  getNewMappingForSingleQubitGate(
+      std::unordered_map<unsigned int,
+                         std::unordered_map<unsigned int, std::complex<double>>>
+          gateMapping,
+      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets) {
+    std::unordered_map<unsigned int, std::complex<double>> newValues;
+
+    for (const auto& [key, value] : map) {
+      unsigned int mapFrom;
+      std::vector<unsigned int> keysForNewValue(2);
+
+      if ((key & bitmaskForQubitTargets[1]) == bitmaskForQubitTargets[1]) {
+        mapFrom = 1;
+        keysForNewValue[1] = key;
+        keysForNewValue[0] = key - bitmaskForQubitTargets[1];
+      } else {
+        mapFrom = 0;
+        keysForNewValue[1] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[0] = key;
+      }
+
+      auto mapForThisQubit = gateMapping[mapFrom];
+      for (int i = 0; i < 2; i++) {
+        auto valueToI = mapForThisQubit[i];
+        if (abs(valueToI) > 1e-4) {
+          newValues[keysForNewValue[i]] += valueToI * value;
+        }
+      }
+    }
+
+    return newValues;
+  }
+
 public:
   QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes);
 
