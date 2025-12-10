@@ -103,8 +103,8 @@ TEST_F(QubitStateTest, ApplyTwoQubitGate) {
 
   EXPECT_THAT(
       qState.toString(),
-      testing::HasSubstr("|0000> -> 0.35 - i0.35, |0010> -> 0.35 + i0.35, "
-                         "|0100> -> 0.00 + i0.50, |0110> -> 0.50"));
+      testing::HasSubstr("|0000> -> 0.35 + i0.35, |0010> -> 0.35 - i0.35, "
+                         "|0100> -> 0.50, |0110> -> 0.00 + i0.50"));
 }
 
 TEST_F(QubitStateTest, ApplyTwoQubitGateReversedOrd) {
@@ -117,6 +117,6 @@ TEST_F(QubitStateTest, ApplyTwoQubitGateReversedOrd) {
 
   EXPECT_THAT(
       qState.toString(),
-      testing::HasSubstr("|0000> -> 0.00 + i0.50, |0010> -> 0.35 - i0.35, "
-                         "|0100> -> 0.35 + i0.35, |0110> -> 0.50"));
+      testing::HasSubstr("|0000> -> 0.35 + i0.35, |0010> -> 0.50, "
+                         "|0100> -> 0.00 + i0.50, |0110> -> 0.35 - i0.35"));
 }
