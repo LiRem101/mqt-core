@@ -77,12 +77,10 @@ TEST_F(QubitStateTest, ApplyHZHGateToThirdQubit) {
 TEST_F(QubitStateTest, ApplyHGatesToTwoQubits) {
   QubitState qState = QubitState(4, 4);
   qState.propagateGate(qc::H, {2});
-  qState.propagateGate(qc::H, {0});
+  qState.propagateGate(qc::X, {0});
 
-  EXPECT_THAT(
-      qState.toString(),
-      testing::HasSubstr(
-          "|0000> -> 0.50, |0001> -> 0.50, |0100> -> 0.50, |0101> -> 0.50"));
+  EXPECT_THAT(qState.toString(),
+              testing::HasSubstr("|0001> -> 0.71, |0101> -> 0.71"));
 }
 
 TEST_F(QubitStateTest, ApplyParametrizedGateToThirdQubit) {
@@ -105,6 +103,20 @@ TEST_F(QubitStateTest, ApplyTwoQubitGate) {
 
   EXPECT_THAT(
       qState.toString(),
-      testing::HasSubstr("|0000> -> 0.50, |0010> -> 0.00 + i1.00, |0100> -> "
-                         "0.71 - i0.71, |0110> -> 0.71 + i0.71"));
+      testing::HasSubstr("|0000> -> 0.35 - i0.35, |0010> -> 0.35 + i0.35, "
+                         "|0100> -> 0.00 + i0.50, |0110> -> 0.50"));
+}
+
+TEST_F(QubitStateTest, ApplyTwoQubitGateReversedOrd) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::S, {1});
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::Tdg, {2});
+  qState.propagateGate(qc::Peres, {1, 2}, {}, {}, {});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr("|0000> -> 0.00 + i0.50, |0010> -> 0.35 - i0.35, "
+                         "|0100> -> 0.35 + i0.35, |0110> -> 0.50"));
 }

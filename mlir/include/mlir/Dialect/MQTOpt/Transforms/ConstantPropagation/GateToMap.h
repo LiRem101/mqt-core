@@ -119,6 +119,11 @@ getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
              {{0, exp(std::complex<double>(0, -params[1])) *
                       std::complex<double>(0, -sin(params[0] / 2))},
               {1, std::complex<double>(cos(params[0] / 2), 0)}}}};
+  case (qc::Peres):
+    return {{0, {{3, std::complex<double>(1, 0)}}},
+            {1, {{2, std::complex<double>(1, 0)}}},
+            {2, {{0, std::complex<double>(1, 0)}}},
+            {3, {{1, std::complex<double>(1, 0)}}}};
   default:
     throw std::runtime_error(
         "Unsupported gate in mqt::ir::opt::qcp::getQubitMappingOfGates");

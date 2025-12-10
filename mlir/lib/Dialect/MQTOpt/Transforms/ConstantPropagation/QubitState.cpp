@@ -74,32 +74,107 @@ QubitState QubitState::propagateGate(qc::OpType gate,
                                      std::vector<double> params) {
   auto gateMapping = getQubitMappingOfGates(gate, params);
 
-  auto target = targets[0];
   std::unordered_map<unsigned int, std::complex<double>> newValues;
-  for (const auto& [key, value] : map) {
-    unsigned int mapFrom;
-    unsigned int zeroKey;
-    unsigned int oneKey;
-    unsigned int currentDigit = pow(2, target);
-    if ((key & currentDigit) == 0) {
-      mapFrom = 0;
-      zeroKey = key;
-      oneKey = key + currentDigit;
-    } else {
-      mapFrom = 1;
-      zeroKey = key - currentDigit;
-      oneKey = key;
+  std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets;
+  if (targets.size() == 2) {
+    bitmaskForQubitTargets.insert({3, pow(2, targets[1]) + pow(2, targets[0])});
+    bitmaskForQubitTargets.insert({2, pow(2, targets[0])});
+    bitmaskForQubitTargets.insert({1, pow(2, targets[1])});
+  } else {
+    bitmaskForQubitTargets.insert({1, pow(2, targets[0])});
+  }
+
+  if (targets.size() == 2) {
+    for (const auto& [key, value] : map) {
+      unsigned int mapFrom;
+      std::vector<unsigned int> keysForNewValue(4);
+
+      if ((key & bitmaskForQubitTargets[3]) == bitmaskForQubitTargets[3]) {
+        mapFrom = 3;
+        keysForNewValue[3] = key;
+        keysForNewValue[2] = key - bitmaskForQubitTargets[1];
+        keysForNewValue[1] = key - bitmaskForQubitTargets[2];
+        keysForNewValue[0] = key - bitmaskForQubitTargets[3];
+      } else if ((key & bitmaskForQubitTargets[2]) ==
+                 bitmaskForQubitTargets[2]) {
+        mapFrom = 2;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[2] = key;
+        keysForNewValue[1] = key ^ bitmaskForQubitTargets[3];
+        keysForNewValue[0] = key - bitmaskForQubitTargets[2];
+      } else if ((key & bitmaskForQubitTargets[1]) ==
+                 bitmaskForQubitTargets[1]) {
+        mapFrom = 1;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[2];
+        keysForNewValue[2] = key ^ bitmaskForQubitTargets[3];
+        keysForNewValue[1] = key;
+        keysForNewValue[0] = key - bitmaskForQubitTargets[1];
+      } else {
+        mapFrom = 0;
+        keysForNewValue[3] = key + bitmaskForQubitTargets[3];
+        keysForNewValue[2] = key + bitmaskForQubitTargets[2];
+        keysForNewValue[1] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[0] = key;
+      }
+
+      auto mapForThisQubit = gateMapping[mapFrom];
+      for (int i = 0; i < 4; i++) {
+        auto valueToI = mapForThisQubit[i];
+        if (abs(valueToI) > 1e-4) {
+          newValues[keysForNewValue[i]] += valueToI * value;
+        }
+      }
     }
-    auto mapForThisQubit = gateMapping[mapFrom];
-    auto valueToZero = mapForThisQubit[0];
-    auto valueToOne = mapForThisQubit[1];
-    if (abs(valueToZero) > 1e-4) {
-      newValues[zeroKey] += valueToZero * value;
-    }
-    if (abs(valueToOne) > 1e-4) {
-      newValues[oneKey] += valueToOne * value;
+  } else if (targets.size() == 1) {
+    for (const auto& [key, value] : map) {
+      unsigned int mapFrom;
+      std::vector<unsigned int> keysForNewValue(2);
+
+      if ((key & bitmaskForQubitTargets[1]) == bitmaskForQubitTargets[1]) {
+        mapFrom = 1;
+        keysForNewValue[1] = key;
+        keysForNewValue[0] = key - bitmaskForQubitTargets[1];
+      } else {
+        mapFrom = 0;
+        keysForNewValue[1] = key + bitmaskForQubitTargets[1];
+        keysForNewValue[0] = key;
+      }
+
+      auto mapForThisQubit = gateMapping[mapFrom];
+      for (int i = 0; i < 2; i++) {
+        auto valueToI = mapForThisQubit[i];
+        if (abs(valueToI) > 1e-4) {
+          newValues[keysForNewValue[i]] += valueToI * value;
+        }
+      }
     }
   }
+
+  // auto target = targets[0];
+  // for (const auto& [key, value] : map) {
+  //   unsigned int mapFrom;
+  //   unsigned int zeroKey;
+  //   unsigned int oneKey;
+  //   unsigned int currentDigit = pow(2, target);
+  //   if ((key & currentDigit) == 0) {
+  //     mapFrom = 0;
+  //     zeroKey = key;
+  //     oneKey = key + currentDigit;
+  //   } else {
+  //     mapFrom = 1;
+  //     zeroKey = key - currentDigit;
+  //     oneKey = key;
+  //   }
+  //   auto mapForThisQubit = gateMapping[mapFrom];
+  //   auto valueToZero = mapForThisQubit[0];
+  //   auto valueToOne = mapForThisQubit[1];
+  //   if (abs(valueToZero) > 1e-4) {
+  //     newValues[zeroKey] += valueToZero * value;
+  //   }
+  //   if (abs(valueToOne) > 1e-4) {
+  //     newValues[oneKey] += valueToOne * value;
+  //   }
+  // }
   map.clear();
   for (const auto& [key, value] : newValues) {
     map.insert({key, value});
