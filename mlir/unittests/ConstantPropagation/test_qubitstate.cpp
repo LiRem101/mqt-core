@@ -120,3 +120,12 @@ TEST_F(QubitStateTest, ApplyTwoQubitGateReversedOrd) {
       testing::HasSubstr("|0000> -> 0.35 + i0.35, |0010> -> 0.50, "
                          "|0100> -> 0.00 + i0.50, |0110> -> 0.35 - i0.35"));
 }
+
+TEST_F(QubitStateTest, ApplySwapGate) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::SWAP, {1, 3});
+
+  EXPECT_THAT(qState.toString(),
+              testing::HasSubstr("|0000> -> 0.71, |1000> -> 0.71"));
+}

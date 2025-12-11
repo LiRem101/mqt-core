@@ -119,6 +119,22 @@ getQubitMappingOfGates(qc::OpType gate, std::vector<double> params) {
              {{0, exp(std::complex<double>(0, -params[1])) *
                       std::complex<double>(0, -sin(params[0] / 2))},
               {1, std::complex<double>(cos(params[0] / 2), 0)}}}};
+  case (qc::SWAP): // If target qubits are in one QubitState, we can simply
+                   // apply the matrix representation
+    return {{0, {{0, std::complex<double>(1, 0)}}},
+            {1, {{2, std::complex<double>(1, 0)}}},
+            {2, {{1, std::complex<double>(1, 0)}}},
+            {3, {{3, std::complex<double>(1, 0)}}}};
+  case (qc::iSWAP):
+    return {{0, {{0, std::complex<double>(1, 0)}}},
+            {1, {{2, std::complex<double>(0, -1)}}},
+            {2, {{1, std::complex<double>(0, -1)}}},
+            {3, {{3, std::complex<double>(1, 0)}}}};
+  case (qc::iSWAPdg):
+    return {{0, {{0, std::complex<double>(1, 0)}}},
+            {1, {{2, std::complex<double>(0, 1)}}},
+            {2, {{1, std::complex<double>(0, 1)}}},
+            {3, {{3, std::complex<double>(1, 0)}}}};
   case (qc::Peres):
     return {{0, {{2, std::complex<double>(1, 0)}}},
             {1, {{3, std::complex<double>(1, 0)}}},
