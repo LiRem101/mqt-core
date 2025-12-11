@@ -107,6 +107,10 @@ void QubitState::propagateGate(qc::OpType gate,
   for (const auto& [key, value] : newValues) {
     map.insert({key, value});
   }
+  if (map.size() > maxNonzeroAmplitudes) {
+    throw std::domain_error("Number of nonzero amplitudes too high. State "
+                            "needs to be treated as TOP.");
+  }
 }
 
 std::map<MeasurementResult, QubitState>
