@@ -63,7 +63,8 @@ std::string QubitState::toString() const {
   return str;
 }
 
-QubitStateOrTop QubitState::unify(QubitState that) {
+QubitState QubitState::unify(QubitState that,
+                             std::vector<unsigned int> qubitsOccupiedByThat) {
   throw std::logic_error("Not implemented");
 }
 
