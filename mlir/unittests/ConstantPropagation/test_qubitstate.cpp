@@ -175,3 +175,11 @@ TEST_F(QubitStateTest, ApplyControlledTwoQubitGate) {
       testing::HasSubstr(
           "|0000> -> 0.50, |0100> -> 0.50, |1000> -> 0.50, |1010> -> 0.50"));
 }
+
+TEST_F(QubitStateTest, propagateGateCheckErrorIfTwoManyAmplitudesAreNonzero) {
+  QubitState qState = QubitState(4, 2);
+  qState.propagateGate(qc::H, {3});
+  qState.propagateGate(qc::X, {2}, {3});
+
+  EXPECT_THROW(qState.propagateGate(qc::H, {2});, std::domain_error);
+}
