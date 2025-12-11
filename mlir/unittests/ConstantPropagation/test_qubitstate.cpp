@@ -129,3 +129,49 @@ TEST_F(QubitStateTest, ApplySwapGate) {
   EXPECT_THAT(qState.toString(),
               testing::HasSubstr("|0000> -> 0.71, |1000> -> 0.71"));
 }
+
+TEST_F(QubitStateTest, ApplyControlledGate) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::X, {3});
+  qState.propagateGate(qc::X, {3}, {1});
+
+  EXPECT_THAT(qState.toString(),
+              testing::HasSubstr("|0010> -> 0.71, |1000> -> 0.71"));
+}
+
+TEST_F(QubitStateTest, ApplyNegControlledGate) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::X, {3});
+  qState.propagateGate(qc::X, {3}, {}, {1});
+
+  EXPECT_THAT(qState.toString(),
+              testing::HasSubstr("|0000> -> 0.71, |1010> -> 0.71"));
+}
+
+TEST_F(QubitStateTest, ApplyPosNegControlledGate) {
+  QubitState qState = QubitState(4, 8);
+  qState.propagateGate(qc::H, {0});
+  qState.propagateGate(qc::H, {1});
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::X, {3}, {0, 1}, {2});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr(
+          "|0000> -> 0.35, |0001> -> 0.35, |0010> -> 0.35, |1011> -> 0.35, "
+          "|0100> -> 0.35, |0101> -> 0.35, |0110> -> 0.35, |0111> -> 0.35"));
+}
+
+TEST_F(QubitStateTest, ApplyControlledTwoQubitGate) {
+  QubitState qState = QubitState(4, 4);
+  qState.propagateGate(qc::H, {3});
+  qState.propagateGate(qc::H, {2});
+  qState.propagateGate(qc::SWAP, {2, 1}, {3}, {}, {});
+
+  EXPECT_THAT(
+      qState.toString(),
+      testing::HasSubstr(
+          "|0000> -> 0.50, |0100> -> 0.50, |1000> -> 0.50, |1010> -> 0.50"));
+}
