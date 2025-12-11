@@ -200,13 +200,17 @@ public:
    * @brief This method unifies two QubitStates.
    *
    * This method unifies the current QubitState with the given one and returns
-   * a new QubitsState, if the new state has no more than maxNonzeroAmplitude
-   * nonzero amplitudes.
+   * a new QubitState, if the new state has no more than maxNonzeroAmplitude
+   * nonzero amplitudes. Otherwise, throws a domain_error.
    *
    * @param that The QubitState to unify this with.
-   * @return A new unified QubitState or TOP.
+   * @param qubitsOccupiedByThat Qubit positions that that QubitState will
+   * provide.
+   * @throw std::domain_error If the number of nonzero amplitudes would exceed
+   * maxNonzeroAmplitudes of this.
    */
-  QubitStateOrTop unify(QubitState that);
+  QubitState unify(QubitState that,
+                   std::vector<unsigned int> qubitsOccupiedByThat);
 
   /**
    * @brief This method applies a gate to the qubits.

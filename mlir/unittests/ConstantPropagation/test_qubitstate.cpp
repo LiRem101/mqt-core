@@ -216,3 +216,36 @@ TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
   EXPECT_TRUE(oneReference == valueOne.second);
   EXPECT_DOUBLE_EQ(valueOne.first, 0.5);
 }
+
+TEST_F(QubitStateTest, unifyTwoQubitStates) {
+  QubitState qState1 = QubitState(3, 10);
+  qState1.propagateGate(qc::H, {2});
+  qState1.propagateGate(qc::X, {1}, {2});
+  qState1.propagateGate(qc::X, {0}, {1});
+
+  QubitState qState2 = QubitState(2, 10);
+  qState2.propagateGate(qc::H, {1});
+  qState2.propagateGate(qc::X, {0}, {1});
+
+  std::cout << qState1.toString() << std::endl;
+  std::cout << qState2.toString() << std::endl;
+
+  QubitState unified = qState1.unify(qState2, {1, 3});
+
+  EXPECT_THAT(unified.toString(),
+              testing::HasSubstr("|00000> -> 0.50, |01010> -> 0.50, "
+                                 "|10101> -> 0.50, |11111> -> 0.50"));
+}
+
+TEST_F(QubitStateTest, unifyTooLargeQubitStates) {
+  QubitState qState1 = QubitState(3, 3);
+  qState1.propagateGate(qc::H, {2});
+  qState1.propagateGate(qc::X, {1}, {2});
+  qState1.propagateGate(qc::X, {0}, {1});
+
+  QubitState qState2 = QubitState(2, 3);
+  qState2.propagateGate(qc::H, {1});
+  qState2.propagateGate(qc::X, {0}, {1});
+
+  EXPECT_THROW(qState1.unify(qState2, {1, 3});, std::domain_error);
+}

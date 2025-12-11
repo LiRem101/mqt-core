@@ -63,8 +63,49 @@ std::string QubitState::toString() const {
   return str;
 }
 
-QubitStateOrTop QubitState::unify(QubitState that) {
-  throw std::logic_error("Not implemented");
+QubitState QubitState::unify(QubitState that,
+                             std::vector<unsigned int> qubitsOccupiedByThat) {
+
+  // Check if future state would be too large
+  if (map.size() * that.map.size() > maxNonzeroAmplitudes) {
+    throw std::domain_error("Number of nonzero amplitudes too high. State "
+                            "needs to be treated as TOP.");
+  }
+
+  std::unordered_map<unsigned int, std::complex<double>> newValues;
+  for (const auto& [keyThis, valThis] : map) {
+    for (const auto& [keyThat, valThat] : that.map) {
+
+      unsigned int loopVarThis = nQubits - 1;
+      unsigned int loopVarThat = that.nQubits - 1;
+      unsigned int newKey = 0;
+
+      for (int i = nQubits + that.nQubits - 1; i >= 0; i--) {
+        bool inThat = std::ranges::find(qubitsOccupiedByThat, i) !=
+                      qubitsOccupiedByThat.end();
+        bool isOne = false;
+        if (inThat) {
+          isOne = (keyThat &
+                   static_cast<unsigned int>(pow(2, loopVarThat) + 0.1)) != 0;
+          loopVarThat--;
+        } else {
+          isOne = (keyThis &
+                   static_cast<unsigned int>(pow(2, loopVarThis) + 0.1)) != 0;
+          loopVarThis--;
+        }
+        if (isOne) {
+          newKey += static_cast<unsigned int>(pow(2, i) + 0.1);
+        }
+      }
+
+      newValues[newKey] = valThis * valThat;
+    }
+  }
+  QubitState newState =
+      QubitState(nQubits + that.nQubits, maxNonzeroAmplitudes);
+  newState.map = newValues;
+
+  return newState;
 }
 
 void QubitState::propagateGate(qc::OpType gate,
