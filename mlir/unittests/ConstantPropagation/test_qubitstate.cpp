@@ -183,3 +183,43 @@ TEST_F(QubitStateTest, propagateGateCheckErrorIfTwoManyAmplitudesAreNonzero) {
 
   EXPECT_THROW(qState.propagateGate(qc::H, {2});, std::domain_error);
 }
+
+TEST_F(QubitStateTest, doMeasurementWithOneResult) {
+  QubitState qState = QubitState(1, 2);
+  qState.propagateGate(qc::X, {0});
+  std::map<MeasurementResult, QubitState> const res = qState.measureQubit(0);
+
+  EXPECT_TRUE(size(res) == 1);
+  for (auto const& [key, value] : res) {
+    EXPECT_TRUE(qState == value);
+    EXPECT_TRUE(key.measurementResult == 1);
+    EXPECT_DOUBLE_EQ(key.probability, 1.00);
+  }
+}
+
+TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
+  QubitState qState = QubitState(2, 2);
+  qState.propagateGate(qc::H, {0});
+  qState.propagateGate(qc::X, {1}, {0});
+  std::map<MeasurementResult, QubitState> const res = qState.measureQubit(0);
+
+  QubitState zeroReference = QubitState(0, 0);
+  QubitState oneReference = QubitState(0, 0);
+  oneReference.propagateGate(qc::X, {1});
+  oneReference.propagateGate(qc::X, {0});
+
+  unsigned int checkCombination = 0;
+
+  EXPECT_TRUE(size(res) == 2);
+  for (auto const& [key, value] : res) {
+    if (key.measurementResult == 0) {
+      EXPECT_TRUE(zeroReference == value);
+      checkCombination++;
+    } else if (key.measurementResult == 1) {
+      EXPECT_TRUE(oneReference == value);
+      checkCombination += 2;
+    }
+    EXPECT_DOUBLE_EQ(key.probability, 0.50);
+  }
+  EXPECT_EQ(checkCombination, 3);
+}
