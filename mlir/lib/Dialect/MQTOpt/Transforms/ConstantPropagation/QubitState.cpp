@@ -113,13 +113,61 @@ void QubitState::propagateGate(qc::OpType gate,
   }
 }
 
-std::map<MeasurementResult, QubitState>
+std::map<unsigned int, std::pair<double, QubitState>>
 QubitState::measureQubit(unsigned int target) {
-  throw std::logic_error("Not implemented");
+  unsigned int qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
+
+  double probabilityZero = 0.0;
+  double probabilityOne = 0.0;
+  std::unordered_map<unsigned int, std::complex<double>> newValuesZeroRes;
+  std::unordered_map<unsigned int, std::complex<double>> newValuesOneRes;
+
+  for (const auto& [key, value] : map) {
+    if ((qubitMask & key) == 0) {
+      probabilityZero += norm(value);
+      newValuesZeroRes.insert({key, value});
+    } else {
+      probabilityOne += norm(value);
+      newValuesOneRes.insert({key, value});
+    }
+  }
+
+  if (abs(1.0 - probabilityZero - probabilityOne) > 1e-4) {
+    throw std::domain_error(
+        "Probabilities of 0 and 1 do not add up to one after measurement.");
+  }
+
+  QubitState stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
+  stateZero.map = newValuesZeroRes;
+  stateZero.normalize();
+  QubitState stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
+  stateOne.map = newValuesOneRes;
+  stateOne.normalize();
+
+  auto resPairZero = std::make_pair(probabilityZero, stateZero);
+  auto resPairOne = std::make_pair(probabilityOne, stateOne);
+
+  if (probabilityZero < 1e-4) {
+    return {{1, resPairOne}};
+  } else if (probabilityOne < 1e-4) {
+    return {{0, resPairZero}};
+  } else {
+    return {{0, resPairZero}, {1, resPairOne}};
+  }
 }
 
 void QubitState::removeQubit(unsigned int target) {
   throw std::logic_error("Not implemented");
+}
+
+void QubitState::normalize() {
+  double denominator = 0.0;
+  for (const auto& [key, value] : map) {
+    denominator += norm(value);
+  }
+  for (const auto& [key, value] : map) {
+    map[key] /= sqrt(denominator);
+  }
 }
 
 bool QubitState::operator==(const QubitState& that) const {
@@ -129,7 +177,7 @@ bool QubitState::operator==(const QubitState& that) const {
   return std::ranges::all_of(
       this->map, [&](const std::pair<unsigned int, std::complex<double>>& p) {
         auto [key, val] = p;
-        return (that.map.contains(key)) && (val == that.map.at(key));
+        return (that.map.contains(key)) && (abs(val - that.map.at(key)) < 1e-4);
       });
 };
 

@@ -22,10 +22,6 @@
 #include <vector>
 
 namespace mqt::ir::opt::qcp {
-struct MeasurementResult {
-  bool measurementResult;
-  double probability;
-};
 
 class QubitStateOrTop;
 
@@ -240,10 +236,11 @@ public:
    * respective probabilities.
    *
    * @param target The index of the qubit to be measured.
-   * @return A map of two MeasurementResults pointing to the QubitStates after
-   * measurement.
+   * @return A map of the measurement result (zero and/or one) pointing to the
+   * probability for the result and the QubitStates after measurement.
    */
-  std::map<MeasurementResult, QubitState> measureQubit(unsigned int target);
+  std::map<unsigned int, std::pair<double, QubitState>>
+  measureQubit(unsigned int target);
 
   /**
    * @brief This method removes a qubit from the state.
@@ -254,6 +251,11 @@ public:
    * @param target The index of the qubit to be removed.
    */
   void removeQubit(unsigned int target);
+
+  /**
+   * @brief This method normalizes the amplitudes of a state.
+   */
+  void normalize();
 
   bool operator==(const QubitState& that) const;
 };
