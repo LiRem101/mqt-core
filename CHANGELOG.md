@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 ### Added
 
+- ✨ Return device handle from `add_dynamic_device_library` for direct backend creation ([#1381]) ([**@marcelwa**])
+- ✨ Add IQM JSON support for job submission in Qiskit-QDMI Backend ([#1375], [#1382]) ([**@marcelwa**], [**@burgholzer
+  **])
 - ✨ Add authentication support for QDMI sessions with token, username/password, auth file, auth URL, and project ID
   parameters ([#1355]) ([**@marcelwa**])
 - ✨ Add a new QDMI device that represents a superconducting architecture featuring a coupling map ([#1328]) ([**@ystade
@@ -48,6 +51,9 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 ### Fixed
 
+- 🐛 Fix operation validation in Qiskit backend to handle device-specific gate naming conventions ([#1384]) ([**@marcelwa
+  **])
+- 🐛 Fix conditional branch handling when importing MLIR from `QuantumComputation` ([#1378]) ([**@lirem101**])
 - 🐛 Fix custom QDMI property and parameter handling in SC and NA devices ([#1355]) ([**@burgholzer**])
 - 🚨 Fix argument naming of `QuantumComputation` and `CompoundOperation` dunder methods for properly implementing the
   `MutableSequence` protocol ([#1338]) ([**@burgholzer**])
@@ -289,19 +295,23 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 
 <!-- PR links -->
 
+[#1384]: https://github.com/munich-quantum-toolkit/core/pull/1384
+
+[#1382]: https://github.com/munich-quantum-toolkit/core/pull/1382
+
+[#1381]: https://github.com/munich-quantum-toolkit/core/pull/1381
+
+[#1378]: https://github.com/munich-quantum-toolkit/core/pull/1378
+
+[#1375]: https://github.com/munich-quantum-toolkit/core/pull/1375
 [#1371]: https://github.com/munich-quantum-toolkit/core/pull/1371
-
 [#1359]: https://github.com/munich-quantum-toolkit/core/pull/1359
-
 [#1355]: https://github.com/munich-quantum-toolkit/core/pull/1355
-
 [#1338]: https://github.com/munich-quantum-toolkit/core/pull/1338
 [#1336]: https://github.com/munich-quantum-toolkit/core/pull/1336
-
 [#1328]: https://github.com/munich-quantum-toolkit/core/pull/1328
 [#1327]: https://github.com/munich-quantum-toolkit/core/pull/1327
 [#1310]: https://github.com/munich-quantum-toolkit/core/pull/1310
-
 [#1301]: https://github.com/munich-quantum-toolkit/core/pull/1301
 [#1300]: https://github.com/munich-quantum-toolkit/core/pull/1300
 [#1299]: https://github.com/munich-quantum-toolkit/core/pull/1299
@@ -316,7 +326,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1263]: https://github.com/munich-quantum-toolkit/core/pull/1263
 [#1247]: https://github.com/munich-quantum-toolkit/core/pull/1247
 [#1246]: https://github.com/munich-quantum-toolkit/core/pull/1246
-
 [#1243]: https://github.com/munich-quantum-toolkit/core/pull/1243
 [#1237]: https://github.com/munich-quantum-toolkit/core/pull/1237
 [#1236]: https://github.com/munich-quantum-toolkit/core/pull/1236
@@ -435,6 +444,8 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [**@jannikpflieger**]: https://github.com/jannikpflieger
 [**@lsschmid**]: https://github.com/lsschmid
 [**@marcelwa**]: https://github.com/marcelwa
+
+[**@lirem101**]: https://github.com/lirem101
 
 <!-- General links -->
 
