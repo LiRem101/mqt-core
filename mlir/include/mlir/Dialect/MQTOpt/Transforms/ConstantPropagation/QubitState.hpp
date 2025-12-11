@@ -267,20 +267,20 @@ public:
 enum TOP { T };
 
 class QubitStateOrTop {
-  std::variant<TOP, std::shared_ptr<QubitState>> variant;
+  std::variant<TOP, QubitState> variant;
 
 public:
   QubitStateOrTop();
 
   QubitStateOrTop(TOP top);
 
-  QubitStateOrTop(std::shared_ptr<QubitState> qubitState);
+  QubitStateOrTop(QubitState qubitState);
 
   QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop);
 
   QubitStateOrTop& operator=(const QubitStateOrTop& qubitStateOrTop);
 
-  QubitStateOrTop& operator=(const std::shared_ptr<QubitState>& qubitState);
+  QubitStateOrTop& operator=(QubitState qubitState);
 
   QubitStateOrTop& operator=(const TOP& t);
 
@@ -295,9 +295,8 @@ public:
   [[nodiscard("QubitStateOrTop::isQubitState called but ignored")]] bool
   isQubitState() const;
 
-  [[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] std::
-      shared_ptr<QubitState>
-      getQubitState() const;
+  [[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] QubitState
+  getQubitState() const;
 
   [[nodiscard("QubitStateOrTop::toString called but ignored")]] std::string
   toString() const;

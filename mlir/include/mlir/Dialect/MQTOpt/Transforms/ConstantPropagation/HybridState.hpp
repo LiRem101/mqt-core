@@ -25,13 +25,13 @@ namespace mqt::ir::opt::qcp {
  * The class also hold a probability.
  */
 class HybridState {
-  QubitState qState;
+  QubitStateOrTop qState;
   double probability;
   std::vector<bool> bitValues;
 
 public:
-  explicit HybridState(std::size_t nQubits, std::vector<bool> bitValues,
-                       double probability);
+  explicit HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
+                       std::vector<bool> bitValues, double probability);
 
   ~HybridState();
 

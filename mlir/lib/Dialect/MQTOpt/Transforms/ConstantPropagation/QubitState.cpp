@@ -226,8 +226,7 @@ QubitStateOrTop::QubitStateOrTop() : variant(TOP::T) {}
 
 QubitStateOrTop::QubitStateOrTop(TOP top) : variant(top) {}
 
-QubitStateOrTop::QubitStateOrTop(std::shared_ptr<QubitState> qubitState)
-    : variant(qubitState) {}
+QubitStateOrTop::QubitStateOrTop(QubitState qubitState) : variant(qubitState) {}
 
 QubitStateOrTop::QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop) =
     default;
@@ -235,8 +234,7 @@ QubitStateOrTop::QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop) =
 QubitStateOrTop&
 QubitStateOrTop::operator=(const QubitStateOrTop& qubitStateOrTop) = default;
 
-QubitStateOrTop&
-QubitStateOrTop::operator=(const std::shared_ptr<QubitState>& qubitState) {
+QubitStateOrTop& QubitStateOrTop::operator=(QubitState qubitState) {
   this->variant = qubitState;
   return *this;
 }
@@ -252,7 +250,7 @@ bool QubitStateOrTop::operator==(const QubitStateOrTop& that) const {
   } else if (this->isTop() || that.isTop()) {
     return false;
   } else {
-    return *this->getQubitState() == *that.getQubitState();
+    return this->getQubitState() == that.getQubitState();
   }
 }
 
@@ -269,13 +267,12 @@ QubitStateOrTop::isTop() const {
 
 [[nodiscard("QubitStateOrTop::isQubitState called but ignored")]] bool
 QubitStateOrTop::isQubitState() const {
-  return std::holds_alternative<std::shared_ptr<QubitState>>(variant);
+  return std::holds_alternative<QubitState>(variant);
 }
 
-[[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] std::
-    shared_ptr<QubitState>
-    QubitStateOrTop::getQubitState() const {
-  return std::get<std::shared_ptr<QubitState>>(variant);
+[[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] QubitState
+QubitStateOrTop::getQubitState() const {
+  return std::get<QubitState>(variant);
 }
 
 [[nodiscard("QubitStateOrTop::toString called but ignored")]] std::string
@@ -283,7 +280,7 @@ QubitStateOrTop::toString() const {
   if (isTop()) {
     return "TOP";
   } else {
-    return getQubitState()->toString();
+    return getQubitState().toString();
   }
 }
 
