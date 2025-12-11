@@ -54,15 +54,37 @@ class QubitState {
     return str;
   }
 
+  /**
+   * @brief This method receives a two qubit gate mapping and a bitmask for
+   * target, pos ctrls and neg ctrl qubits.
+   *
+   * This method receives a two qubit gate mapping and a bitmask for target, pos
+   * ctrls and neg ctrl qubits. The gate is applied to the valid qubit states.
+   * It returns the map which would be the qubit state after gate application.
+   *
+   * @param gateMapping The mapping representing the gate
+   * @param bitmaskForQubitTargets The bitmask of the qubit targets. I.e. 011,
+   * if zeroth and first qubit are targets.
+   * @param bitmaskForPosCtrls The bitmask of the positively controlling qubits.
+   * @param bitmaskForNegCtrls The bitmask of the negatively controlling qubits.
+   * @return The qubit state after the gate has been applied.
+   */
   std::unordered_map<unsigned int, std::complex<double>>
   getNewMappingForTwoQubitGate(
       std::unordered_map<unsigned int,
                          std::unordered_map<unsigned int, std::complex<double>>>
           gateMapping,
-      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets) {
+      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets,
+      unsigned int bitmaskForPosCtrls, unsigned int bitmaskForNegCtrls) {
     std::unordered_map<unsigned int, std::complex<double>> newValues;
 
     for (const auto& [key, value] : map) {
+      if ((bitmaskForPosCtrls & key) != bitmaskForPosCtrls ||
+          (bitmaskForNegCtrls & key) != 0) {
+        newValues[key] += value;
+        continue;
+      }
+
       unsigned int mapFrom;
       std::vector<unsigned int> keysForNewValue(4);
 
@@ -106,15 +128,38 @@ class QubitState {
     return newValues;
   }
 
+  /**
+   * @brief This method receives a single qubit gate mapping and a bitmask for
+   * target, pos ctrls and neg ctrl qubits.
+   *
+   * This method receives a single qubit gate mapping and a bitmask for target,
+   * pos ctrls and neg ctrl qubits. The gate is applied to the valid qubit
+   * states. It returns the map which would be the qubit state after gate
+   * application.
+   *
+   * @param gateMapping The mapping representing the gate
+   * @param bitmaskForQubitTargets The bitmask of the qubit targets. I.e. 011,
+   * if zeroth and first qubit are targets.
+   * @param bitmaskForPosCtrls The bitmask of the positively controlling qubits.
+   * @param bitmaskForNegCtrls The bitmask of the negatively controlling qubits.
+   * @return The qubit state after the gate has been applied.
+   */
   std::unordered_map<unsigned int, std::complex<double>>
   getNewMappingForSingleQubitGate(
       std::unordered_map<unsigned int,
                          std::unordered_map<unsigned int, std::complex<double>>>
           gateMapping,
-      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets) {
+      std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets,
+      unsigned int bitmaskForPosCtrls, unsigned int bitmaskForNegCtrls) {
     std::unordered_map<unsigned int, std::complex<double>> newValues;
 
     for (const auto& [key, value] : map) {
+      if ((bitmaskForPosCtrls & key) != bitmaskForPosCtrls ||
+          (bitmaskForNegCtrls & key) != 0) {
+        newValues[key] += value;
+        continue;
+      }
+
       unsigned int mapFrom;
       std::vector<unsigned int> keysForNewValue(2);
 

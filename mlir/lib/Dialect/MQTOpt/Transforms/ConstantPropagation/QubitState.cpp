@@ -74,6 +74,15 @@ QubitState QubitState::propagateGate(qc::OpType gate,
                                      std::vector<double> params) {
   auto gateMapping = getQubitMappingOfGates(gate, params);
 
+  unsigned int positiveCtrlMask = 0;
+  unsigned int negativeCtrlMask = 0;
+  for (unsigned int const posCtrl : posCtrls) {
+    positiveCtrlMask += static_cast<unsigned int>(pow(2, posCtrl) + 0.1);
+  }
+  for (unsigned int const negCtrl : negCtrls) {
+    negativeCtrlMask += static_cast<unsigned int>(pow(2, negCtrl) + 0.1);
+  }
+
   std::unordered_map<unsigned int, std::complex<double>> newValues;
   std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets;
   if (targets.size() == 2) {
@@ -86,10 +95,12 @@ QubitState QubitState::propagateGate(qc::OpType gate,
 
   if (targets.size() == 2) {
     newValues =
-        getNewMappingForTwoQubitGate(gateMapping, bitmaskForQubitTargets);
+        getNewMappingForTwoQubitGate(gateMapping, bitmaskForQubitTargets,
+                                     positiveCtrlMask, negativeCtrlMask);
   } else if (targets.size() == 1) {
     newValues =
-        getNewMappingForSingleQubitGate(gateMapping, bitmaskForQubitTargets);
+        getNewMappingForSingleQubitGate(gateMapping, bitmaskForQubitTargets,
+                                        positiveCtrlMask, negativeCtrlMask);
   }
 
   map.clear();

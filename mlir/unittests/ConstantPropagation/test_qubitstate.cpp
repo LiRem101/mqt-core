@@ -159,9 +159,9 @@ TEST_F(QubitStateTest, ApplyPosNegControlledGate) {
 
   EXPECT_THAT(
       qState.toString(),
-      testing::HasSubstr(
-          "|0000> -> 0.35, |0001> -> 0.35, |0010> -> 0.35, |1011> -> 0.35, "
-          "|0100> -> 0.35, |0101> -> 0.35, |0110> -> 0.35, |0111> -> 0.35"));
+      testing::HasSubstr("|0000> -> 0.35, |0001> -> 0.35, |0010> -> 0.35, "
+                         "|0100> -> 0.35, |0101> -> 0.35, |0110> -> 0.35, "
+                         "|0111> -> 0.35, |1011> -> 0.35"));
 }
 
 TEST_F(QubitStateTest, ApplyControlledTwoQubitGate) {
