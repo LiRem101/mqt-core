@@ -67,11 +67,11 @@ QubitStateOrTop QubitState::unify(QubitState that) {
   throw std::logic_error("Not implemented");
 }
 
-QubitState QubitState::propagateGate(qc::OpType gate,
-                                     std::vector<unsigned int> targets,
-                                     std::vector<unsigned int> posCtrls,
-                                     std::vector<unsigned int> negCtrls,
-                                     std::vector<double> params) {
+void QubitState::propagateGate(qc::OpType gate,
+                               std::vector<unsigned int> targets,
+                               std::vector<unsigned int> posCtrls,
+                               std::vector<unsigned int> negCtrls,
+                               std::vector<double> params) {
   auto gateMapping = getQubitMappingOfGates(gate, params);
 
   unsigned int positiveCtrlMask = 0;
@@ -107,8 +107,6 @@ QubitState QubitState::propagateGate(qc::OpType gate,
   for (const auto& [key, value] : newValues) {
     map.insert({key, value});
   }
-
-  return *this;
 }
 
 std::map<MeasurementResult, QubitState>

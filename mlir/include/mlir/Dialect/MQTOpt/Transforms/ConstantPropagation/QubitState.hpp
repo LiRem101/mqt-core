@@ -217,19 +217,20 @@ public:
    *
    * This method changes the amplitudes of a QubitsState according to the
    * applied gate. Returns the current qubitState if it has no more than
-   * maxNonZeroAmplitude nonzero amplitudes. Otherwise, it returns top.
+   * maxNonZeroAmplitude nonzero amplitudes. Otherwise, throws a domain_error.
    *
    * @param gate The gate to be applied.
    * @param targets A vector of the indices of the target qubits.
    * @param posCtrls A vector of the indices of the ctrl qubits.
    * @param negCtrls A vector of the indices of the negative ctrl qubits.
    * @param params The parameter applied to the gate.
-   * @return A new unified QubitState or TOP.
+   * @throw std::domain_error If the number of nonzero amplitudes would exceed
+   * maxNonzeroAmplitudes.
    */
-  QubitState propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
-                           std::vector<unsigned int> posCtrls = {},
-                           std::vector<unsigned int> negCtrls = {},
-                           std::vector<double> params = {});
+  void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
+                     std::vector<unsigned int> posCtrls = {},
+                     std::vector<unsigned int> negCtrls = {},
+                     std::vector<double> params = {});
 
   /**
    * @brief This method applies a measurement to the qubits.
