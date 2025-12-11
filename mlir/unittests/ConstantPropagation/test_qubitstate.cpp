@@ -227,9 +227,6 @@ TEST_F(QubitStateTest, unifyTwoQubitStates) {
   qState2.propagateGate(qc::H, {1});
   qState2.propagateGate(qc::X, {0}, {1});
 
-  std::cout << qState1.toString() << std::endl;
-  std::cout << qState2.toString() << std::endl;
-
   QubitState unified = qState1.unify(qState2, {1, 3});
 
   EXPECT_THAT(unified.toString(),
