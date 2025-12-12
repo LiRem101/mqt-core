@@ -85,7 +85,9 @@ void HybridState::propagateGate(qc::OpType gate,
 std::vector<HybridState>
 HybridState::propagateMeasurement(unsigned int quantumTarget,
                                   unsigned int classicalTarget) {
-  throw std::logic_error("Not implemented");
+  if (qState)
+
+    throw std::logic_error("Not implemented");
 }
 
 void HybridState::resetQubit(unsigned int target) {

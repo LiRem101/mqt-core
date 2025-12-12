@@ -192,6 +192,22 @@ TEST_F(HybridStateTest, doMeasurementWithTwoResults) {
   EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 01, p = 0.20;"));
 }
 
+TEST_F(HybridStateTest, doMeasurementAndGetToTop) {
+  HybridState hState = HybridState(2, 2, 1, {false}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  EXPECT_THROW(hState.propagateMeasurement(0, 0);, std::domain_error);
+}
+
+TEST_F(HybridStateTest, doMeasurementOnTop) {
+  HybridState hState = HybridState(4, 2, 2, {true}, 0.2);
+  hState.propagateGate(qc::H, {3});
+  hState.propagateGate(qc::X, {2}, {3});
+  hState.propagateGate(qc::H, {2}); // qState enters TOP
+
+  EXPECT_THROW(hState.propagateMeasurement(0, 0);, std::domain_error);
+}
+
 TEST_F(HybridStateTest, unifyTwoHybridStates) {
   HybridState hState1 = HybridState(3, 10, 4, {true, false}, 0.5);
   hState1.propagateGate(qc::H, {2});
