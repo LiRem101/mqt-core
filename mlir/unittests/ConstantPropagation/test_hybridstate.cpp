@@ -5,6 +5,7 @@
  *
  * SPDX-License-Identifier: MIT
  *
+  auto value = res.at(1);
  * Licensed under the MIT License
  */
 
@@ -175,8 +176,7 @@ TEST_F(HybridStateTest, doMeasurementWithOneResult) {
   std::vector<HybridState> const res = hState.propagateMeasurement(0, 0);
 
   EXPECT_TRUE(size(res) == 1);
-  auto value = res.at(1);
-  EXPECT_THAT(hState.toString(),
+  EXPECT_THAT(res.at(0).toString(),
               testing::HasSubstr("{|1> -> 1.00}: 01, p = 0.40;"));
 }
 

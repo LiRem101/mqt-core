@@ -159,7 +159,7 @@ void QubitState::propagateGate(qc::OpType gate,
   }
 }
 
-std::map<unsigned int, std::pair<double, QubitState>>
+std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>>
 QubitState::measureQubit(unsigned int target) {
   unsigned int qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
 
@@ -190,8 +190,10 @@ QubitState::measureQubit(unsigned int target) {
   stateOne.map = newValuesOneRes;
   stateOne.normalize();
 
-  auto resPairZero = std::make_pair(probabilityZero, stateZero);
-  auto resPairOne = std::make_pair(probabilityOne, stateOne);
+  auto resPairZero =
+      std::make_pair(probabilityZero, std::make_shared<QubitState>(stateZero));
+  auto resPairOne =
+      std::make_pair(probabilityOne, std::make_shared<QubitState>(stateOne));
 
   if (probabilityZero < 1e-4) {
     return {{1, resPairOne}};

@@ -30,6 +30,8 @@ class HybridState {
   std::vector<bool> bitValues;
   unsigned int maxNumberOfBitValues;
 
+  HybridState() = default;
+
 public:
   explicit HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
                        unsigned int maxNumberOfBitValues,
@@ -60,8 +62,8 @@ public:
   void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
                      std::vector<unsigned int> posCtrlsQuantum = {},
                      std::vector<unsigned int> negCtrlsQuantum = {},
-                     std::vector<unsigned int> posCtrlsClassical = {},
-                     std::vector<unsigned int> negCtrlsClassical = {},
+                     const std::vector<unsigned int>& posCtrlsClassical = {},
+                     const std::vector<unsigned int>& negCtrlsClassical = {},
                      std::vector<double> params = {});
 
   /**

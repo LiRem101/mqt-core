@@ -243,7 +243,7 @@ public:
    * @return A map of the measurement result (zero and/or one) pointing to the
    * probability for the result and the QubitStates after measurement.
    */
-  std::map<unsigned int, std::pair<double, QubitState>>
+  std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>>
   measureQubit(unsigned int target);
 
   /**
@@ -272,9 +272,9 @@ class QubitStateOrTop {
 public:
   QubitStateOrTop();
 
-  QubitStateOrTop(TOP top);
+  explicit QubitStateOrTop(TOP top);
 
-  QubitStateOrTop(std::shared_ptr<QubitState> qubitState);
+  explicit QubitStateOrTop(std::shared_ptr<QubitState> qubitState);
 
   QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop);
 

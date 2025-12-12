@@ -184,15 +184,28 @@ TEST_F(QubitStateTest, propagateGateCheckErrorIfTwoManyAmplitudesAreNonzero) {
   EXPECT_THROW(qState.propagateGate(qc::H, {2});, std::domain_error);
 }
 
+TEST_F(QubitStateTest, doMeasurementWithZeroResult) {
+  QubitState qState = QubitState(1, 2);
+  std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
+      res = qState.measureQubit(0);
+
+  EXPECT_TRUE(size(res) == 1);
+  auto value = res.at(0);
+  auto a = *(value.second.get());
+  EXPECT_TRUE(qState == a);
+  EXPECT_DOUBLE_EQ(value.first, 1);
+}
+
 TEST_F(QubitStateTest, doMeasurementWithOneResult) {
   QubitState qState = QubitState(1, 2);
   qState.propagateGate(qc::X, {0});
-  std::map<unsigned int, std::pair<double, QubitState>> const res =
-      qState.measureQubit(0);
+  std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
+      res = qState.measureQubit(0);
 
   EXPECT_TRUE(size(res) == 1);
   auto value = res.at(1);
-  EXPECT_TRUE(qState == value.second);
+  auto a = *(value.second.get());
+  EXPECT_TRUE(qState == a);
   EXPECT_DOUBLE_EQ(value.first, 1);
 }
 
@@ -200,8 +213,8 @@ TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
   QubitState qState = QubitState(2, 2);
   qState.propagateGate(qc::H, {0});
   qState.propagateGate(qc::X, {1}, {0});
-  std::map<unsigned int, std::pair<double, QubitState>> const res =
-      qState.measureQubit(0);
+  std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
+      res = qState.measureQubit(0);
 
   QubitState zeroReference = QubitState(0, 2);
   QubitState oneReference = QubitState(0, 2);
@@ -210,10 +223,10 @@ TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
 
   EXPECT_TRUE(size(res) == 2);
   auto valueZero = res.at(0);
-  EXPECT_TRUE(zeroReference == valueZero.second);
+  EXPECT_TRUE(zeroReference == *(valueZero.second));
   EXPECT_DOUBLE_EQ(valueZero.first, 0.5);
   auto valueOne = res.at(1);
-  EXPECT_TRUE(oneReference == valueOne.second);
+  EXPECT_TRUE(oneReference == *(valueOne.second));
   EXPECT_DOUBLE_EQ(valueOne.first, 0.5);
 }
 
