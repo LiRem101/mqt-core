@@ -74,7 +74,12 @@ void HybridState::propagateGate(qc::OpType gate,
   }
 
   auto qS = qState.getQubitState();
-  qS->propagateGate(gate, targets, posCtrlsQuantum, negCtrlsQuantum, params);
+  try {
+    qS->propagateGate(gate, targets, posCtrlsQuantum, negCtrlsQuantum, params);
+  } catch (std::domain_error) {
+    qState.getQubitState().reset();
+    qState = QubitStateOrTop(T);
+  }
 }
 
 std::vector<HybridState>
