@@ -5,7 +5,8 @@
  *
  * SPDX-License-Identifier: MIT
  *
- * Licensed under the MIT License
+ * Licensed under  else {
+    the MIT License
  */
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
@@ -216,7 +217,7 @@ TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
   std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
       res = qState.measureQubit(0);
 
-  QubitState zeroReference = QubitState(0, 2);
+  QubitState const zeroReference = QubitState(0, 2);
   QubitState oneReference = QubitState(0, 2);
   oneReference.propagateGate(qc::X, {1});
   oneReference.propagateGate(qc::X, {0});
@@ -240,7 +241,7 @@ TEST_F(QubitStateTest, unifyTwoQubitStates) {
   qState2.propagateGate(qc::H, {1});
   qState2.propagateGate(qc::X, {0}, {1});
 
-  QubitState unified = qState1.unify(qState2, {1, 3});
+  const QubitState unified = qState1.unify(qState2, {1, 3});
 
   EXPECT_THAT(unified.toString(),
               testing::HasSubstr("|00000> -> 0.50, |01010> -> 0.50, "

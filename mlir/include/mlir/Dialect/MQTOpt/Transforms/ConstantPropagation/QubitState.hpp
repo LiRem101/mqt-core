@@ -38,7 +38,7 @@ class QubitState {
 
   std::string qubitStringToBinary(unsigned int q) const {
     std::string str;
-    for (int i = nQubits - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(nQubits) - 1; i >= 0; i--) {
       unsigned int currentDigit = pow(2, i);
       if (q & currentDigit) {
         str += "1";

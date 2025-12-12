@@ -25,9 +25,8 @@
 #include <variant>
 
 namespace mqt::ir::opt::qcp {
-QubitState::QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes) {
-  this->nQubits = nQubits;
-  this->maxNonzeroAmplitudes = maxNonzeroAmplitudes;
+QubitState::QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes)
+    : nQubits(nQubits), maxNonzeroAmplitudes(maxNonzeroAmplitudes) {
   this->map = std::unordered_map<unsigned int, std::complex<double>>();
   this->map.insert({0, std::complex<double>(1.0, 0.0)});
 }
@@ -178,7 +177,7 @@ QubitState::measureQubit(unsigned int target) {
     }
   }
 
-  if (abs(1.0 - probabilityZero - probabilityOne) > 1e-4) {
+  if (std::abs(1.0 - probabilityZero - probabilityOne) > 1e-4) {
     throw std::domain_error(
         "Probabilities of 0 and 1 do not add up to one after measurement.");
   }
