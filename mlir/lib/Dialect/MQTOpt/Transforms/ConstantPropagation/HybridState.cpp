@@ -41,7 +41,7 @@ void HybridState::print(std::ostream& os) const { os << this->toString(); }
 
 std::string HybridState::toString() const {
   std::string str = "{" + this->qState.toString() + "}: ";
-  for (int i = bitValues.size() - 1; i >= 0; i--) {
+  for (int i = static_cast<int>(bitValues.size()) - 1; i >= 0; i--) {
     str += bitValues.at(i) ? "1" : "0";
   }
   if (size(bitValues) > 0) {
@@ -132,13 +132,52 @@ void HybridState::resetQubit(unsigned int target) {
 HybridState HybridState::unify(HybridState that,
                                std::vector<unsigned int> qubitsOccupiedByThat,
                                std::vector<unsigned int> bitsOccupiedByThat) {
-  throw std::logic_error("Not implemented");
+  if (this->bitValues.size() + that.bitValues.size() > maxNumberOfBitValues) {
+    throw std::domain_error("Too many bit values to track. HybridState needs "
+                            "to be treated as TOP.");
+  }
+
+  QubitStateOrTop newQState;
+  if (this->qState.isTop() || that.qState.isTop()) {
+    newQState = QubitStateOrTop(T);
+  } else {
+    try {
+      QubitState const unifiedQS = this->qState.getQubitState()->unify(
+          *(that.qState.getQubitState().get()),
+          std::move(qubitsOccupiedByThat));
+      newQState = QubitStateOrTop(std::make_shared<QubitState>(unifiedQS));
+    } catch (std::domain_error const&) {
+      newQState = QubitStateOrTop(T);
+    }
+  }
+
+  std::vector<bool> newBitValues;
+  unsigned int const numberOfNewbits = bitValues.size() + that.bitValues.size();
+  unsigned int thisCounter = 0;
+  unsigned int thatCounter = 0;
+  for (unsigned int i = 0; i < numberOfNewbits; i++) {
+    if (std::ranges::find(bitsOccupiedByThat, i) == bitsOccupiedByThat.end()) {
+      newBitValues.push_back(bitValues[thisCounter]);
+      thisCounter++;
+    } else {
+      newBitValues.push_back(that.bitValues[thatCounter]);
+      thatCounter++;
+    }
+  }
+
+  HybridState result = HybridState();
+  result.bitValues = newBitValues;
+  result.qState = newQState;
+  result.probability = probability * that.probability;
+
+  return result;
 }
 
 bool HybridState::operator==(const HybridState& that) const {
   if (this->probability != that.probability ||
-      this->bitValues != that.bitValues)
+      this->bitValues != that.bitValues) {
     return false;
+  }
 
   return this->qState == that.qState;
 }
@@ -170,11 +209,11 @@ HybridStateOrTop& HybridStateOrTop::operator=(const TOP& t) {
 bool HybridStateOrTop::operator==(const HybridStateOrTop& that) const {
   if (this->isTop() && that.isTop()) {
     return true;
-  } else if (this->isTop() || that.isTop()) {
-    return false;
-  } else {
-    return *this->getHybridState() == *that.getHybridState();
   }
+  if (this->isTop() || that.isTop()) {
+    return false;
+  }
+  return *this->getHybridState() == *that.getHybridState();
 }
 
 bool HybridStateOrTop::operator!=(const HybridStateOrTop& that) const {
@@ -203,9 +242,8 @@ HybridStateOrTop::isHybridState() const {
 HybridStateOrTop::toString() const {
   if (isTop()) {
     return "TOP";
-  } else {
-    return getHybridState()->toString();
   }
+  return getHybridState()->toString();
 }
 
 void HybridStateOrTop::print(std::ostream& os) const { os << this->toString(); }

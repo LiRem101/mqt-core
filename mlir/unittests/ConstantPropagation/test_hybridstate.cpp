@@ -187,7 +187,7 @@ TEST_F(HybridStateTest, doMeasurementWithTwoResults) {
   std::vector<HybridState> const res = hState.propagateMeasurement(0, 0);
 
   EXPECT_TRUE(size(res) == 2);
-  std::string resString = res.at(0).toString() + res.at(1).toString();
+  std::string const resString = res.at(0).toString() + res.at(1).toString();
   EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 00, p = 0.20;"));
   EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 01, p = 0.20;"));
 }
@@ -218,12 +218,12 @@ TEST_F(HybridStateTest, unifyTwoHybridStates) {
   hState2.propagateGate(qc::H, {1});
   hState2.propagateGate(qc::X, {0}, {1});
 
-  HybridState unified = hState1.unify(hState2, {1, 3}, {1});
+  const HybridState unified = hState1.unify(hState2, {1, 3}, {1});
 
   EXPECT_THAT(
       unified.toString(),
       testing::HasSubstr("{|00000> -> 0.50, |01010> -> 0.50, "
-                         "|10101> -> 0.50, |11111> -> 0.50}: 100, p = 0.10;"));
+                         "|10101> -> 0.50, |11111> -> 0.50}: 001, p = 0.10;"));
 }
 
 TEST_F(HybridStateTest, unifyTooLargeQuantumStates) {
@@ -236,9 +236,9 @@ TEST_F(HybridStateTest, unifyTooLargeQuantumStates) {
   hState2.propagateGate(qc::H, {1});
   hState2.propagateGate(qc::X, {0}, {1});
 
-  HybridState unified = hState1.unify(hState2, {1, 3}, {1});
+  HybridState const unified = hState1.unify(hState2, {1, 3}, {1});
 
-  EXPECT_THAT(unified.toString(), testing::HasSubstr("{TOP}: 100, p = 0.10;"));
+  EXPECT_THAT(unified.toString(), testing::HasSubstr("{TOP}: 001, p = 0.10;"));
 }
 
 TEST_F(HybridStateTest, unifyTooLargeHybridStates) {
