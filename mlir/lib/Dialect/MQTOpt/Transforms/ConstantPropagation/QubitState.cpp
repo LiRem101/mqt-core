@@ -48,16 +48,21 @@ void QubitState::print(std::ostream& os) const { os << this->toString(); }
 
 std::string QubitState::toString() const {
   std::string str;
+  bool first = true;
   for (std::map ordered = std::map<unsigned int, std::complex<double>>(
            this->map.begin(), this->map.end());
        auto const& [key, val] : ordered) {
+    if (!first) {
+      str += ", ";
+    }
+    first = false;
     std::string cn = std::format("{:.2f}", val.real());
     if (val.imag() > 1e-4) {
       cn += " + i" + std::format("{:.2f}", val.imag());
     } else if (val.imag() < -1e-4) {
       cn += " - i" + std::format("{:.2f}", -val.imag());
     }
-    str += "|" + qubitStringToBinary(key) + "> -> " + cn + ", ";
+    str += "|" + qubitStringToBinary(key) + "> -> " + cn;
   }
 
   return str;
@@ -226,7 +231,8 @@ QubitStateOrTop::QubitStateOrTop() : variant(TOP::T) {}
 
 QubitStateOrTop::QubitStateOrTop(TOP top) : variant(top) {}
 
-QubitStateOrTop::QubitStateOrTop(QubitState qubitState) : variant(qubitState) {}
+QubitStateOrTop::QubitStateOrTop(std::shared_ptr<QubitState> qubitState)
+    : variant(qubitState) {}
 
 QubitStateOrTop::QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop) =
     default;
@@ -234,7 +240,8 @@ QubitStateOrTop::QubitStateOrTop(const QubitStateOrTop& qubitStateOrTop) =
 QubitStateOrTop&
 QubitStateOrTop::operator=(const QubitStateOrTop& qubitStateOrTop) = default;
 
-QubitStateOrTop& QubitStateOrTop::operator=(QubitState qubitState) {
+QubitStateOrTop&
+QubitStateOrTop::operator=(std::shared_ptr<QubitState> qubitState) {
   this->variant = qubitState;
   return *this;
 }
@@ -267,12 +274,13 @@ QubitStateOrTop::isTop() const {
 
 [[nodiscard("QubitStateOrTop::isQubitState called but ignored")]] bool
 QubitStateOrTop::isQubitState() const {
-  return std::holds_alternative<QubitState>(variant);
+  return std::holds_alternative<std::shared_ptr<QubitState>>(variant);
 }
 
-[[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] QubitState
-QubitStateOrTop::getQubitState() const {
-  return std::get<QubitState>(variant);
+[[nodiscard("QubitStateOrTop::getQubitState called but ignored")]] std::
+    shared_ptr<QubitState>
+    QubitStateOrTop::getQubitState() const {
+  return std::get<std::shared_ptr<QubitState>>(variant);
 }
 
 [[nodiscard("QubitStateOrTop::toString called but ignored")]] std::string
@@ -280,7 +288,7 @@ QubitStateOrTop::toString() const {
   if (isTop()) {
     return "TOP";
   } else {
-    return getQubitState().toString();
+    return getQubitState()->toString();
   }
 }
 

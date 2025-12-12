@@ -25,23 +25,29 @@ namespace mqt::ir::opt::qcp {
 HybridState::HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
                          unsigned int maxNumberOfBitValues,
                          std::vector<bool> bitValues, double probability)
-    : qState(QubitState(nQubits, maxNonzeroAmplitudes)),
+    : qState(std::shared_ptr<QubitState>{
+          new QubitState(nQubits, maxNonzeroAmplitudes)}),
       probability(probability), bitValues(std::move(bitValues)),
       maxNumberOfBitValues(maxNumberOfBitValues) {}
 
-HybridState::~HybridState() = default;
+HybridState::~HybridState() {
+  if (qState.isQubitState()) {
+    auto qS = qState.getQubitState();
+    qS.reset();
+  }
+};
 
 void HybridState::print(std::ostream& os) const { os << this->toString(); }
 
 std::string HybridState::toString() const {
   std::string str = "{" + this->qState.toString() + "}: ";
-  for (auto bit : bitValues) {
-    str += bit ? "1" : "0";
+  for (int i = bitValues.size() - 1; i >= 0; i--) {
+    str += bitValues.at(i) ? "1" : "0";
   }
   if (size(bitValues) > 0) {
-    str += ",";
+    str += ", ";
   }
-  str += " p = " + std::format("{:.2f}", this->probability) + ";";
+  str += "p = " + std::format("{:.2f}", this->probability) + ";";
   return str;
 }
 
@@ -52,7 +58,23 @@ void HybridState::propagateGate(qc::OpType gate,
                                 std::vector<unsigned int> posCtrlsClassical,
                                 std::vector<unsigned int> negCtrlsClassical,
                                 std::vector<double> params) {
-  throw std::logic_error("Not implemented");
+  if (qState.isTop()) {
+    return;
+  }
+
+  for (const unsigned int posCtrl : posCtrlsClassical) {
+    if (!bitValues.at(posCtrl)) {
+      return;
+    }
+  }
+  for (const unsigned int negCtrl : negCtrlsClassical) {
+    if (bitValues.at(negCtrl)) {
+      return;
+    }
+  }
+
+  auto qS = qState.getQubitState();
+  qS->propagateGate(gate, targets, posCtrlsQuantum, negCtrlsQuantum, params);
 }
 
 std::vector<HybridState>
