@@ -16,15 +16,18 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <format>
 #include <llvm/ADT/STLExtras.h>
 #include <memory>
 #include <variant>
 
 namespace mqt::ir::opt::qcp {
 HybridState::HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
+                         unsigned int maxNumberOfBitValues,
                          std::vector<bool> bitValues, double probability)
     : qState(QubitState(nQubits, maxNonzeroAmplitudes)),
-      probability(probability), bitValues(std::move(bitValues)) {}
+      probability(probability), bitValues(std::move(bitValues)),
+      maxNumberOfBitValues(maxNumberOfBitValues) {}
 
 HybridState::~HybridState() = default;
 
@@ -33,26 +36,38 @@ void HybridState::print(std::ostream& os) const { os << this->toString(); }
 std::string HybridState::toString() const {
   std::string str = "{" + this->qState.toString() + "}: ";
   for (auto bit : bitValues) {
-    str += bit ? "1 " : "0 ";
+    str += bit ? "1" : "0";
   }
-  str += "p = " + std::to_string(this->probability) + ";";
+  if (size(bitValues) > 0) {
+    str += ",";
+  }
+  str += " p = " + std::format("{:.2f}", this->probability) + ";";
   return str;
 }
 
-void HybridState::propagateGate(std::string gate, unsigned int targets[],
-                                unsigned int posCtrlsQuantum[],
-                                unsigned int negCtrlsQuantum[],
-                                unsigned int posCtrlsClassical[],
-                                unsigned int negCtrlsClassical[]) {
+void HybridState::propagateGate(qc::OpType gate,
+                                std::vector<unsigned int> targets,
+                                std::vector<unsigned int> posCtrlsQuantum,
+                                std::vector<unsigned int> negCtrlsQuantum,
+                                std::vector<unsigned int> posCtrlsClassical,
+                                std::vector<unsigned int> negCtrlsClassical,
+                                std::vector<double> params) {
   throw std::logic_error("Not implemented");
 }
 
-void HybridState::propagateMeasurement(unsigned int quantumTarget,
-                                       unsigned int classicalTarget) {
+std::vector<HybridState>
+HybridState::propagateMeasurement(unsigned int quantumTarget,
+                                  unsigned int classicalTarget) {
   throw std::logic_error("Not implemented");
 }
 
 void HybridState::resetQubit(unsigned int target) {
+  throw std::logic_error("Not implemented");
+}
+
+HybridState HybridState::unify(HybridState that,
+                               std::vector<unsigned int> qubitsOccupiedByThat,
+                               std::vector<unsigned int> bitsOccupiedByThat) {
   throw std::logic_error("Not implemented");
 }
 

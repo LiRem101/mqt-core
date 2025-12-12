@@ -28,10 +28,13 @@ class HybridState {
   QubitStateOrTop qState;
   double probability;
   std::vector<bool> bitValues;
+  unsigned int maxNumberOfBitValues;
 
 public:
   explicit HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
-                       std::vector<bool> bitValues, double probability);
+                       unsigned int maxNumberOfBitValues,
+                       std::vector<bool> bitValues = {},
+                       double probability = 1.0);
 
   ~HybridState();
 
@@ -50,12 +53,16 @@ public:
    * @param negCtrlsQuantum An array of the indices of the negative ctrl qubits.
    * @param posCtrlsClassical An array of the indices of the ctrl bits.
    * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
+   * @param params The parameter applied to the gate.
+   * @throw std::domain_error If the number of nonzero amplitudes would exceed
+   * maxNonzeroAmplitudes.
    */
-  void propagateGate(std::string gate, unsigned int targets[],
-                     unsigned int posCtrlsQuantum[],
-                     unsigned int negCtrlsQuantum[],
-                     unsigned int posCtrlsClassical[],
-                     unsigned int negCtrlsClassical[]);
+  void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
+                     std::vector<unsigned int> posCtrlsQuantum = {},
+                     std::vector<unsigned int> negCtrlsQuantum = {},
+                     std::vector<unsigned int> posCtrlsClassical = {},
+                     std::vector<unsigned int> negCtrlsClassical = {},
+                     std::vector<double> params = {});
 
   /**
    * @brief This method applies a measurement.
@@ -66,9 +73,11 @@ public:
    * @param quantumTarget The index of the qubit to be measured.
    * @param classicalTarget The index of the bit to save the measurement result
    * in.
+   * @return One or two classical states corresponding to the measurement
+   * outcomes.
    */
-  void propagateMeasurement(unsigned int quantumTarget,
-                            unsigned int classicalTarget);
+  std::vector<HybridState> propagateMeasurement(unsigned int quantumTarget,
+                                                unsigned int classicalTarget);
 
   /**
    * @brief This method propagates a qubit reset.
@@ -80,6 +89,25 @@ public:
    * @param target The index of the qubit to be reset.
    */
   void resetQubit(unsigned int target);
+
+  /**
+   * @brief This method unifies two HybridStates.
+   *
+   * This method unifies the current HybridState with the given one and returns
+   * a new HybridState, if the new state has no more than maxNumberOfBitValues.
+   * Otherwise, throws a domain_error.
+   *
+   * @param that The HybridState to unify this with.
+   * @param qubitsOccupiedByThat Qubit positions that the QubitState of the
+   * other HybridState will provide.
+   * @param bitsOccupiedByThat Bit positions that the other HybridState will
+   * provide.
+   * @throw std::domain_error If the number of bits would exceed
+   * maxNumberOfBitValues of this.
+   */
+  HybridState unify(HybridState that,
+                    std::vector<unsigned int> qubitsOccupiedByThat,
+                    std::vector<unsigned int> bitsOccupiedByThat);
 
   bool operator==(const HybridState& that) const;
 };
