@@ -5,7 +5,6 @@
  *
  * SPDX-License-Identifier: MIT
  *
-  auto value = res.at(1);
  * Licensed under the MIT License
  */
 

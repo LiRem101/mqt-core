@@ -5,8 +5,7 @@
  *
  * SPDX-License-Identifier: MIT
  *
- * Licensed under  else {
-    the MIT License
+ * Licensed under the MIT License
  */
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
