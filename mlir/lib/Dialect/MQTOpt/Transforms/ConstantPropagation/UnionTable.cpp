@@ -14,10 +14,42 @@ namespace mqt::ir::opt::qcp {
 UnionTable::UnionTable() {
   this->mappingGlobalToLocalQubitIndices = {};
   this->mappingGlobalToLocalBitIndices = {};
-  this->hReg = {};
+  this->hRegOfQubits = {};
+  this->hRegOfBits = {};
+  this->indizesInSameState = {};
 }
 
 UnionTable::~UnionTable() {}
+
+std::string UnionTable::toString() const {
+  for (std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
+           qubitAndBitIndices : indizesInSameState) {
+    std::vector<unsigned int> qubitIndices = qubitAndBitIndices.first;
+    std::vector<unsigned int> bitIndices = qubitAndBitIndices.second;
+
+    std::string result = "Qubits: ";
+    for (int i = static_cast<int>(qubitIndices.size()) - 1; i >= 0; i--) {
+      result += std::to_string(qubitIndices.at(i));
+    }
+    if (bitIndices.size() > 0) {
+      result += ", Bits: ";
+    }
+    for (int i = static_cast<int>(bitIndices.size()) - 1; i >= 0; i--) {
+      result += std::to_string(bitIndices.at(i));
+    }
+
+    result += ", HybridStates: {";
+    bool first = true;
+    for (HybridStateOrTop hs : *(hRegOfQubits.at(qubitIndices.at(0)))) {
+      if (!first) {
+        result += ", ";
+      }
+      first = false;
+      result += hs.toString();
+    }
+    result += "}\n";
+  }
+}
 
 void UnionTable::unify(std::vector<unsigned int> qubits,
                        std::vector<unsigned int> bits) {
@@ -48,6 +80,10 @@ unsigned int UnionTable::propagateQubitAlloc() {
 }
 
 void UnionTable::propagateQubitDealloc(unsigned int target) {
+  throw std::logic_error("Not implemented");
+}
+
+unsigned int UnionTable::propagateBitDef(bool value) {
   throw std::logic_error("Not implemented");
 }
 

@@ -27,14 +27,30 @@ namespace mqt::ir::opt::qcp {
  * states.
  */
 class UnionTable {
+  // At position i the local mapping k (in the respective hybrid state) of qubit
+  // i is given
   std::vector<unsigned int> mappingGlobalToLocalQubitIndices;
+  // At position i the local mapping k (in the respective hybrid state) of bit i
+  // is given
   std::vector<unsigned int> mappingGlobalToLocalBitIndices;
-  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hReg;
+  // The entries i, l and k point to the set of hybrid states corresponding to
+  // qubits i, l and k. Two entries point to the same set if the qubits are in
+  // one set. They point to the same sets as hRegOfBits.
+  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hRegOfQubits;
+  // The entries i, l and k point to the set of hybrid states corresponding to
+  // bits i, l and k. Two entries point to the same set if the bits are in one
+  // set. They point to the same sets as hRegOfQubits.
+  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hRegOfBits;
+  // Pairs of vectors of qubit, bit indices which are in the same hybrid state.
+  std::set<std::pair<std::vector<unsigned int>, std::vector<unsigned int>>>
+      indizesInSameState;
 
 public:
   UnionTable();
 
   ~UnionTable();
+
+  std::string toString() const;
 
   /**
    * @brief This method unifies hybrid states.
@@ -109,6 +125,18 @@ public:
    * @param target The index of the qubit to be removed.
    */
   void propagateQubitDealloc(unsigned int target);
+
+  /**
+   * @brief This method propagates a bit definition and returns the bit's index.
+   *
+   * This method propagates a bit definition. This means that the bit is added
+   * to the UnionTable with the given value. The methos returns the index with
+   * which the bit can be identified in the UnionTable.
+   *
+   * @param value The value that the bit should get.
+   * @return The index with which the bit can be identified in the UnionTable.
+   */
+  unsigned int propagateBitDef(bool value);
 
   bool isQubitAlwaysOne(size_t q);
 
