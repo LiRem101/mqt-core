@@ -11,7 +11,10 @@
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
 namespace mqt::ir::opt::qcp {
-UnionTable::UnionTable() {
+UnionTable::UnionTable(unsigned int maxNonzeroAmplitudes,
+                       unsigned int maxNumberOfBitValues)
+    : maxNonzeroAmplitudes(maxNonzeroAmplitudes),
+      maxNumberOfBitValues(maxNumberOfBitValues) {
   this->mappingGlobalToLocalQubitIndices = {};
   this->mappingGlobalToLocalBitIndices = {};
   this->hRegOfQubits = {};
@@ -58,11 +61,13 @@ void UnionTable::unify(std::vector<unsigned int> qubits,
 
 bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }
 
-void UnionTable::propagateGate(qc::OpType gate,
-                               std::vector<unsigned int> targets,
-                               std::vector<unsigned int> posCtrls,
-                               std::vector<unsigned int> negCtrls,
-                               std::vector<double> params) {
+void UnionTable::propagateGate(
+    qc::OpType gate, std::vector<unsigned int> targets,
+    std::vector<unsigned int> posCtrlsQuantum,
+    std::vector<unsigned int> negCtrlsQuantum,
+    const std::vector<unsigned int>& posCtrlsClassical,
+    const std::vector<unsigned int>& negCtrlsClassical,
+    std::vector<double> params) {
   throw std::logic_error("Not implemented");
 }
 

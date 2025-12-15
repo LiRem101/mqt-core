@@ -27,6 +27,8 @@ namespace mqt::ir::opt::qcp {
  * states.
  */
 class UnionTable {
+  unsigned int maxNonzeroAmplitudes;
+  unsigned int maxNumberOfBitValues;
   // At position i the local mapping k (in the respective hybrid state) of qubit
   // i is given
   std::vector<unsigned int> mappingGlobalToLocalQubitIndices;
@@ -46,7 +48,8 @@ class UnionTable {
       indizesInSameState;
 
 public:
-  UnionTable();
+  UnionTable(unsigned int maxNonzeroAmplitudes,
+             unsigned int maxNumberOfBitValues);
 
   ~UnionTable();
 
@@ -73,12 +76,17 @@ public:
    *
    * @param gate The name of the gate to be applied.
    * @param targets An array of the indices of the target qubits.
-   * @param posCtrls An array of the indices of the ctrl qubits.
-   * @param negCtrls An array of the indices of the negative ctrl qubits.
+   * @param posCtrlsQuantum An array of the indices of the ctrl qubits.
+   * @param negCtrlsQuantum An array of the indices of the negative ctrl qubits.
+   * @param posCtrlsClassical An array of the indices of the ctrl bits.
+   * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
+   * @param params The parameter applied to the gate.
    */
   void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
-                     std::vector<unsigned int> posCtrls,
-                     std::vector<unsigned int> negCtrls,
+                     std::vector<unsigned int> posCtrlsQuantum = {},
+                     std::vector<unsigned int> negCtrlsQuantum = {},
+                     const std::vector<unsigned int>& posCtrlsClassical = {},
+                     const std::vector<unsigned int>& negCtrlsClassical = {},
                      std::vector<double> params = {});
 
   /**
