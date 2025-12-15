@@ -22,25 +22,26 @@ UnionTable::~UnionTable() = default;
 
 std::string UnionTable::toString() const {
   std::string result;
-  for (const std::pair<std::vector<unsigned int>, std::vector<unsigned int>>&
+  for (const std::pair<std::set<unsigned int>, std::set<unsigned int>>&
            qubitAndBitIndices : indizesInSameState) {
-    std::vector<unsigned int> qubitIndices = qubitAndBitIndices.first;
-    std::vector<unsigned int> bitIndices = qubitAndBitIndices.second;
+    std::set<unsigned int> qubitIndices = qubitAndBitIndices.first;
+    std::set<unsigned int> bitIndices = qubitAndBitIndices.second;
 
     result += "Qubits: ";
-    for (int i = static_cast<int>(qubitIndices.size()) - 1; i >= 0; i--) {
-      result += std::to_string(qubitIndices.at(i));
+    for (auto qit = qubitIndices.begin(); qit != qubitIndices.end(); ++qit) {
+      result += std::to_string(*qit);
     }
     if (!bitIndices.empty()) {
       result += ", Bits: ";
     }
-    for (int i = static_cast<int>(bitIndices.size()) - 1; i >= 0; i--) {
-      result += std::to_string(bitIndices.at(i));
+    for (auto bit = bitIndices.begin(); bit != bitIndices.end(); ++bit) {
+      result += std::to_string(*bit);
     }
 
     result += ", HybridStates: {";
     bool first = true;
-    for (HybridStateOrTop const& hs : *(hRegOfQubits.at(qubitIndices.at(0)))) {
+    for (HybridStateOrTop const& hs :
+         *(hRegOfQubits.at(*qubitIndices.begin()))) {
       if (!first) {
         result += ", ";
       }
@@ -66,7 +67,70 @@ void UnionTable::propagateGate(
     const std::vector<unsigned int>& posCtrlsClassical,
     const std::vector<unsigned int>& negCtrlsClassical,
     std::vector<double> params) {
-  throw std::logic_error("Not implemented");
+  std::vector<unsigned int> qubits;
+  qubits.insert(qubits.end(), targets.begin(), targets.end());
+  qubits.insert(qubits.end(), posCtrlsQuantum.begin(), posCtrlsQuantum.end());
+  qubits.insert(qubits.end(), negCtrlsQuantum.begin(), negCtrlsQuantum.end());
+  std::vector<unsigned int> bits;
+  qubits.insert(bits.end(), posCtrlsClassical.begin(), posCtrlsClassical.end());
+  qubits.insert(bits.end(), negCtrlsClassical.begin(), negCtrlsClassical.end());
+
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+      involvedStates;
+  for (std::pair setsInSameState : indizesInSameState) {
+    std::set<unsigned int> qubitIndizes = setsInSameState.first;
+    std::set<unsigned int> bitIndizes = setsInSameState.second;
+    if (std::ranges::find_first_of(qubitIndizes, qubits) !=
+            qubitIndizes.end() ||
+        std::ranges::find_first_of(bitIndizes, bits) != bitIndizes.end()) {
+      involvedStates.insert(setsInSameState);
+    }
+  }
+  if (involvedStates.size() > 1) {
+    // Unify
+  }
+
+  std::vector<unsigned int> targetsLocal = {};
+  std::vector<unsigned int> posCtrlsQuantumLocal = {};
+  std::vector<unsigned int> negCtrlsQuantumLocal = {};
+  std::vector<unsigned int> posCtrlsClassicalLocal = {};
+  std::vector<unsigned int> negCtrlsClassicalLocal = {};
+
+  for (unsigned int target : targets) {
+    targetsLocal.push_back(mappingGlobalToLocalQubitIndices.at(target));
+  }
+  for (unsigned int posCtrl : posCtrlsQuantum) {
+    posCtrlsQuantumLocal.push_back(
+        mappingGlobalToLocalQubitIndices.at(posCtrl));
+  }
+  for (unsigned int negCtrl : negCtrlsQuantum) {
+    negCtrlsQuantumLocal.push_back(
+        mappingGlobalToLocalQubitIndices.at(negCtrl));
+  }
+  for (unsigned int posCtrl : posCtrlsClassical) {
+    posCtrlsClassicalLocal.push_back(
+        mappingGlobalToLocalBitIndices.at(posCtrl));
+  }
+  for (unsigned int negCtrl : negCtrlsClassical) {
+    negCtrlsClassicalLocal.push_back(
+        mappingGlobalToLocalBitIndices.at(negCtrl));
+  }
+
+  for (unsigned int i = 0; i < hRegOfQubits.at(targetsLocal.at(0))->size();
+       i++) {
+    HybridStateOrTop hs = hRegOfQubits.at(targetsLocal.at(0))->at(i);
+    if (hs.isHybridState()) {
+      try {
+        hs.getHybridState()->propagateGate(
+            gate, targetsLocal, posCtrlsQuantumLocal, negCtrlsQuantumLocal,
+            posCtrlsClassicalLocal, negCtrlsClassicalLocal, params);
+      } catch (std::domain_error const&) {
+        hs.getHybridState().reset();
+        hRegOfQubits.at(targetsLocal.at(0))->at(i).getHybridState().reset();
+        hRegOfQubits.at(targetsLocal.at(0))->at(i) = HybridStateOrTop(T);
+      }
+    }
+  }
 }
 
 void UnionTable::propagateMeasurement(unsigned int quantumTarget,
@@ -96,7 +160,16 @@ void UnionTable::propagateQubitDealloc(unsigned int target) {
 }
 
 unsigned int UnionTable::propagateBitDef(bool value) {
-  throw std::logic_error("Not implemented");
+  unsigned int bitIndex = mappingGlobalToLocalBitIndices.size();
+  mappingGlobalToLocalBitIndices.push_back(0);
+  HybridState hs =
+      HybridState(0, maxNonzeroAmplitudes, maxNumberOfBitValues, {value}, 1.0);
+  std::vector<HybridStateOrTop> setForNewBit = {
+      HybridStateOrTop(std::make_shared<HybridState>(hs))};
+  hRegOfBits.push_back(
+      std::make_shared<std::vector<HybridStateOrTop>>(setForNewBit));
+  indizesInSameState.insert({{}, {bitIndex}});
+  return bitIndex;
 }
 
 bool UnionTable::isQubitAlwaysOne(size_t q) {

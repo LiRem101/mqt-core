@@ -43,7 +43,7 @@ class UnionTable {
   // set. They point to the same sets as hRegOfQubits.
   std::vector<std::shared_ptr<std::vector<HybridStateOrTop>>> hRegOfBits;
   // Pairs of vectors of qubit, bit indices which are in the same hybrid state.
-  std::set<std::pair<std::vector<unsigned int>, std::vector<unsigned int>>>
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
       indizesInSameState;
 
 public:

@@ -160,8 +160,8 @@ TEST_F(UnionTableTest, ApplyClassicalControlledGateThatsFalse) {
   ut.propagateGate(qc::X, {3}, {1}, {}, {1});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 31, Bits: 10, HybridStates: {{|10> "
-                                 "-> 0.71, |11> -> 0.71}: 01, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 31, Bits: 1, HybridStates: {{|10> "
+                                 "-> 0.71, |11> -> 0.71}: 0, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyClassicalControlledGateThatsTrue) {
@@ -172,8 +172,8 @@ TEST_F(UnionTableTest, ApplyClassicalControlledGateThatsTrue) {
   ut.propagateGate(qc::X, {3}, {1}, {}, {0});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 31, Bits: 10, HybridStates: {{|01> "
-                                 "-> 0.71, |10> -> 0.71}: 01, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 31, Bits: 0, HybridStates: {{|01> "
+                                 "-> 0.71, |10> -> 0.71}: 1, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyClassicalNegControlledGateThatsFalse) {
@@ -184,8 +184,8 @@ TEST_F(UnionTableTest, ApplyClassicalNegControlledGateThatsFalse) {
   ut.propagateGate(qc::X, {3}, {1}, {}, {}, {0});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 31, Bits: 10, HybridStates: {{|10> "
-                                 "-> 0.71, |11> -> 0.71}: 01, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 31, Bits: 0, HybridStates: {{|10> "
+                                 "-> 0.71, |11> -> 0.71}: 1, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyClassicalNegControlledGateThatsTrue) {
@@ -196,8 +196,8 @@ TEST_F(UnionTableTest, ApplyClassicalNegControlledGateThatsTrue) {
   ut.propagateGate(qc::X, {3}, {1}, {}, {}, {1});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 31, Bits: 10, HybridStates: {{|01> "
-                                 "-> 0.71, |10> -> 0.71}: 01, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 31, Bits: 1, HybridStates: {{|01> "
+                                 "-> 0.71, |10> -> 0.71}: 0, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyPosNegControlledClassicalGateFalse) {
