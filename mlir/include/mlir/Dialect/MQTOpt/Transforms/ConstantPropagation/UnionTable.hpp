@@ -37,11 +37,11 @@ class UnionTable {
   // The entries i, l and k point to the set of hybrid states corresponding to
   // qubits i, l and k. Two entries point to the same set if the qubits are in
   // one set. They point to the same sets as hRegOfBits.
-  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hRegOfQubits;
+  std::vector<std::shared_ptr<std::vector<HybridStateOrTop>>> hRegOfQubits;
   // The entries i, l and k point to the set of hybrid states corresponding to
   // bits i, l and k. Two entries point to the same set if the bits are in one
   // set. They point to the same sets as hRegOfQubits.
-  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hRegOfBits;
+  std::vector<std::shared_ptr<std::vector<HybridStateOrTop>>> hRegOfBits;
   // Pairs of vectors of qubit, bit indices which are in the same hybrid state.
   std::set<std::pair<std::vector<unsigned int>, std::vector<unsigned int>>>
       indizesInSameState;

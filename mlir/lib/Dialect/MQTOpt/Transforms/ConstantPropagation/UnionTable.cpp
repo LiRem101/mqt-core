@@ -79,7 +79,16 @@ void UnionTable::propagateReset(unsigned int target) {
 }
 
 unsigned int UnionTable::propagateQubitAlloc() {
-  throw std::logic_error("Not implemented");
+  unsigned int qubitIndex = mappingGlobalToLocalQubitIndices.size();
+  mappingGlobalToLocalQubitIndices.push_back(0);
+  HybridState hs =
+      HybridState(1, maxNonzeroAmplitudes, maxNumberOfBitValues, {}, 1.0);
+  std::vector<HybridStateOrTop> setForNewQubit = {
+      HybridStateOrTop(std::make_shared<HybridState>(hs))};
+  hRegOfQubits.push_back(
+      std::make_shared<std::vector<HybridStateOrTop>>(setForNewQubit));
+  indizesInSameState.insert({{qubitIndex}, {}});
+  return qubitIndex;
 }
 
 void UnionTable::propagateQubitDealloc(unsigned int target) {
