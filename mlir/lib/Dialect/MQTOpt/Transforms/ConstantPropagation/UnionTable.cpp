@@ -14,27 +14,24 @@ namespace mqt::ir::opt::qcp {
 UnionTable::UnionTable(unsigned int maxNonzeroAmplitudes,
                        unsigned int maxNumberOfBitValues)
     : maxNonzeroAmplitudes(maxNonzeroAmplitudes),
-      maxNumberOfBitValues(maxNumberOfBitValues) {
-  this->mappingGlobalToLocalQubitIndices = {};
-  this->mappingGlobalToLocalBitIndices = {};
-  this->hRegOfQubits = {};
-  this->hRegOfBits = {};
-  this->indizesInSameState = {};
-}
+      maxNumberOfBitValues(maxNumberOfBitValues),
+      mappingGlobalToLocalQubitIndices({}), mappingGlobalToLocalBitIndices({}),
+      hRegOfQubits({}), hRegOfBits({}), indizesInSameState({}) {}
 
-UnionTable::~UnionTable() {}
+UnionTable::~UnionTable() = default;
 
 std::string UnionTable::toString() const {
-  for (std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
+  std::string result;
+  for (const std::pair<std::vector<unsigned int>, std::vector<unsigned int>>&
            qubitAndBitIndices : indizesInSameState) {
     std::vector<unsigned int> qubitIndices = qubitAndBitIndices.first;
     std::vector<unsigned int> bitIndices = qubitAndBitIndices.second;
 
-    std::string result = "Qubits: ";
+    result += "Qubits: ";
     for (int i = static_cast<int>(qubitIndices.size()) - 1; i >= 0; i--) {
       result += std::to_string(qubitIndices.at(i));
     }
-    if (bitIndices.size() > 0) {
+    if (!bitIndices.empty()) {
       result += ", Bits: ";
     }
     for (int i = static_cast<int>(bitIndices.size()) - 1; i >= 0; i--) {
@@ -43,7 +40,7 @@ std::string UnionTable::toString() const {
 
     result += ", HybridStates: {";
     bool first = true;
-    for (HybridStateOrTop hs : *(hRegOfQubits.at(qubitIndices.at(0)))) {
+    for (HybridStateOrTop const& hs : *(hRegOfQubits.at(qubitIndices.at(0)))) {
       if (!first) {
         result += ", ";
       }
@@ -52,6 +49,7 @@ std::string UnionTable::toString() const {
     }
     result += "}\n";
   }
+  return result;
 }
 
 void UnionTable::unify(std::vector<unsigned int> qubits,

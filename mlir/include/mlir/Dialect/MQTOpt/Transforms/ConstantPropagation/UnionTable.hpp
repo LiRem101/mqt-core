@@ -14,7 +14,6 @@
 #include "HybridState.hpp"
 #include "ir/operations/OpType.hpp"
 
-#include <cstddef>
 #include <set>
 #include <vector>
 
@@ -53,7 +52,8 @@ public:
 
   ~UnionTable();
 
-  std::string toString() const;
+  [[nodiscard("UnionTable::toString called but ignored")]] std::string
+  toString() const;
 
   /**
    * @brief This method unifies hybrid states.
