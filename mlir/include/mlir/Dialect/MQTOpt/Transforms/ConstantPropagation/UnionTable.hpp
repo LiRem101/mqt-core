@@ -15,6 +15,7 @@
 #include "ir/operations/OpType.hpp"
 
 #include <cstddef>
+#include <set>
 #include <vector>
 
 namespace mqt::ir::opt::qcp {
@@ -26,9 +27,9 @@ namespace mqt::ir::opt::qcp {
  * states.
  */
 class UnionTable {
-  std::size_t nQubits;
-  std::size_t nBits;
-  std::vector<HybridStateOrTop> hReg;
+  std::vector<unsigned int> mappingGlobalToLocalQubitIndices;
+  std::vector<unsigned int> mappingGlobalToLocalBitIndices;
+  std::vector<std::shared_ptr<std::set<HybridStateOrTop>>> hReg;
 
 public:
   UnionTable();
@@ -118,19 +119,20 @@ public:
   bool isBitAlwaysZero(size_t q);
 
   /**
-   * @brief Returns whether the given qubits have for value values a nonzero
+   * @brief Returns whether the given qubits have for value always a zero
    * amplitude.
    *
    * This method receives a number of qubit indices and checks whether they have
-   * for a given value a nonzero amplitude.
+   * for a given value always a zero amplitude. If the qubit values are top, it
+   * is not guaranteed that the amplitude is always zero and false is returned.
    *
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
-   * @returns True if the amplitude is nonzero, false otherwise.
+   * @returns True if the amplitude is always zero, false otherwise.
    */
-  bool hasNonzeroAmplitude(std::vector<unsigned int> qubits,
-                           unsigned int value);
+  bool hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                              unsigned int value);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_UNIONTABLE_H

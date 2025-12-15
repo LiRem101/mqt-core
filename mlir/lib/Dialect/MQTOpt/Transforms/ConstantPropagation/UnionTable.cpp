@@ -12,8 +12,8 @@
 
 namespace mqt::ir::opt::qcp {
 UnionTable::UnionTable() {
-  this->nQubits = 0;
-  this->nBits = 0;
+  this->mappingGlobalToLocalQubitIndices = {};
+  this->mappingGlobalToLocalBitIndices = {};
   this->hReg = {};
 }
 
@@ -24,14 +24,7 @@ void UnionTable::unify(std::vector<unsigned int> qubits,
   throw std::logic_error("Not implemented");
 }
 
-bool UnionTable::allTop() {
-  for (size_t i = 0; i < nQubits; i++) {
-    if (!hReg[i].isTop()) {
-      return false;
-    }
-  }
-  return true;
-}
+bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }
 
 void UnionTable::propagateGate(qc::OpType gate,
                                std::vector<unsigned int> targets,
@@ -74,8 +67,8 @@ bool UnionTable::isBitAlwaysZero(size_t q) {
   throw std::logic_error("Not implemented");
 }
 
-bool UnionTable::hasNonzeroAmplitude(std::vector<unsigned int> qubits,
-                                     unsigned int value) {
+bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                                        unsigned int value) {
   throw std::logic_error("Not implemented");
 }
 } // namespace mqt::ir::opt::qcp
