@@ -59,7 +59,7 @@ class UnionTable {
    * @param involvedStates2 The first qubit and bit indizes of the states to be
    * unified.
    */
-  void unifyHybridStates(
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> unifyHybridStates(
       std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedStates1,
       std::pair<std::set<unsigned int>, std::set<unsigned int>>
           involvedStates2) {
@@ -156,55 +156,8 @@ class UnionTable {
       hRegOfBits.at(bitIndizes) =
           std::make_shared<std::vector<HybridStateOrTop>>(newHybridStates);
     }
-  }
 
-  /**
-   * @brief This method unifies hybrid states.
-   *
-   * This method unifies the hybrid states in the vectors targeted by
-   * involvedStates. Of any of the hybridStates are top, the result will be top.
-   *
-   * @param involvedStates The qubit and bit indizes of the states to be
-   * unified.
-   */
-  void unifyHybridStates(
-      std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
-          involvedStates) {
-    std::vector<HybridStateOrTop> newState = {};
-    bool topFound = false;
-    for (const auto& [qubitIndizes, bitIndizes] : involvedStates) {
-      if (topFound) {
-        break;
-      }
-      if (newState.empty()) {
-        if (!qubitIndizes.empty()) {
-          newState = *hRegOfQubits.at(*qubitIndizes.begin());
-        } else {
-          newState = *hRegOfBits.at(*bitIndizes.begin());
-        }
-      } else {
-        std::vector<HybridStateOrTop> unifiedStates = {};
-        for (HybridStateOrTop const& hs1 : newState) {
-          std::vector<HybridStateOrTop> otherStates;
-          if (!qubitIndizes.empty()) {
-            otherStates = *hRegOfQubits.at(*qubitIndizes.begin());
-          } else {
-            otherStates = *hRegOfBits.at(*bitIndizes.begin());
-          }
-          for (HybridStateOrTop const& hs2 : otherStates) {
-            if (hs1.isTop() || hs2.isTop()) {
-              topFound = true;
-            } else {
-              // unify hs1, hs2
-            }
-          }
-        }
-      }
-    }
-
-    if (topFound) {
-      newState.push_back({HybridStateOrTop(T)});
-    }
+    return newStatesInSameSet;
   }
 
 public:

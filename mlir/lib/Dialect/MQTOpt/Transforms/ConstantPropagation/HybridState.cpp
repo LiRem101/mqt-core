@@ -169,6 +169,7 @@ HybridState HybridState::unify(HybridState that,
   result.bitValues = newBitValues;
   result.qState = newQState;
   result.probability = probability * that.probability;
+  result.maxNumberOfBitValues = this->maxNumberOfBitValues;
 
   return result;
 }

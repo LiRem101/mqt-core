@@ -88,8 +88,13 @@ void UnionTable::propagateGate(
     }
   }
   if (involvedStates.size() > 1) {
-    // TODO: More than two states
-    unifyHybridStates(*involvedStates.begin(), *++involvedStates.begin());
+    std::pair<std::set<unsigned int>, std::set<unsigned int>> currentStates =
+        *involvedStates.begin();
+    auto nextStateIt = ++involvedStates.begin();
+    while (nextStateIt != involvedStates.end()) {
+      currentStates = unifyHybridStates(currentStates, *nextStateIt);
+      nextStateIt++;
+    }
   }
 
   std::vector<unsigned int> targetsLocal = {};
