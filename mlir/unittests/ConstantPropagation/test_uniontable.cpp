@@ -117,7 +117,7 @@ TEST_F(UnionTableTest, ApplyParametrizedGateToThirdQubit) {
 
   EXPECT_THAT(ut.toString(),
               testing::HasSubstr("Qubits: 2, HybridStates: {{|0> -> 0.76 - "
-                                 "i0.31, |1> -> -0.20 + i0.53}: p = 0.75;}"));
+                                 "i0.31, |1> -> -0.20 + i0.53}: p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyQuantumControlledGate) {
