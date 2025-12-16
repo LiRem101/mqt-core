@@ -28,13 +28,13 @@ std::string UnionTable::toString() const {
     std::set<unsigned int> bitIndices = qubitAndBitIndices.second;
 
     result += "Qubits: ";
-    for (auto qit = qubitIndices.begin(); qit != qubitIndices.end(); ++qit) {
+    for (auto qit = qubitIndices.rbegin(); qit != qubitIndices.rend(); ++qit) {
       result += std::to_string(*qit);
     }
     if (!bitIndices.empty()) {
       result += ", Bits: ";
     }
-    for (auto bit = bitIndices.begin(); bit != bitIndices.end(); ++bit) {
+    for (auto bit = bitIndices.rbegin(); bit != bitIndices.rend(); ++bit) {
       result += std::to_string(*bit);
     }
 
@@ -72,12 +72,13 @@ void UnionTable::propagateGate(
   qubits.insert(qubits.end(), posCtrlsQuantum.begin(), posCtrlsQuantum.end());
   qubits.insert(qubits.end(), negCtrlsQuantum.begin(), negCtrlsQuantum.end());
   std::vector<unsigned int> bits;
-  qubits.insert(bits.end(), posCtrlsClassical.begin(), posCtrlsClassical.end());
-  qubits.insert(bits.end(), negCtrlsClassical.begin(), negCtrlsClassical.end());
+  bits.insert(bits.end(), posCtrlsClassical.begin(), posCtrlsClassical.end());
+  bits.insert(bits.end(), negCtrlsClassical.begin(), negCtrlsClassical.end());
 
   std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
       involvedStates;
-  for (std::pair setsInSameState : indizesInSameState) {
+  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
+           setsInSameState : indizesInSameState) {
     std::set<unsigned int> qubitIndizes = setsInSameState.first;
     std::set<unsigned int> bitIndizes = setsInSameState.second;
     if (std::ranges::find_first_of(qubitIndizes, qubits) !=
@@ -87,7 +88,8 @@ void UnionTable::propagateGate(
     }
   }
   if (involvedStates.size() > 1) {
-    // Unify
+    // TODO: More than two states
+    unifyHybridStates(*involvedStates.begin(), *++involvedStates.begin());
   }
 
   std::vector<unsigned int> targetsLocal = {};
@@ -96,29 +98,28 @@ void UnionTable::propagateGate(
   std::vector<unsigned int> posCtrlsClassicalLocal = {};
   std::vector<unsigned int> negCtrlsClassicalLocal = {};
 
-  for (unsigned int target : targets) {
+  for (unsigned int const target : targets) {
     targetsLocal.push_back(mappingGlobalToLocalQubitIndices.at(target));
   }
-  for (unsigned int posCtrl : posCtrlsQuantum) {
+  for (unsigned int const posCtrl : posCtrlsQuantum) {
     posCtrlsQuantumLocal.push_back(
         mappingGlobalToLocalQubitIndices.at(posCtrl));
   }
-  for (unsigned int negCtrl : negCtrlsQuantum) {
+  for (unsigned int const negCtrl : negCtrlsQuantum) {
     negCtrlsQuantumLocal.push_back(
         mappingGlobalToLocalQubitIndices.at(negCtrl));
   }
-  for (unsigned int posCtrl : posCtrlsClassical) {
+  for (unsigned int const posCtrl : posCtrlsClassical) {
     posCtrlsClassicalLocal.push_back(
         mappingGlobalToLocalBitIndices.at(posCtrl));
   }
-  for (unsigned int negCtrl : negCtrlsClassical) {
+  for (unsigned int const negCtrl : negCtrlsClassical) {
     negCtrlsClassicalLocal.push_back(
         mappingGlobalToLocalBitIndices.at(negCtrl));
   }
 
-  for (unsigned int i = 0; i < hRegOfQubits.at(targetsLocal.at(0))->size();
-       i++) {
-    HybridStateOrTop hs = hRegOfQubits.at(targetsLocal.at(0))->at(i);
+  for (unsigned int i = 0; i < hRegOfQubits.at(targets.at(0))->size(); i++) {
+    const HybridStateOrTop hs = hRegOfQubits.at(targets.at(0))->at(i);
     if (hs.isHybridState()) {
       try {
         hs.getHybridState()->propagateGate(
@@ -126,8 +127,8 @@ void UnionTable::propagateGate(
             posCtrlsClassicalLocal, negCtrlsClassicalLocal, params);
       } catch (std::domain_error const&) {
         hs.getHybridState().reset();
-        hRegOfQubits.at(targetsLocal.at(0))->at(i).getHybridState().reset();
-        hRegOfQubits.at(targetsLocal.at(0))->at(i) = HybridStateOrTop(T);
+        hRegOfQubits.at(targets.at(0))->at(i).getHybridState().reset();
+        hRegOfQubits.at(targets.at(0))->at(i) = HybridStateOrTop(T);
       }
     }
   }

@@ -149,7 +149,7 @@ TEST_F(UnionTableTest, ApplyQuantumNegControlledGate) {
                   "Qubits: 2, HybridStates: {{|0> -> 1.00}: p = 1.00;}"));
   EXPECT_THAT(ut.toString(),
               testing::HasSubstr("Qubits: 31, HybridStates: {{|00> -> 0.71, "
-                                 "|101> -> 0.71}: p = 1.00;}"));
+                                 "|11> -> 0.71}: p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, ApplyClassicalControlledGateThatsFalse) {

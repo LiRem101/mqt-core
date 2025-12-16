@@ -14,6 +14,7 @@
 #include "HybridState.hpp"
 #include "ir/operations/OpType.hpp"
 
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -45,6 +46,166 @@ class UnionTable {
   // Pairs of vectors of qubit, bit indices which are in the same hybrid state.
   std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
       indizesInSameState;
+
+  /**
+   * @brief This method unifies two hybrid states.
+   *
+   * This method unifies the two hybrid states pointed to by involvedStates1 and
+   * involvedStates2. If any of the hybridStates are top, the result will be
+   * top.
+   *
+   * @param involvedStates1 The first qubit and bit indizes of the states to be
+   * unified.
+   * @param involvedStates2 The first qubit and bit indizes of the states to be
+   * unified.
+   */
+  void unifyHybridStates(
+      std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedStates1,
+      std::pair<std::set<unsigned int>, std::set<unsigned int>>
+          involvedStates2) {
+    std::vector<HybridStateOrTop> firstStates =
+        !involvedStates1.first.empty()
+            ? *hRegOfQubits.at(*involvedStates1.first.begin())
+            : *hRegOfBits.at(*involvedStates1.second.begin());
+    std::vector<HybridStateOrTop> secondStates =
+        !involvedStates2.first.empty()
+            ? *hRegOfQubits.at(*involvedStates2.first.begin())
+            : *hRegOfBits.at(*involvedStates2.second.begin());
+
+    // Adapt global to local mapping and create new pairs for indizes in same
+    // state
+    std::pair<std::set<unsigned int>, std::set<unsigned int>>
+        newStatesInSameSet = {{}, {}};
+    std::vector<unsigned int> qubitIndizesOfSecondState = {};
+    unsigned int currentIndex = 0;
+    auto it1 = involvedStates1.first.begin();
+    auto it2 = involvedStates2.first.begin();
+    while (it1 != involvedStates1.first.end() ||
+           it2 != involvedStates2.first.end()) {
+      if (it2 == involvedStates2.first.end() ||
+          (it1 != involvedStates1.first.end() && *it1 < *it2)) {
+        mappingGlobalToLocalQubitIndices.at(*it1) = currentIndex;
+        newStatesInSameSet.first.insert(*it1);
+        ++it1;
+      } else {
+        qubitIndizesOfSecondState.push_back(currentIndex);
+        mappingGlobalToLocalQubitIndices.at(*it2) = currentIndex;
+        newStatesInSameSet.first.insert(*it2);
+        ++it2;
+      }
+      currentIndex++;
+    }
+    std::vector<unsigned int> bitIndizesOfSecondState = {};
+    currentIndex = 0;
+    it1 = involvedStates1.second.begin();
+    it2 = involvedStates2.second.begin();
+    while (it1 != involvedStates1.second.end() ||
+           it2 != involvedStates2.second.end()) {
+      if (it2 == involvedStates2.second.end() ||
+          (it1 != involvedStates1.second.end() && *it1 < *it2)) {
+        mappingGlobalToLocalBitIndices.at(*it1) = currentIndex;
+        newStatesInSameSet.second.insert(*it1);
+        ++it1;
+      } else {
+        bitIndizesOfSecondState.push_back(currentIndex);
+        mappingGlobalToLocalBitIndices.at(*it2) = currentIndex;
+        newStatesInSameSet.second.insert(*it2);
+        ++it2;
+      }
+      currentIndex++;
+    }
+
+    indizesInSameState.erase(involvedStates1);
+    indizesInSameState.erase(involvedStates2);
+    indizesInSameState.insert(newStatesInSameSet);
+
+    // Create new State set
+    std::vector<HybridStateOrTop> newHybridStates;
+    bool encounteredTop = false;
+    for (HybridStateOrTop hs1 : firstStates) {
+      for (HybridStateOrTop hs2 : secondStates) {
+        if (hs1.isTop() || hs2.isTop()) {
+          encounteredTop = true;
+          break;
+        }
+        if (!encounteredTop) {
+          HybridState newHybridState = hs1.getHybridState()->unify(
+              *hs2.getHybridState(), qubitIndizesOfSecondState,
+              bitIndizesOfSecondState);
+          newHybridStates.push_back({HybridStateOrTop(
+              std::make_shared<HybridState>(newHybridState))});
+        }
+        hs2.getHybridState().reset();
+      }
+      hs1.getHybridState().reset();
+    }
+    if (encounteredTop) {
+      for (HybridStateOrTop hs : newHybridStates) {
+        hs.getHybridState().reset();
+      }
+      newHybridStates.clear();
+      newHybridStates.push_back({HybridStateOrTop(T)});
+    }
+
+    // Update pointers in hRegs
+    for (unsigned int qubitIndizes : newStatesInSameSet.first) {
+      hRegOfQubits.at(qubitIndizes) =
+          std::make_shared<std::vector<HybridStateOrTop>>(newHybridStates);
+    }
+    for (unsigned int bitIndizes : newStatesInSameSet.second) {
+      hRegOfBits.at(bitIndizes) =
+          std::make_shared<std::vector<HybridStateOrTop>>(newHybridStates);
+    }
+  }
+
+  /**
+   * @brief This method unifies hybrid states.
+   *
+   * This method unifies the hybrid states in the vectors targeted by
+   * involvedStates. Of any of the hybridStates are top, the result will be top.
+   *
+   * @param involvedStates The qubit and bit indizes of the states to be
+   * unified.
+   */
+  void unifyHybridStates(
+      std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+          involvedStates) {
+    std::vector<HybridStateOrTop> newState = {};
+    bool topFound = false;
+    for (const auto& [qubitIndizes, bitIndizes] : involvedStates) {
+      if (topFound) {
+        break;
+      }
+      if (newState.empty()) {
+        if (!qubitIndizes.empty()) {
+          newState = *hRegOfQubits.at(*qubitIndizes.begin());
+        } else {
+          newState = *hRegOfBits.at(*bitIndizes.begin());
+        }
+      } else {
+        std::vector<HybridStateOrTop> unifiedStates = {};
+        for (HybridStateOrTop const& hs1 : newState) {
+          std::vector<HybridStateOrTop> otherStates;
+          if (!qubitIndizes.empty()) {
+            otherStates = *hRegOfQubits.at(*qubitIndizes.begin());
+          } else {
+            otherStates = *hRegOfBits.at(*bitIndizes.begin());
+          }
+          for (HybridStateOrTop const& hs2 : otherStates) {
+            if (hs1.isTop() || hs2.isTop()) {
+              topFound = true;
+            } else {
+              // unify hs1, hs2
+            }
+          }
+        }
+      }
+    }
+
+    if (topFound) {
+      newState.push_back({HybridStateOrTop(T)});
+    }
+  }
 
 public:
   UnionTable(unsigned int maxNonzeroAmplitudes,
