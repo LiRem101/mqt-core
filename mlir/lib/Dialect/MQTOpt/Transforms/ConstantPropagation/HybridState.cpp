@@ -82,6 +82,14 @@ void HybridState::propagateGate(
     qState = QubitStateOrTop(T);
   }
 }
+unsigned int HybridState::addClassicalBit(bool value) {
+  if (bitValues.size() >= maxNumberOfBitValues) {
+    throw std::domain_error("Number of bits would exceed number of allowed "
+                            "bits. HybridState needs to be treated as TOP.");
+  }
+  bitValues.push_back(value);
+  return bitValues.size() - 1;
+}
 
 std::vector<HybridState>
 HybridState::propagateMeasurement(unsigned int quantumTarget,
@@ -91,9 +99,9 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
                             "to be treated as TOP.");
   }
 
-  if (bitValues.size() >= maxNumberOfBitValues) {
-    throw std::domain_error("Too many bit values to track. HybridState needs "
-                            "to be treated as TOP.");
+  if (classicalTarget >= bitValues.size()) {
+    throw std::invalid_argument(
+        "Bit to save measurement result in does not exist.");
   }
 
   std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
@@ -105,14 +113,12 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
     auto newQS = QubitStateOrTop(value.second);
     auto newHybrid = HybridState();
 
-    auto newBitValues = std::vector<bool>();
-    unsigned int addedSummand = 0;
-    for (unsigned int i = 0; i <= size(bitValues); i++) {
+    auto newBitValues = std::vector<bool>(bitValues.size());
+    for (unsigned int i = 0; i < size(bitValues); i++) {
       if (i == classicalTarget) {
-        newBitValues.push_back(resultBit == 1);
-        addedSummand--;
+        newBitValues[i] = resultBit == 1;
       } else {
-        newBitValues.push_back(bitValues.at(i + addedSummand));
+        newBitValues[i] = bitValues.at(i);
       }
     }
     newHybrid.probability = newProbability;

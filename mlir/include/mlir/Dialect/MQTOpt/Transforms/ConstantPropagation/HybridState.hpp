@@ -67,6 +67,17 @@ public:
                      std::vector<double> params = {});
 
   /**
+   * @brief This method adds a classical bit to the hybrid state and returns the
+   * bit's index.
+   *
+   * @param value The value the new bit gets.
+   * @throws domain_error If the number of bits would exceed the allowed number
+   * of bits.
+   * @return The index of the created bit.
+   */
+  unsigned int addClassicalBit(bool value = false);
+
+  /**
    * @brief This method applies a measurement.
    *
    * This method applies a measurement, changing the qubits and the classical
@@ -74,7 +85,9 @@ public:
    *
    * @param quantumTarget The index of the qubit to be measured.
    * @param classicalTarget The index of the bit to save the measurement result
-   * in.
+   * in. Has to be a valid classical bit in the hybrid state.
+   * @throws domain_error If the quantum state of the hybrid state is TOP.
+   * @throw invalid_argument If the bit is not a valid bit of the hybrid state.
    * @return One or two classical states corresponding to the measurement
    * outcomes.
    */

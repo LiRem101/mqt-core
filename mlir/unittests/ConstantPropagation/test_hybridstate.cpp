@@ -172,30 +172,33 @@ TEST_F(HybridStateTest, handleErrorIfTwoManyAmplitudesAreNonzero) {
 TEST_F(HybridStateTest, doMeasurementWithOneResult) {
   HybridState hState = HybridState(1, 2, 2, {false}, 0.4);
   hState.propagateGate(qc::X, {0});
-  std::vector<HybridState> const res = hState.propagateMeasurement(0, 0);
+  unsigned int bitIndex = hState.addClassicalBit();
+  std::vector<HybridState> const res = hState.propagateMeasurement(0, bitIndex);
 
-  EXPECT_TRUE(size(res) == 1);
+  EXPECT_EQ(bitIndex, 1);
+  EXPECT_EQ(size(res), 1);
   EXPECT_THAT(res.at(0).toString(),
-              testing::HasSubstr("{|1> -> 1.00}: 01, p = 0.40;"));
+              testing::HasSubstr("{|1> -> 1.00}: 10, p = 0.40;"));
 }
 
 TEST_F(HybridStateTest, doMeasurementWithTwoResults) {
   HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
   hState.propagateGate(qc::H, {0});
   hState.propagateGate(qc::X, {1}, {0});
+  hState.addClassicalBit(true);
   std::vector<HybridState> const res = hState.propagateMeasurement(0, 0);
 
   EXPECT_TRUE(size(res) == 2);
   std::string const resString = res.at(0).toString() + res.at(1).toString();
-  EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 00, p = 0.20;"));
-  EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 01, p = 0.20;"));
+  EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 10, p = 0.20;"));
+  EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 11, p = 0.20;"));
 }
 
-TEST_F(HybridStateTest, doMeasurementAndGetToTop) {
+TEST_F(HybridStateTest, addBitAndGetToTop) {
   HybridState hState = HybridState(2, 2, 1, {false}, 0.4);
   hState.propagateGate(qc::H, {0});
   hState.propagateGate(qc::X, {1}, {0});
-  EXPECT_THROW(hState.propagateMeasurement(0, 0);, std::domain_error);
+  EXPECT_THROW(hState.addClassicalBit();, std::domain_error);
 }
 
 TEST_F(HybridStateTest, doMeasurementOnTop) {
