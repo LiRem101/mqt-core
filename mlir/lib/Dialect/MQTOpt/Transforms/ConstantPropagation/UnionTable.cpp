@@ -141,7 +141,68 @@ void UnionTable::propagateGate(
 
 void UnionTable::propagateMeasurement(unsigned int quantumTarget,
                                       unsigned int classicalTarget) {
-  throw std::logic_error("Not implemented");
+
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+      involvedStates;
+  bool bitExists = false;
+  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
+           setsInSameState : indizesInSameState) {
+    std::set<unsigned int> qubitIndizes = setsInSameState.first;
+    std::set<unsigned int> bitIndizes = setsInSameState.second;
+    if (qubitIndizes.contains(quantumTarget) ||
+        bitIndizes.contains(classicalTarget)) {
+      involvedStates.insert(setsInSameState);
+      bitExists |= bitIndizes.contains(classicalTarget);
+    }
+  }
+  std::pair<std::set<unsigned int>, std::set<unsigned int>>
+      toChangedHybridStates = *involvedStates.begin();
+  if (involvedStates.size() > 1) {
+    toChangedHybridStates =
+        unifyHybridStates(*involvedStates.begin(), *++involvedStates.begin());
+  }
+  if (!bitExists && classicalTarget != hRegOfBits.size()) {
+    throw std::invalid_argument("New classical bit index needs to be equal to "
+                                "number of existing bits.");
+  }
+  std::vector<HybridStateOrTop> involvedHybridStates =
+      *hRegOfQubits.at(quantumTarget);
+  unsigned int localBitIndex = 0;
+  if (!bitExists) {
+    bool top = false;
+    for (HybridStateOrTop hs : involvedHybridStates) {
+      if (hs.isTop()) {
+        top = true;
+      } else {
+        try {
+          localBitIndex = hs.getHybridState()->addClassicalBit();
+        } catch (std::domain_error&) {
+          top = true;
+        }
+      }
+    }
+    mappingGlobalToLocalBitIndices.push_back(localBitIndex);
+    if (top) {
+      for (HybridStateOrTop hs : involvedHybridStates) {
+        if (hs.isHybridState()) {
+          hs.getHybridState().reset();
+        }
+      }
+      involvedHybridStates.clear();
+      involvedHybridStates.push_back({HybridStateOrTop(T)});
+    }
+
+    // TODO: Propagate measurement into the states in involvedHybridStates
+
+    for (unsigned int qubitIndizes : toChangedHybridStates.first) {
+      hRegOfQubits.at(qubitIndizes) =
+          std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates);
+    }
+    for (unsigned int bitIndizes : toChangedHybridStates.second) {
+      hRegOfBits.at(bitIndizes) =
+          std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates);
+    }
+  }
 }
 
 void UnionTable::propagateReset(unsigned int target) {

@@ -212,6 +212,8 @@ public:
    * @param quantumTarget The index of the qubit to be measured.
    * @param classicalTarget The index of the bit to save the measurement result
    * in.
+   * @throws invalid_argument if classicalTarget is given, but is not found in
+   * the existing bits and also not the next non-existing bit index.
    */
   void propagateMeasurement(unsigned int quantumTarget,
                             unsigned int classicalTarget);
