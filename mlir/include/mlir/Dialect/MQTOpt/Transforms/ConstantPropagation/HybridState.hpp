@@ -125,6 +125,35 @@ public:
                     std::vector<unsigned int> bitsOccupiedByThat);
 
   bool operator==(const HybridState& that) const;
+
+  [[nodiscard("HybridState::isQubitAlwaysOne called but ignored")]] bool
+  isQubitAlwaysOne(size_t q) const;
+
+  [[nodiscard("HybridState::isQubitAlwaysZero called but ignored")]] bool
+  isQubitAlwaysZero(size_t q) const;
+
+  [[nodiscard("HybridState::isBitAlwaysOne called but ignored")]] bool
+  isBitAlwaysOne(size_t q) const;
+
+  [[nodiscard("HybridState::isBitAlwaysZero called but ignored")]] bool
+  isBitAlwaysZero(size_t q) const;
+
+  /**
+   * @brief Returns whether the given qubits have for value always a zero
+   * amplitude.
+   *
+   * This method receives a number of qubit indices and checks whether they have
+   * for a given value always a zero amplitude. If the qubit values are top, it
+   * is not guaranteed that the amplitude is always zero and false is returned.
+   *
+   * @param qubits The qubits which are being checked.
+   * @param value The value for which is tested whether there is a nonzero
+   * amplitude.
+   * @returns True if the amplitude is always zero, false otherwise.
+   */
+  [[nodiscard("HybridState::hasAlwaysZeroAmplitude called but ignored")]] bool
+  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                         unsigned int value) const;
 };
 
 class HybridStateOrTop {
@@ -133,9 +162,9 @@ class HybridStateOrTop {
 public:
   HybridStateOrTop();
 
-  HybridStateOrTop(TOP top);
+  explicit HybridStateOrTop(TOP top);
 
-  HybridStateOrTop(std::shared_ptr<HybridState> hybridState);
+  explicit HybridStateOrTop(std::shared_ptr<HybridState> hybridState);
 
   HybridStateOrTop(const HybridStateOrTop& hybridStateOrTop);
 
@@ -165,6 +194,36 @@ public:
   toString() const;
 
   void print(std::ostream& os) const;
+
+  [[nodiscard("HybridStateOrTop::isQubitAlwaysOne called but ignored")]] bool
+  isQubitAlwaysOne(size_t q) const;
+
+  [[nodiscard("HybridStateOrTop::isQubitAlwaysZero called but ignored")]] bool
+  isQubitAlwaysZero(size_t q) const;
+
+  [[nodiscard("HybridStateOrTop::isBitAlwaysOne called but ignored")]] bool
+  isBitAlwaysOne(size_t q) const;
+
+  [[nodiscard("HybridStateOrTop::isBitAlwaysZero called but ignored")]] bool
+  isBitAlwaysZero(size_t q) const;
+
+  /**
+   * @brief Returns whether the given qubits have for value always a zero
+   * amplitude.
+   *
+   * This method receives a number of qubit indices and checks whether they have
+   * for a given value always a zero amplitude. If the qubit values are top, it
+   * is not guaranteed that the amplitude is always zero and false is returned.
+   *
+   * @param qubits The qubits which are being checked.
+   * @param value The value for which is tested whether there is a nonzero
+   * amplitude.
+   * @returns True if the amplitude is always zero, false otherwise.
+   */
+  [[nodiscard(
+      "HybridStateOrTop::hasAlwaysZeroAmplitude called but ignored")]] bool
+  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                         unsigned int value) const;
 };
 } // namespace mqt::ir::opt::qcp
 

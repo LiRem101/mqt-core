@@ -18,9 +18,11 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <cstdlib>
 #include <format>
 #include <map>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <variant>
 
@@ -150,7 +152,9 @@ void QubitState::propagateGate(qc::OpType gate,
 
   map.clear();
   for (const auto& [key, value] : newValues) {
-    map.insert({key, value});
+    if (norm(value) > 1e-4) {
+      map.insert({key, value});
+    }
   }
   if (map.size() > maxNonzeroAmplitudes) {
     throw std::domain_error("Number of nonzero amplitudes too high. State "
@@ -226,7 +230,41 @@ bool QubitState::operator==(const QubitState& that) const {
         auto [key, val] = p;
         return (that.map.contains(key)) && (abs(val - that.map.at(key)) < 1e-4);
       });
-};
+}
+
+bool QubitState::isQubitAlwaysOne(size_t q) const {
+  unsigned int mask = static_cast<unsigned int>(pow(2, q) + 0.1);
+  for (auto const& [qubits, _] : map) {
+    if ((qubits & mask) != mask) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool QubitState::isQubitAlwaysZero(size_t q) const {
+  unsigned int mask = static_cast<unsigned int>(pow(2, q) + 0.1);
+  for (auto const& [qubits, _] : map) {
+    if ((qubits & mask) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool QubitState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                                        unsigned int value) const {
+  unsigned int mask = 0;
+  for (unsigned int q : qubits) {
+    mask += static_cast<unsigned int>(pow(2, q) + 0.1);
+  }
+  for (auto const& [q, _] : map) {
+    if ((q & mask) == mask) {
+      return false;
+    }
+  }
+  return true;
+}
 
 QubitStateOrTop::QubitStateOrTop() : variant(TOP::T) {}
 
@@ -294,6 +332,28 @@ QubitStateOrTop::toString() const {
 }
 
 void QubitStateOrTop::print(std::ostream& os) const { os << this->toString(); }
+
+bool QubitStateOrTop::isQubitAlwaysOne(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getQubitState()->isQubitAlwaysOne(q);
+}
+
+bool QubitStateOrTop::isQubitAlwaysZero(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getQubitState()->isQubitAlwaysZero(q);
+}
+
+bool QubitStateOrTop::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                                             unsigned int value) const {
+  if (isTop()) {
+    return false;
+  }
+  return getQubitState()->hasAlwaysZeroAmplitude(qubits, value);
+}
 } // namespace mqt::ir::opt::qcp
 
 #endif // MQT_CORE_QUBITSTATE

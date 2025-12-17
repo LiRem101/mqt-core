@@ -269,19 +269,39 @@ unsigned int UnionTable::propagateBitDef(bool value) {
 }
 
 bool UnionTable::isQubitAlwaysOne(size_t q) {
-  throw std::logic_error("Not implemented");
+  for (HybridStateOrTop hs : *hRegOfQubits.at(q)) {
+    if (!hs.isQubitAlwaysOne(mappingGlobalToLocalQubitIndices.at(q))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool UnionTable::isQubitAlwaysZero(size_t q) {
-  throw std::logic_error("Not implemented");
+  for (HybridStateOrTop hs : *hRegOfQubits.at(q)) {
+    if (!hs.isQubitAlwaysZero(mappingGlobalToLocalQubitIndices.at(q))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool UnionTable::isBitAlwaysOne(size_t q) {
-  throw std::logic_error("Not implemented");
+  for (HybridStateOrTop hs : *hRegOfBits.at(q)) {
+    if (!hs.isBitAlwaysOne(mappingGlobalToLocalBitIndices.at(q))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool UnionTable::isBitAlwaysZero(size_t q) {
-  throw std::logic_error("Not implemented");
+  for (HybridStateOrTop hs : *hRegOfBits.at(q)) {
+    if (!hs.isBitAlwaysZero(mappingGlobalToLocalBitIndices.at(q))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }

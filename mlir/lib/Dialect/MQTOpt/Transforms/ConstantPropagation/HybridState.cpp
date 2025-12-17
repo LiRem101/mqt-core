@@ -124,6 +124,7 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
     newHybrid.probability = newProbability;
     newHybrid.qState = newQS;
     newHybrid.bitValues = newBitValues;
+    newHybrid.maxNumberOfBitValues = maxNumberOfBitValues;
 
     results.push_back(newHybrid);
   }
@@ -187,6 +188,23 @@ bool HybridState::operator==(const HybridState& that) const {
   }
 
   return this->qState == that.qState;
+}
+
+bool HybridState::isQubitAlwaysOne(size_t q) const {
+  return qState.isQubitAlwaysOne(q);
+}
+
+bool HybridState::isQubitAlwaysZero(size_t q) const {
+  return qState.isQubitAlwaysZero(q);
+}
+
+bool HybridState::isBitAlwaysOne(size_t q) const { return bitValues.at(q); }
+
+bool HybridState::isBitAlwaysZero(size_t q) const { return !bitValues.at(q); }
+
+bool HybridState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                                         unsigned int value) const {
+  return qState.hasAlwaysZeroAmplitude(qubits, value);
 }
 
 HybridStateOrTop::HybridStateOrTop() : variant(TOP::T) {}
@@ -254,6 +272,43 @@ HybridStateOrTop::toString() const {
 }
 
 void HybridStateOrTop::print(std::ostream& os) const { os << this->toString(); }
+
+bool HybridStateOrTop::isQubitAlwaysOne(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getHybridState()->isQubitAlwaysOne(q);
+}
+
+bool HybridStateOrTop::isQubitAlwaysZero(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getHybridState()->isQubitAlwaysZero(q);
+}
+
+bool HybridStateOrTop::isBitAlwaysOne(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getHybridState()->isBitAlwaysOne(q);
+}
+
+bool HybridStateOrTop::isBitAlwaysZero(size_t q) const {
+  if (isTop()) {
+    return false;
+  }
+  return getHybridState()->isBitAlwaysZero(q);
+}
+
+bool HybridStateOrTop::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+                                              unsigned int value) const {
+  if (isTop()) {
+    return false;
+  }
+  return getHybridState()->hasAlwaysZeroAmplitude(qubits, value);
+}
+
 } // namespace mqt::ir::opt::qcp
 
 #endif // MQT_CORE_HYBRIDSTATE
