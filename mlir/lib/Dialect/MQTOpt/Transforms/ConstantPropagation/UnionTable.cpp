@@ -43,7 +43,7 @@ std::string UnionTable::toString() const {
     for (HybridStateOrTop const& hs :
          *(hRegOfQubits.at(*qubitIndices.begin()))) {
       if (!first) {
-        result += ", ";
+        result += " ";
       }
       first = false;
       result += hs.toString();
@@ -156,10 +156,13 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
     }
   }
   std::pair<std::set<unsigned int>, std::set<unsigned int>>
-      toChangedHybridStates = *involvedStates.begin();
+      involvedStateIndizes = *involvedStates.begin();
+  indizesInSameState.erase(*involvedStates.begin());
   if (involvedStates.size() > 1) {
-    toChangedHybridStates =
+    indizesInSameState.erase(*++involvedStates.begin());
+    involvedStateIndizes =
         unifyHybridStates(*involvedStates.begin(), *++involvedStates.begin());
+    indizesInSameState.insert(involvedStateIndizes);
   }
   if (!bitExists && classicalTarget != hRegOfBits.size()) {
     throw std::invalid_argument("New classical bit index needs to be equal to "
@@ -167,10 +170,12 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
   }
   std::vector<HybridStateOrTop> involvedHybridStates =
       *hRegOfQubits.at(quantumTarget);
-  unsigned int localBitIndex = 0;
   if (!bitExists) {
+    involvedStateIndizes.second.insert(mappingGlobalToLocalBitIndices.size());
+    indizesInSameState.insert(involvedStateIndizes);
     bool top = false;
-    for (HybridStateOrTop hs : involvedHybridStates) {
+    unsigned int localBitIndex = 0;
+    for (HybridStateOrTop const& hs : involvedHybridStates) {
       if (hs.isTop()) {
         top = true;
       } else {
@@ -183,7 +188,7 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
     }
     mappingGlobalToLocalBitIndices.push_back(localBitIndex);
     if (top) {
-      for (HybridStateOrTop hs : involvedHybridStates) {
+      for (HybridStateOrTop const& hs : involvedHybridStates) {
         if (hs.isHybridState()) {
           hs.getHybridState().reset();
         }
@@ -191,17 +196,49 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
       involvedHybridStates.clear();
       involvedHybridStates.push_back({HybridStateOrTop(T)});
     }
+    hRegOfBits.push_back(
+        std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates));
+  }
 
-    // TODO: Propagate measurement into the states in involvedHybridStates
+  // Propagate measurement into the states in involvedHybridStates
+  std::vector<HybridStateOrTop> newHybridStatesOrTops;
+  bool top = false;
+  for (HybridStateOrTop const& hs :
+       *hRegOfQubits.at(*involvedStateIndizes.first.begin())) {
+    if (hs.isHybridState()) {
+      try {
+        std::vector<HybridState> newHybridState =
+            hs.getHybridState()->propagateMeasurement(
+                quantumTarget,
+                mappingGlobalToLocalBitIndices.at(classicalTarget));
+        for (HybridState const& newState : newHybridState) {
+          newHybridStatesOrTops.push_back(
+              HybridStateOrTop(std::make_shared<HybridState>(newState)));
+        }
+      } catch (std::domain_error&) {
+        top = true;
+      }
+    } else {
+      top = true;
+    }
+  }
+  if (top) {
+    for (HybridStateOrTop const& hs : newHybridStatesOrTops) {
+      if (hs.isHybridState()) {
+        hs.getHybridState().reset();
+      }
+    }
+    newHybridStatesOrTops.clear();
+    newHybridStatesOrTops.push_back({HybridStateOrTop(T)});
+  }
 
-    for (unsigned int qubitIndizes : toChangedHybridStates.first) {
-      hRegOfQubits.at(qubitIndizes) =
-          std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates);
-    }
-    for (unsigned int bitIndizes : toChangedHybridStates.second) {
-      hRegOfBits.at(bitIndizes) =
-          std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates);
-    }
+  for (unsigned int const qubitIndizes : involvedStateIndizes.first) {
+    hRegOfQubits.at(qubitIndizes) =
+        std::make_shared<std::vector<HybridStateOrTop>>(newHybridStatesOrTops);
+  }
+  for (unsigned int const bitIndizes : involvedStateIndizes.second) {
+    hRegOfBits.at(bitIndizes) =
+        std::make_shared<std::vector<HybridStateOrTop>>(newHybridStatesOrTops);
   }
 }
 

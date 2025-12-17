@@ -242,8 +242,8 @@ TEST_F(UnionTableTest, doMeasurementWithOneResult) {
   ut.propagateMeasurement(0, 0);
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 0, Bits: 0, HybridStates: {{|0> "
-                                 "-> 1.00}: 0, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 0, Bits: 0, HybridStates: {{|1> "
+                                 "-> 1.00}: 1, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, doMeasurementWithTwoResults) {
