@@ -17,20 +17,6 @@
 
 using namespace mqt::ir::opt::qcp;
 
-class UnionTableTest : public ::testing::Test {
-protected:
-  UnionTable ut = UnionTable(4, 4);
-
-  void SetUp() override {
-    ut.propagateQubitAlloc();
-    ut.propagateQubitAlloc();
-    ut.propagateQubitAlloc();
-    ut.propagateQubitAlloc();
-  }
-
-  void TearDown() override {}
-};
-
 // ##################################################
 // # Helper functions
 // ##################################################
@@ -93,6 +79,20 @@ TEST(SimpleUnionTableTest, unifyTooLargeHybridStates) {
               testing::HasSubstr(
                   "Qubits: 2, HybridStates: {{|0> -> 1.00}: p = 1.00;}"));
 }
+
+class UnionTableTest : public ::testing::Test {
+protected:
+  UnionTable ut = UnionTable(4, 4);
+
+  void SetUp() override {
+    ut.propagateQubitAlloc();
+    ut.propagateQubitAlloc();
+    ut.propagateQubitAlloc();
+    ut.propagateQubitAlloc();
+  }
+
+  void TearDown() override {}
+};
 
 TEST_F(UnionTableTest, ApplyHGate) {
   ut.propagateGate(qc::H, {0});
@@ -349,15 +349,15 @@ TEST_F(UnionTablePropertiesTest, testHasAlwaysZeroAmplitude) {
   ut.propagateGate(qc::X, {1}, {0});
   ut.propagateMeasurement(1, 0);
   ut.propagateGate(qc::H, {0}, {}, {}, {0});
-  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 0));
-  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 1));
-  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 3));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 0));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 2));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 3));
   EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 4));
   EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 5));
   EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 6));
   EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 7));
-  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1}, 2));
-  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 2));
+  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1}, 1));
+  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 1));
 }
 
 class SmallUnionTableTest : public ::testing::Test {

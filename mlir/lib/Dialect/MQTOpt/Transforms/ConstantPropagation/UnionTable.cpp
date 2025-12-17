@@ -323,6 +323,32 @@ bool UnionTable::allTop() {
 
 bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                                         unsigned int value) {
-  throw std::logic_error("Not implemented");
+  for (const auto& [qubitIndizes, _] : indizesInSameState) {
+    std::vector<unsigned int> qubitsInThisState = {};
+    unsigned int localValueForQubitsInThisState = 0;
+    unsigned int includedQubitIndex;
+    for (unsigned int i = 0; i < qubits.size(); ++i) {
+      if (qubitIndizes.contains(qubits.at(i))) {
+        unsigned int localQubitIndex =
+            mappingGlobalToLocalQubitIndices.at(qubits.at(i));
+        qubitsInThisState.push_back(localQubitIndex);
+        includedQubitIndex = qubits.at(i);
+        unsigned int mask = static_cast<unsigned int>(pow(2, i) + 0.1);
+        if ((value & mask) == mask) {
+          localValueForQubitsInThisState +=
+              static_cast<unsigned int>(pow(2, localQubitIndex) + 0.1);
+        }
+      }
+    }
+    if (!qubitsInThisState.empty()) {
+      for (HybridStateOrTop hs : *hRegOfQubits.at(includedQubitIndex)) {
+        if (!hs.hasAlwaysZeroAmplitude(qubitsInThisState,
+                                       localValueForQubitsInThisState)) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
 }
 } // namespace mqt::ir::opt::qcp
