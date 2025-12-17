@@ -304,7 +304,22 @@ bool UnionTable::isBitAlwaysZero(size_t q) {
   return true;
 }
 
-bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }
+bool UnionTable::allTop() {
+  for (const auto& [qubitIndizes, bitIndizes] : indizesInSameState) {
+    std::vector<HybridStateOrTop> states;
+    if (!qubitIndizes.empty()) {
+      states = *hRegOfQubits.at(*qubitIndizes.begin());
+    } else {
+      states = *hRegOfBits.at(*bitIndizes.begin());
+    }
+    for (HybridStateOrTop hs : states) {
+      if (hs.isHybridState()) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                                         unsigned int value) {
