@@ -258,6 +258,108 @@ TEST_F(UnionTableTest, doMeasurementWithTwoResults) {
                   "-> 1.00}: 0, p = 0.50; {|11> -> 1.00}: 1, p = 0.50;}"));
 }
 
+class UnionTablePropertiesTest : public ::testing::Test {
+protected:
+  UnionTable ut = UnionTable(3, 2);
+
+  void SetUp() override {
+    ut.propagateQubitAlloc();
+    ut.propagateQubitAlloc();
+    ut.propagateQubitAlloc();
+  }
+
+  void TearDown() override {}
+};
+
+TEST_F(UnionTablePropertiesTest, alwaysZeroOneAreFalse) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::X, {2}, {1});
+  ut.propagateGate(qc::X, {0});
+  ut.propagateMeasurement(1, 0);
+  ut.propagateGate(qc::H, {0}, {}, {}, {0});
+
+  EXPECT_FALSE(ut.isQubitAlwaysZero(2));
+  EXPECT_FALSE(ut.isQubitAlwaysOne(0));
+}
+
+TEST_F(UnionTablePropertiesTest, alwaysZeroIsTrue) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::X, {2}, {1});
+  ut.propagateGate(qc::X, {0});
+  ut.propagateMeasurement(1, 0);
+  ut.propagateGate(qc::X, {2}, {}, {}, {0});
+  ut.propagateGate(qc::H, {0}, {}, {}, {0});
+
+  EXPECT_TRUE(ut.isQubitAlwaysZero(2));
+}
+
+TEST_F(UnionTablePropertiesTest, alwaysOneIsTrue) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::X, {2}, {1});
+  ut.propagateGate(qc::X, {0});
+  ut.propagateMeasurement(2, 0);
+  ut.propagateGate(qc::H, {0}, {}, {}, {0});
+  ut.propagateGate(qc::Z, {0}, {1, 2});
+  ut.propagateGate(qc::H, {0}, {}, {}, {0});
+
+  EXPECT_TRUE(ut.isQubitAlwaysOne(0));
+}
+
+TEST_F(UnionTablePropertiesTest, bitAlwaysZeroIsTrueOneIsFalse) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateMeasurement(0, 0);
+  ut.propagateGate(qc::X, {1}, {}, {}, {0});
+  ut.propagateMeasurement(1, 1);
+
+  EXPECT_FALSE(ut.isBitAlwaysOne(0));
+  EXPECT_TRUE(ut.isBitAlwaysZero(1));
+}
+
+TEST_F(UnionTablePropertiesTest, bitAlwaysZeroIsFalseOneIsTrue) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateMeasurement(0, 0);
+  ut.propagateGate(qc::X, {1}, {}, {}, {}, {0});
+  ut.propagateMeasurement(1, 1);
+
+  EXPECT_TRUE(ut.isBitAlwaysOne(1));
+  EXPECT_FALSE(ut.isBitAlwaysZero(0));
+}
+
+TEST_F(UnionTablePropertiesTest, testAllTop) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::X, {2}, {1});
+  ut.propagateMeasurement(2, 0);
+  ut.propagateGate(qc::H, {0});
+  EXPECT_FALSE(ut.allTop());
+  ut.propagateGate(qc::H, {1});
+  EXPECT_FALSE(ut.allTop());
+  ut.propagateMeasurement(0, 1);
+  EXPECT_TRUE(ut.allTop());
+}
+
+TEST_F(UnionTablePropertiesTest, testHasAlwaysZeroAmplitude) {
+  ut.propagateGate(qc::X, {2});
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateMeasurement(1, 0);
+  ut.propagateGate(qc::H, {0}, {}, {}, {0});
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 0));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 1));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1}, 3));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 4));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 5));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 6));
+  EXPECT_FALSE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 7));
+  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1}, 2));
+  EXPECT_TRUE(ut.hasAlwaysZeroAmplitude({0, 1, 2}, 2));
+}
+
 class SmallUnionTableTest : public ::testing::Test {
 protected:
   UnionTable ut = UnionTable(2, 2);
