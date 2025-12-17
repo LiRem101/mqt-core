@@ -53,13 +53,6 @@ std::string UnionTable::toString() const {
   return result;
 }
 
-void UnionTable::unify(std::vector<unsigned int> qubits,
-                       std::vector<unsigned int> bits) {
-  throw std::logic_error("Not implemented");
-}
-
-bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }
-
 void UnionTable::propagateGate(
     qc::OpType gate, std::vector<unsigned int> targets,
     std::vector<unsigned int> posCtrlsQuantum,
@@ -290,6 +283,8 @@ bool UnionTable::isBitAlwaysOne(size_t q) {
 bool UnionTable::isBitAlwaysZero(size_t q) {
   throw std::logic_error("Not implemented");
 }
+
+bool UnionTable::allTop() { throw std::logic_error("Not implemented"); }
 
 bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                                         unsigned int value) {

@@ -173,17 +173,6 @@ public:
   [[nodiscard("UnionTable::toString called but ignored")]] std::string
   toString() const;
 
-  /**
-   * @brief This method unifies hybrid states.
-   *
-   * This method unifies the hybrid states that consit of the given bits and
-   * qubits.
-   *
-   * @param qubits The qubits that should be unified.
-   * @param bits The bits that should be unified.
-   */
-  void unify(std::vector<unsigned int> qubits, std::vector<unsigned int> bits);
-
   bool allTop();
 
   /**
