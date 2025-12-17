@@ -62,7 +62,7 @@ TEST(SimpleUnionTableTest, doMeasurementAndGetToTop) {
   ut.propagateMeasurement(0, 0);
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 1, HybridStates: {TOP}"));
+              testing::HasSubstr("Qubits: 0, Bits: 0, HybridStates: {TOP}"));
 }
 
 TEST(SimpleUnionTableTest, doMeasurementOnTop) {
@@ -75,11 +75,12 @@ TEST(SimpleUnionTableTest, doMeasurementOnTop) {
   ut.propagateMeasurement(0, 0);
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 10, HybridStates: {TOP}"));
+              testing::HasSubstr("Qubits: 10, Bits: 0, HybridStates: {TOP}"));
 }
 
 TEST(SimpleUnionTableTest, unifyTooLargeHybridStates) {
   UnionTable ut = UnionTable(4, 0);
+  ut.propagateQubitAlloc();
   ut.propagateQubitAlloc();
   ut.propagateQubitAlloc();
   ut.propagateGate(qc::H, {0});
@@ -87,7 +88,7 @@ TEST(SimpleUnionTableTest, unifyTooLargeHybridStates) {
   ut.propagateGate(qc::X, {1}, {0});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 10, HybridStates: {TOP}"));
+              testing::HasSubstr("Qubits: 10, Bits: 0, HybridStates: {TOP}"));
   EXPECT_THAT(ut.toString(),
               testing::HasSubstr(
                   "Qubits: 2, HybridStates: {{|0> -> 1.00}: p = 1.00;}"));

@@ -135,9 +135,13 @@ class UnionTable {
           newHybridStates.push_back({HybridStateOrTop(
               std::make_shared<HybridState>(newHybridState))});
         }
-        hs2.getHybridState().reset();
+        if (hs2.isHybridState()) {
+          hs2.getHybridState().reset();
+        }
       }
-      hs1.getHybridState().reset();
+      if (hs1.isHybridState()) {
+        hs1.getHybridState().reset();
+      }
     }
     if (encounteredTop) {
       for (HybridStateOrTop hs : newHybridStates) {

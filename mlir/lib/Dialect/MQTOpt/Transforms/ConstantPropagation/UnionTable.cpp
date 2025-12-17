@@ -93,7 +93,7 @@ void UnionTable::propagateGate(
     auto nextStateIt = ++involvedStates.begin();
     while (nextStateIt != involvedStates.end()) {
       currentStates = unifyHybridStates(currentStates, *nextStateIt);
-      nextStateIt++;
+      ++nextStateIt;
     }
   }
 
@@ -170,10 +170,10 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
   }
   std::vector<HybridStateOrTop> involvedHybridStates =
       *hRegOfQubits.at(quantumTarget);
+  bool top = false;
   if (!bitExists) {
     involvedStateIndizes.second.insert(mappingGlobalToLocalBitIndices.size());
     indizesInSameState.insert(involvedStateIndizes);
-    bool top = false;
     unsigned int localBitIndex = 0;
     for (HybridStateOrTop const& hs : involvedHybridStates) {
       if (hs.isTop()) {
@@ -181,7 +181,7 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
       } else {
         try {
           localBitIndex = hs.getHybridState()->addClassicalBit();
-        } catch (std::domain_error&) {
+        } catch (std::domain_error const&) {
           top = true;
         }
       }
@@ -202,10 +202,9 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
 
   // Propagate measurement into the states in involvedHybridStates
   std::vector<HybridStateOrTop> newHybridStatesOrTops;
-  bool top = false;
   for (HybridStateOrTop const& hs :
        *hRegOfQubits.at(*involvedStateIndizes.first.begin())) {
-    if (hs.isHybridState()) {
+    if (!top && hs.isHybridState()) {
       try {
         std::vector<HybridState> newHybridState =
             hs.getHybridState()->propagateMeasurement(
@@ -215,7 +214,7 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
           newHybridStatesOrTops.push_back(
               HybridStateOrTop(std::make_shared<HybridState>(newState)));
         }
-      } catch (std::domain_error&) {
+      } catch (std::domain_error const&) {
         top = true;
       }
     } else {
