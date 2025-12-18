@@ -74,7 +74,7 @@ TEST(SimpleUnionTableTest, doResetOnTop) {
   ut.propagateReset(0);
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 10, Bits: 0, HybridStates: {TOP}"));
+              testing::HasSubstr("Qubits: 10, HybridStates: {TOP}"));
 }
 
 TEST(SimpleUnionTableTest, unifyTooLargeHybridStates) {
@@ -277,7 +277,7 @@ TEST_F(UnionTableTest, doResetWithOneResult) {
 
   EXPECT_THAT(ut.toString(),
               testing::HasSubstr("Qubits: 0, HybridStates: {{|0> "
-                                 "-> 1.00}: 1, p = 1.00;}"));
+                                 "-> 1.00}: p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, doResetWithTwoResults) {
@@ -285,10 +285,10 @@ TEST_F(UnionTableTest, doResetWithTwoResults) {
   ut.propagateGate(qc::X, {1}, {0});
   ut.propagateReset(0);
 
-  EXPECT_THAT(ut.toString(),
-              testing::HasSubstr(
-                  "Qubits: 10, HybridStates: {{|00> "
-                  "-> 1.00}: 0, p = 0.50; {|10> -> 1.00}: 1, p = 0.50;}"));
+  EXPECT_THAT(
+      ut.toString(),
+      testing::HasSubstr("Qubits: 10, HybridStates: {{|10> "
+                         "-> 1.00}: p = 0.50; {|00> -> 1.00}: p = 0.50;}"));
 }
 
 class UnionTablePropertiesTest : public ::testing::Test {

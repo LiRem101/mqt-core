@@ -235,7 +235,54 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
 }
 
 void UnionTable::propagateReset(unsigned int target) {
-  throw std::logic_error("Not implemented");
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedIndizes;
+
+  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
+           setsInSameState : indizesInSameState) {
+    std::set<unsigned int> qubitIndizes = setsInSameState.first;
+    if (qubitIndizes.contains(target)) {
+      involvedIndizes = setsInSameState;
+      break;
+    }
+  }
+  bool top = false;
+
+  // Propagate reset into the states in involvedHybridStates
+  std::vector<HybridStateOrTop> newHybridStatesOrTops;
+  for (HybridStateOrTop const& hs : *hRegOfQubits.at(target)) {
+    if (!top && hs.isHybridState()) {
+      try {
+        std::vector<HybridState> newHybridState =
+            hs.getHybridState()->propagateReset(target);
+        for (HybridState const& newState : newHybridState) {
+          newHybridStatesOrTops.push_back(
+              HybridStateOrTop(std::make_shared<HybridState>(newState)));
+        }
+      } catch (std::domain_error const&) {
+        top = true;
+      }
+    } else {
+      top = true;
+    }
+  }
+  if (top) {
+    for (HybridStateOrTop const& hs : newHybridStatesOrTops) {
+      if (hs.isHybridState()) {
+        hs.getHybridState().reset();
+      }
+    }
+    newHybridStatesOrTops.clear();
+    newHybridStatesOrTops.push_back({HybridStateOrTop(T)});
+  }
+
+  for (unsigned int const qubitIndizes : involvedIndizes.first) {
+    hRegOfQubits.at(qubitIndizes) =
+        std::make_shared<std::vector<HybridStateOrTop>>(newHybridStatesOrTops);
+  }
+  for (unsigned int const bitIndizes : involvedIndizes.second) {
+    hRegOfBits.at(bitIndizes) =
+        std::make_shared<std::vector<HybridStateOrTop>>(newHybridStatesOrTops);
+  }
 }
 
 unsigned int UnionTable::propagateQubitAlloc() {
