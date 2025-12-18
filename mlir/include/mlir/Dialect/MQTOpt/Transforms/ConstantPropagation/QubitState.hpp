@@ -17,6 +17,7 @@
 #include <ir/operations/OpType.hpp>
 #include <map>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -245,6 +246,23 @@ public:
    */
   std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>>
   measureQubit(unsigned int target);
+
+  /**
+   * @brief This method resets a qubit.
+   *
+   * This method resets a qubit. This is done by assuming that a measurement is
+   * applied and measurements in the one-state are set to the zero state. In
+   * order to not get a mixed state, the method returns one to two QubitStates,
+   * one in case the measurement was 0 and one in case it was 1, alongside the
+   * respective probabilities. In both cases, the target qubit will be zero (as
+   * a reset is performed).
+   *
+   * @param target The index of the qubit to be measured.
+   * @return A set of one to two QubitStates and their corresponding
+   * probabilities.
+   */
+  std::set<std::pair<double, std::shared_ptr<QubitState>>>
+  resetQubit(unsigned int target);
 
   /**
    * @brief This method removes a qubit from the state.

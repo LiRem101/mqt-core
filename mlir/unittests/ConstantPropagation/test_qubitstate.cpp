@@ -191,8 +191,7 @@ TEST_F(QubitStateTest, doMeasurementWithZeroResult) {
 
   EXPECT_TRUE(size(res) == 1);
   auto value = res.at(0);
-  auto a = *(value.second.get());
-  EXPECT_TRUE(qState == a);
+  EXPECT_TRUE(qState == *value.second.get());
   EXPECT_DOUBLE_EQ(value.first, 1);
 }
 
@@ -204,8 +203,7 @@ TEST_F(QubitStateTest, doMeasurementWithOneResult) {
 
   EXPECT_TRUE(size(res) == 1);
   auto value = res.at(1);
-  auto a = *(value.second.get());
-  EXPECT_TRUE(qState == a);
+  EXPECT_TRUE(qState == *value.second.get());
   EXPECT_DOUBLE_EQ(value.first, 1);
 }
 
@@ -228,6 +226,53 @@ TEST_F(QubitStateTest, doMeasurementWithTwoResults) {
   auto valueOne = res.at(1);
   EXPECT_TRUE(oneReference == *(valueOne.second));
   EXPECT_DOUBLE_EQ(valueOne.first, 0.5);
+}
+
+TEST_F(QubitStateTest, doResetWithOnlyZeros) {
+  QubitState qState = QubitState(1, 2);
+  std::set<std::pair<double, std::shared_ptr<QubitState>>> const res =
+      qState.resetQubit(0);
+
+  EXPECT_TRUE(size(res) == 1);
+  auto value = *res.begin();
+  EXPECT_TRUE(qState == *value.second.get());
+  EXPECT_DOUBLE_EQ(value.first, 1);
+}
+
+TEST_F(QubitStateTest, doResetWithOnlyOnes) {
+  QubitState qState = QubitState(1, 2);
+  qState.propagateGate(qc::X, {0});
+  std::set<std::pair<double, std::shared_ptr<QubitState>>> const res =
+      qState.resetQubit(0);
+
+  EXPECT_TRUE(size(res) == 1);
+  auto value = *res.begin();
+  EXPECT_TRUE(qState == *value.second.get());
+  EXPECT_DOUBLE_EQ(value.first, 1);
+}
+
+TEST_F(QubitStateTest, doResetWithZerosAndOnes) {
+  QubitState qState = QubitState(2, 2);
+  qState.propagateGate(qc::H, {0});
+  qState.propagateGate(qc::X, {1}, {0});
+  std::set<std::pair<double, std::shared_ptr<QubitState>>> const res =
+      qState.resetQubit(0);
+
+  QubitState const zeroReference = QubitState(0, 2);
+  QubitState oneReference = QubitState(0, 2);
+  oneReference.propagateGate(qc::X, {1});
+  oneReference.propagateGate(qc::X, {0});
+
+  EXPECT_TRUE(size(res) == 2);
+  auto valueA = *res.begin();
+  auto valueB = *++res.begin();
+  EXPECT_DOUBLE_EQ(valueB.first, 0.5);
+  EXPECT_DOUBLE_EQ(valueA.first, 0.5);
+  std::vector<QubitState> resultStates = {*valueA.second, *valueB.second};
+  EXPECT_TRUE(resultStates.at(0) == oneReference ||
+              resultStates.at(1) == oneReference);
+  EXPECT_TRUE(resultStates.at(0) == zeroReference ||
+              resultStates.at(1) == zeroReference);
 }
 
 TEST_F(QubitStateTest, unifyTwoQubitStates) {

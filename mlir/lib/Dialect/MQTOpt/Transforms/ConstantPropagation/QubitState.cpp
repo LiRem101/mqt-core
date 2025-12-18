@@ -207,6 +207,11 @@ QubitState::measureQubit(unsigned int target) {
   }
 }
 
+std::set<std::pair<double, std::shared_ptr<QubitState>>>
+QubitState::resetQubit(unsigned int target) {
+  throw std::logic_error("Not implemented");
+}
+
 void QubitState::removeQubit(unsigned int target) {
   throw std::logic_error("Not implemented");
 }
