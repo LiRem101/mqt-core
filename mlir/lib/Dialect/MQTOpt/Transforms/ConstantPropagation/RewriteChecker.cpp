@@ -34,15 +34,16 @@ std::optional<unsigned int> RewriteChecker::getEquivalentBit(unsigned int q) {
 }
 
 std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-RewriteChecker::getImplingQubit(unsigned int q,
-                                std::vector<unsigned int> qubits,
+RewriteChecker::getAntecedentsOfQubit(unsigned int q,
+                                      std::vector<unsigned int> qubits,
                                 std::vector<unsigned int> bits) {
   throw std::logic_error("Not implemented");
 }
 
 std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-RewriteChecker::getImplingBit(unsigned int b, std::vector<unsigned int> qubits,
-                              std::vector<unsigned int> bits) {
+RewriteChecker::getAntecedentsOfBit(unsigned int b,
+                                    std::vector<unsigned int> qubits,
+                                    std::vector<unsigned int> bits) {
   throw std::logic_error("Not implemented");
 }
 

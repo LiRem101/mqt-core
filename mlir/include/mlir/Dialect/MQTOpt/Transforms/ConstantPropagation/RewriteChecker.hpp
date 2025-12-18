@@ -69,33 +69,33 @@ public:
    * @brief Returns the qubits and bits that imply the given qubit.
    *
    * This method checks whether in the given vectors are qubits or bit that
-   * imply the given qubit. I.e. all qubits and bits a are returned for which
-   * holds: a -> q.
+   * imply (are antecedents of) the given qubit. I.e. all qubits and bits a are
+   * returned for which holds: a -> q.
    *
    * @param q The qubit for which is checked whether it is implied.
    * @param qubits The qubits for which are checked if they imply q.
    * @param bits The bits for which are checked if they imply q.
-   * @returns A pair of 1. implying qubits and 2. implying bits of q.
+   * @returns A pair of 1. qubits and 2. bits that are antecedents of q.
    */
   std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-  getImplingQubit(unsigned int q, std::vector<unsigned int> qubits,
-                  std::vector<unsigned int> bits);
+  getAntecedentsOfQubit(unsigned int q, std::vector<unsigned int> qubits,
+                        std::vector<unsigned int> bits);
 
   /**
    * @brief Returns the qubits and bits that imply the given bit.
    *
    * This method checks whether in the given vectors are qubits or bit that
-   * imply the given bit. I.e. all qubits and bits a are returned for which
-   * holds: a -> b.
+   * imply (are antecedents of) the given bit. I.e. all qubits and bits a are
+   * returned for which holds: a -> b.
    *
    * @param b The qubit for which is checked whether it is implied.
    * @param qubits The qubits for which are checked if they imply b.
    * @param bits The bits for which are checked if they imply b.
-   * @returns A pair of 1. implying qubits and 2. implying bits of b.
+   * @returns A pair of 1. qubits and 2. bits that are antecedents of b.
    */
   std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-  getImplingBit(unsigned int b, std::vector<unsigned int> qubits,
-                std::vector<unsigned int> bits);
+  getAntecedentsOfBit(unsigned int b, std::vector<unsigned int> qubits,
+                      std::vector<unsigned int> bits);
 
   /**
    * @brief Returns true if only the values of one given set of teh qubits is
