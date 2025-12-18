@@ -64,6 +64,19 @@ TEST(SimpleUnionTableTest, doMeasurementOnTop) {
               testing::HasSubstr("Qubits: 10, Bits: 0, HybridStates: {TOP}"));
 }
 
+TEST(SimpleUnionTableTest, doResetOnTop) {
+  UnionTable ut = UnionTable(2, 1);
+  ut.propagateQubitAlloc();
+  ut.propagateQubitAlloc();
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::H, {1}); // qState enters TOP
+  ut.propagateReset(0);
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr("Qubits: 10, Bits: 0, HybridStates: {TOP}"));
+}
+
 TEST(SimpleUnionTableTest, unifyTooLargeHybridStates) {
   UnionTable ut = UnionTable(4, 0);
   ut.propagateQubitAlloc();
@@ -256,6 +269,26 @@ TEST_F(UnionTableTest, doMeasurementWithTwoResults) {
               testing::HasSubstr(
                   "Qubits: 10, Bits: 0, HybridStates: {{|00> "
                   "-> 1.00}: 0, p = 0.50; {|11> -> 1.00}: 1, p = 0.50;}"));
+}
+
+TEST_F(UnionTableTest, doResetWithOneResult) {
+  ut.propagateGate(qc::X, {0});
+  ut.propagateReset(0);
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr("Qubits: 0, HybridStates: {{|0> "
+                                 "-> 1.00}: 1, p = 1.00;}"));
+}
+
+TEST_F(UnionTableTest, doResetWithTwoResults) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateReset(0);
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr(
+                  "Qubits: 10, HybridStates: {{|00> "
+                  "-> 1.00}: 0, p = 0.50; {|10> -> 1.00}: 1, p = 0.50;}"));
 }
 
 class UnionTablePropertiesTest : public ::testing::Test {
