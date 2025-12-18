@@ -95,15 +95,18 @@ public:
                                                 unsigned int classicalTarget);
 
   /**
-   * @brief This method propagates a qubit reset.
+   * @brief This method applies a reset.
    *
-   * This method propagates a qubit reset. This means that the qubit is put into
-   * zero state. It is also put in its own QubitState again if it does not
-   * correspond to already assigned bit values.
+   * This method applies a reset, changing the qubits and creates one or two new
+   * states. The procedure is done as if the qubit was measured, put to zero if
+   * the measurement was one, and the result discarded.
    *
-   * @param target The index of the qubit to be reset.
+   * @param quantumTarget The index of the qubit to be measured.
+   * @throws domain_error If the quantum state of the hybrid state is TOP.
+   * @return One or two classical states corresponding to the measurement
+   * outcomes during the reset, but with the qubit always in the zero state.
    */
-  void resetQubit(unsigned int target);
+  std::vector<HybridState> propagateReset(unsigned int target);
 
   /**
    * @brief This method unifies two HybridStates.

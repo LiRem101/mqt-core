@@ -132,7 +132,7 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
   return results;
 }
 
-void HybridState::resetQubit(unsigned int target) {
+std::vector<HybridState> HybridState::propagateReset(unsigned int target) {
   throw std::logic_error("Not implemented");
 }
 

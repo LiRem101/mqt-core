@@ -194,6 +194,28 @@ TEST_F(HybridStateTest, doMeasurementWithTwoResults) {
   EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 11, p = 0.20;"));
 }
 
+TEST_F(HybridStateTest, doResetWithOneResult) {
+  HybridState hState = HybridState(1, 2, 2, {false}, 0.4);
+  hState.propagateGate(qc::X, {0});
+  std::vector<HybridState> const res = hState.propagateReset(0);
+
+  EXPECT_EQ(size(res), 1);
+  EXPECT_THAT(res.at(0).toString(),
+              testing::HasSubstr("{|0> -> 1.00}: 0, p = 0.40;"));
+}
+
+TEST_F(HybridStateTest, doResetWithTwoResults) {
+  HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  std::vector<HybridState> const res = hState.propagateReset(0);
+
+  EXPECT_TRUE(size(res) == 2);
+  std::string const resString = res.at(0).toString() + res.at(1).toString();
+  EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 0, p = 0.20;"));
+  EXPECT_THAT(resString, testing::HasSubstr("{|10> -> 1.00}: 0, p = 0.20;"));
+}
+
 TEST_F(HybridStateTest, addBitAndGetToTop) {
   HybridState hState = HybridState(2, 2, 1, {false}, 0.4);
   hState.propagateGate(qc::H, {0});
@@ -208,6 +230,15 @@ TEST_F(HybridStateTest, doMeasurementOnTop) {
   hState.propagateGate(qc::H, {2}); // qState enters TOP
 
   EXPECT_THROW(hState.propagateMeasurement(0, 0);, std::domain_error);
+}
+
+TEST_F(HybridStateTest, doResetOnTop) {
+  HybridState hState = HybridState(4, 2, 2, {true}, 0.2);
+  hState.propagateGate(qc::H, {3});
+  hState.propagateGate(qc::X, {2}, {3});
+  hState.propagateGate(qc::H, {2}); // qState enters TOP
+
+  EXPECT_THROW(hState.propagateReset(0);, std::domain_error);
 }
 
 TEST_F(HybridStateTest, unifyTwoHybridStates) {
