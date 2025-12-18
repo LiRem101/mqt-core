@@ -209,7 +209,47 @@ QubitState::measureQubit(unsigned int target) {
 
 std::set<std::pair<double, std::shared_ptr<QubitState>>>
 QubitState::resetQubit(unsigned int target) {
-  throw std::logic_error("Not implemented");
+  unsigned int qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
+
+  double probabilityZero = 0.0;
+  double probabilityOne = 0.0;
+  std::unordered_map<unsigned int, std::complex<double>> newValuesZeroRes;
+  std::unordered_map<unsigned int, std::complex<double>> newValuesOneRes;
+
+  for (const auto& [key, value] : map) {
+    if ((qubitMask & key) == 0) {
+      probabilityZero += norm(value);
+      newValuesZeroRes.insert({key, value});
+    } else {
+      probabilityOne += norm(value);
+      newValuesOneRes.insert({key, value});
+    }
+  }
+
+  if (std::abs(1.0 - probabilityZero - probabilityOne) > 1e-4) {
+    throw std::domain_error(
+        "Probabilities of 0 and 1 do not add up to one after measurement.");
+  }
+
+  QubitState stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
+  stateZero.map = newValuesZeroRes;
+  stateZero.normalize();
+  QubitState stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
+  stateOne.map = newValuesOneRes;
+  stateOne.normalize();
+
+  auto resPairZero =
+      std::make_pair(probabilityZero, std::make_shared<QubitState>(stateZero));
+  auto resPairOne =
+      std::make_pair(probabilityOne, std::make_shared<QubitState>(stateOne));
+
+  if (probabilityZero < 1e-4) {
+    return {resPairOne};
+  } else if (probabilityOne < 1e-4) {
+    return {resPairZero};
+  } else {
+    return {resPairZero, resPairOne};
+  }
 }
 
 void QubitState::removeQubit(unsigned int target) {
