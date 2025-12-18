@@ -133,7 +133,33 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
 }
 
 std::vector<HybridState> HybridState::propagateReset(unsigned int target) {
-  throw std::logic_error("Not implemented");
+  if (qState.isTop()) {
+    throw std::domain_error("Measured QuantumState is TOP. HybridState needs "
+                            "to be treated as TOP.");
+  }
+
+  std::set<std::pair<double, std::shared_ptr<QubitState>>> const resetResults =
+      qState.getQubitState()->resetQubit(target);
+
+  std::vector<HybridState> results;
+  for (const auto& [prob, value] : resetResults) {
+    const double newProbability = prob * probability;
+    auto newQS = QubitStateOrTop(value);
+    auto newHybrid = HybridState();
+
+    auto newBitValues = std::vector<bool>(bitValues.size());
+    for (unsigned int i = 0; i < size(bitValues); i++) {
+      newBitValues[i] = bitValues.at(i);
+    }
+    newHybrid.probability = newProbability;
+    newHybrid.qState = newQS;
+    newHybrid.bitValues = newBitValues;
+    newHybrid.maxNumberOfBitValues = maxNumberOfBitValues;
+
+    results.push_back(newHybrid);
+  }
+
+  return results;
 }
 
 HybridState HybridState::unify(HybridState that,

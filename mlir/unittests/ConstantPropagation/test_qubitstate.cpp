@@ -245,9 +245,11 @@ TEST_F(QubitStateTest, doResetWithOnlyOnes) {
   std::set<std::pair<double, std::shared_ptr<QubitState>>> const res =
       qState.resetQubit(0);
 
+  QubitState const refState = QubitState(1, 2);
+
   EXPECT_TRUE(size(res) == 1);
   auto value = *res.begin();
-  EXPECT_TRUE(qState == *value.second.get());
+  EXPECT_TRUE(refState == *value.second.get());
   EXPECT_DOUBLE_EQ(value.first, 1);
 }
 
@@ -261,7 +263,6 @@ TEST_F(QubitStateTest, doResetWithZerosAndOnes) {
   QubitState const zeroReference = QubitState(0, 2);
   QubitState oneReference = QubitState(0, 2);
   oneReference.propagateGate(qc::X, {1});
-  oneReference.propagateGate(qc::X, {0});
 
   EXPECT_TRUE(size(res) == 2);
   auto valueA = *res.begin();

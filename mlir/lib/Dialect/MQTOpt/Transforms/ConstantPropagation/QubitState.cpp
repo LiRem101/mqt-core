@@ -221,8 +221,9 @@ QubitState::resetQubit(unsigned int target) {
       probabilityZero += norm(value);
       newValuesZeroRes.insert({key, value});
     } else {
+      unsigned int newKey = key ^ qubitMask;
       probabilityOne += norm(value);
-      newValuesOneRes.insert({key, value});
+      newValuesOneRes.insert({newKey, value});
     }
   }
 
