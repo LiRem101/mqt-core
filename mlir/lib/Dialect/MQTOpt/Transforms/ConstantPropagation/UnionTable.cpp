@@ -53,6 +53,10 @@ std::string UnionTable::toString() const {
   return result;
 }
 
+unsigned int UnionTable::getNumberOfBits() {
+  return mappingGlobalToLocalBitIndices.size();
+}
+
 void UnionTable::propagateGate(
     qc::OpType gate, std::vector<unsigned int> targets,
     std::vector<unsigned int> posCtrlsQuantum,
@@ -397,5 +401,54 @@ bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
     }
   }
   return true;
+}
+
+std::optional<bool> UnionTable::getIsBitEquivalentToQubit(unsigned int bit,
+                                                          unsigned int qubit) {
+  // Check if qubit and bit are in the same state
+  bool areTargetsInSameState = false;
+  for (const auto& [qubits, bits] : indizesInSameState) {
+    areTargetsInSameState |= qubits.contains(qubit) && bits.contains(bit);
+  }
+
+  // If the targets are not in same state, both need to be always zero or both
+  // always one.
+  if (!areTargetsInSameState) {
+    bool qubitAlwaysZero = isQubitAlwaysZero(qubit);
+    bool qubitAlwaysOne = isQubitAlwaysOne(qubit);
+    if (qubitAlwaysZero && isBitAlwaysZero(bit) ||
+        qubitAlwaysOne && isBitAlwaysOne(bit)) {
+      return true;
+    }
+    if (qubitAlwaysZero && isBitAlwaysOne(bit) ||
+        qubitAlwaysOne && isBitAlwaysZero(bit)) {
+      return false;
+    }
+    return std::optional<bool>();
+  }
+
+  // If targets are in the same state
+  bool targetsEquivalent = true;
+  bool targetsNegEquivalent = true;
+  for (HybridStateOrTop hs : *hRegOfQubits.at(qubit)) {
+    if (hs.isTop()) {
+      return std::optional<bool>();
+    }
+    std::optional<bool> res = hs.getHybridState()->getIsBitEquivalentToQubit(
+        mappingGlobalToLocalBitIndices.at(bit),
+        mappingGlobalToLocalQubitIndices.at(qubit));
+    if (!res.has_value()) {
+      return std::optional<bool>();
+    }
+    targetsEquivalent &= res.value();
+    targetsNegEquivalent &= !res.value();
+  }
+  if (targetsEquivalent) {
+    return true;
+  }
+  if (targetsNegEquivalent) {
+    return false;
+  }
+  return std::optional<bool>();
 }
 } // namespace mqt::ir::opt::qcp

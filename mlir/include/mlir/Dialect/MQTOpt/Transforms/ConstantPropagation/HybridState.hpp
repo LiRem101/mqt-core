@@ -157,6 +157,19 @@ public:
   [[nodiscard("HybridState::hasAlwaysZeroAmplitude called but ignored")]] bool
   hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                          unsigned int value) const;
+
+  /**
+   * @brief Returns whether the given qubit and bit always have the same value
+   * or always a different value.
+   *
+   * @param bit Index of bit.
+   * @param qubit Index of qubit.
+   * @returns Non-empty optional if the bit and qubit have always the same or
+   * different values. Optional contains true if they have the same value, false
+   * if they have always different values.
+   */
+  std::optional<bool> getIsBitEquivalentToQubit(unsigned int bit,
+                                                unsigned int qubit);
 };
 
 class HybridStateOrTop {

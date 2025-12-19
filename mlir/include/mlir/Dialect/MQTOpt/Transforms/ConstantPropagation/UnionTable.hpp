@@ -175,6 +175,8 @@ public:
 
   bool allTop();
 
+  unsigned int getNumberOfBits();
+
   /**
    * @brief This method applies a gate to the qubits.
    *
@@ -278,6 +280,19 @@ public:
    */
   bool hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                               unsigned int value);
+
+  /**
+   * @brief Returns whether the given qubit and bit always have the same value
+   * or always a different value.
+   *
+   * @param bit Index of bit.
+   * @param qubit Index of qubit.
+   * @returns Non-empty optional if the bit and qubit have always the same or
+   * different values. Optional contains true if they have the same value, false
+   * if they have always different values.
+   */
+  std::optional<bool> getIsBitEquivalentToQubit(unsigned int bit,
+                                                unsigned int qubit);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_UNIONTABLE_H

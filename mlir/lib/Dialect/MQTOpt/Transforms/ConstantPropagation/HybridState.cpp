@@ -233,6 +233,20 @@ bool HybridState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
   return qState.hasAlwaysZeroAmplitude(qubits, value);
 }
 
+std::optional<bool>
+HybridState::getIsBitEquivalentToQubit(const unsigned int bit,
+                                       const unsigned int qubit) {
+  if ((bitValues.at(bit) && qState.isQubitAlwaysZero(qubit)) ||
+      (!bitValues.at(bit) && qState.isQubitAlwaysOne(qubit))) {
+    return false;
+  }
+  if ((bitValues.at(bit) && qState.isQubitAlwaysOne(qubit)) ||
+      (!bitValues.at(bit) && qState.isQubitAlwaysZero(qubit))) {
+    return false;
+  }
+  return std::optional<bool>();
+}
+
 HybridStateOrTop::HybridStateOrTop() : variant(TOP::T) {}
 
 HybridStateOrTop::HybridStateOrTop(TOP top) : variant(top) {}

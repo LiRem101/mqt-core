@@ -31,7 +31,15 @@ RewriteChecker::getSuperfluousControls(std::vector<unsigned int> qubitTargets,
 
 std::optional<std::pair<unsigned int, bool>>
 RewriteChecker::getEquivalentBit(unsigned int q) {
-  throw std::logic_error("Not implemented");
+  unsigned int possibleBits = unionTable.getNumberOfBits();
+  for (unsigned int i = 0; i < possibleBits; ++i) {
+    std::optional<bool> result = unionTable.getIsBitEquivalentToQubit(i, q);
+    if (result.has_value()) {
+      return std::optional<std::pair<unsigned int, bool>>(
+          std::make_pair(i, result.value()));
+    }
+  }
+  return std::optional<std::pair<unsigned int, bool>>();
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
