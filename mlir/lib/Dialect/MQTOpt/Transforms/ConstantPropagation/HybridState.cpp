@@ -242,7 +242,7 @@ HybridState::getIsBitEquivalentToQubit(const unsigned int bit,
   }
   if ((bitValues.at(bit) && qState.isQubitAlwaysOne(qubit)) ||
       (!bitValues.at(bit) && qState.isQubitAlwaysZero(qubit))) {
-    return false;
+    return true;
   }
   return std::optional<bool>();
 }

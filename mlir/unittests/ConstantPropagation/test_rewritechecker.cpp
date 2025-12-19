@@ -48,20 +48,20 @@ TEST_F(RewriteCheckerTest, FindEquivalentBit) {
   ASSERT_TRUE(result.has_value());
   std::pair<unsigned int, bool> resValue = result.value();
   ASSERT_TRUE(resValue.first == 0);
-  ASSERT_FALSE(resValue.second);
+  ASSERT_TRUE(resValue.second);
 }
 
 TEST_F(RewriteCheckerTest, FindEquivalentReversedBit) {
   ut.propagateGate(qc::H, {0});
   ut.propagateGate(qc::X, {1}, {0});
   ut.propagateGate(qc::X, {0});
-  ut.propagateMeasurement(1, 0);
+  ut.propagateMeasurement(0, 0);
   std::optional<std::pair<unsigned int, bool>> result =
       rc.getEquivalentBit(ut, 1);
   ASSERT_TRUE(result.has_value());
   std::pair<unsigned int, bool> resValue = result.value();
   ASSERT_TRUE(resValue.first == 0);
-  ASSERT_TRUE(resValue.second);
+  ASSERT_FALSE(resValue.second);
 }
 
 TEST_F(RewriteCheckerTest, FindNoEquivalentBit) {
@@ -70,7 +70,7 @@ TEST_F(RewriteCheckerTest, FindNoEquivalentBit) {
   ut.propagateGate(qc::H, {0});
   ut.propagateMeasurement(1, 0);
   std::optional<std::pair<unsigned int, bool>> result =
-      rc.getEquivalentBit(ut, 1);
+      rc.getEquivalentBit(ut, 0);
   ASSERT_FALSE(result.has_value());
 }
 
