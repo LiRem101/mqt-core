@@ -16,12 +16,13 @@
 #include <stdexcept>
 
 namespace mqt::ir::opt::qcp {
-RewriteChecker::RewriteChecker(UnionTable ut) : unionTable(ut) {}
+RewriteChecker::RewriteChecker() {}
 
 RewriteChecker::~RewriteChecker() = default;
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getSuperfluousControls(std::vector<unsigned int> qubitTargets,
+RewriteChecker::getSuperfluousControls(UnionTable unionTable,
+                                       std::vector<unsigned int> qubitTargets,
                                        std::vector<unsigned int> qubitPosCtrls,
                                        std::vector<unsigned int> qubitNegCtrls,
                                        std::vector<unsigned int> bitPosCtrls,
@@ -30,7 +31,7 @@ RewriteChecker::getSuperfluousControls(std::vector<unsigned int> qubitTargets,
 }
 
 std::optional<std::pair<unsigned int, bool>>
-RewriteChecker::getEquivalentBit(unsigned int q) {
+RewriteChecker::getEquivalentBit(UnionTable unionTable, unsigned int q) {
   unsigned int possibleBits = unionTable.getNumberOfBits();
   for (unsigned int i = 0; i < possibleBits; ++i) {
     std::optional<bool> result = unionTable.getIsBitEquivalentToQubit(i, q);
@@ -43,7 +44,8 @@ RewriteChecker::getEquivalentBit(unsigned int q) {
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getAntecedentsOfQubit(unsigned int q, bool negative,
+RewriteChecker::getAntecedentsOfQubit(UnionTable unionTable, unsigned int q,
+                                      bool negative,
                                       std::set<unsigned int> qubitsPositive,
                                       std::set<unsigned int> qubitsNegative,
                                       std::set<unsigned int> bitsPositive,
@@ -52,7 +54,8 @@ RewriteChecker::getAntecedentsOfQubit(unsigned int q, bool negative,
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getAntecedentsOfBit(unsigned int b, bool negative,
+RewriteChecker::getAntecedentsOfBit(UnionTable unionTable, unsigned int b,
+                                    bool negative,
                                     std::set<unsigned int> qubitsPositive,
                                     std::set<unsigned int> qubitsNegative,
                                     std::set<unsigned int> bitsPositive,
@@ -61,7 +64,8 @@ RewriteChecker::getAntecedentsOfBit(unsigned int b, bool negative,
 }
 
 bool RewriteChecker::isOnlyOneSetNotZero(
-    std::vector<unsigned int> qubits, std::set<std::set<unsigned int>> values) {
+    UnionTable unionTable, std::vector<unsigned int> qubits,
+    std::set<std::set<unsigned int>> values) {
   throw std::logic_error("Not implemented");
 }
 } // namespace mqt::ir::opt::qcp
