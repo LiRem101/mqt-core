@@ -44,12 +44,12 @@ public:
    * @param bitNegCtrls The indices of the negatively controlling bits.
    * @returns A pair of superfluous qubits and superfluous bits.
    */
-  std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
+  std::pair<std::set<unsigned int>, std::set<unsigned int>>
   getSuperfluousControls(std::vector<unsigned int> qubitTargets,
                          std::vector<unsigned int> qubitPosCtrls,
-                         std::vector<unsigned int> qubitNegCtrls,
-                         std::vector<unsigned int> bitPosCtrls,
-                         std::vector<unsigned int> bitNegCtrls);
+                         std::vector<unsigned int> qubitNegCtrls = {},
+                         std::vector<unsigned int> bitPosCtrls = {},
+                         std::vector<unsigned int> bitNegCtrls = {});
 
   /**
    * @brief Returns an equivalent bit if that exists.
@@ -61,9 +61,10 @@ public:
    *
    * @param q The index of the qubit for which an equivalent bit is searched
    * for.
-   * @returns The index of an equivalent bit, if there is one.
+   * @returns The index of an equivalent bit, if there is one, and whether the
+   * inverted bit is equivalent to the qubit.
    */
-  std::optional<unsigned int> getEquivalentBit(unsigned int q);
+  std::optional<std::pair<unsigned int, bool>> getEquivalentBit(unsigned int q);
 
   /**
    * @brief Returns the qubits and bits that imply the given qubit.
@@ -73,13 +74,22 @@ public:
    * returned for which holds: a -> q.
    *
    * @param q The qubit for which is checked whether it is implied.
-   * @param qubits The qubits for which are checked if they imply q.
-   * @param bits The bits for which are checked if they imply q.
+   * @param negative If true, the qubit is negated before it is checked for
+   * antecedents.
+   * @param qubitsPositive The qubits for which are checked if they imply q.
+   * @param qubitsNegative The qubits for which their negations are checked if
+   * they imply q.
+   * @param bitsNegative The bits for which are checked if they imply q.
+   * @param bitsNegative The qubits for which their negations are checked if
+   * they imply q.
    * @returns A pair of 1. qubits and 2. bits that are antecedents of q.
    */
-  std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-  getAntecedentsOfQubit(unsigned int q, std::vector<unsigned int> qubits,
-                        std::vector<unsigned int> bits);
+  std::pair<std::set<unsigned int>, std::set<unsigned int>>
+  getAntecedentsOfQubit(unsigned int q, bool negative,
+                        std::set<unsigned int> qubitsPositive,
+                        std::set<unsigned int> qubitsNegative,
+                        std::set<unsigned int> bitsPositive,
+                        std::set<unsigned int> bitsNegative);
 
   /**
    * @brief Returns the qubits and bits that imply the given bit.
@@ -89,13 +99,20 @@ public:
    * returned for which holds: a -> b.
    *
    * @param b The qubit for which is checked whether it is implied.
-   * @param qubits The qubits for which are checked if they imply b.
-   * @param bits The bits for which are checked if they imply b.
+   * @param negative If true, the bit is negated before it is checked for
+   * antecedents.
+   * @param qubitsPositive The qubits for which are checked if they imply b.
+   * @param qubitsNegative The qubits for which their negations are checked if
+   * they imply b.
+   * @param bitsNegative The bits for which are checked if they imply b.
+   * @param bitsNegative The qubits for which their negations are checked if
+   * they imply b.
    * @returns A pair of 1. qubits and 2. bits that are antecedents of b.
    */
-  std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-  getAntecedentsOfBit(unsigned int b, std::vector<unsigned int> qubits,
-                      std::vector<unsigned int> bits);
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> getAntecedentsOfBit(
+      unsigned int b, bool negative, std::set<unsigned int> qubitsPositive,
+      std::set<unsigned int> qubitsNegative,
+      std::set<unsigned int> bitsPositive, std::set<unsigned int> bitsNegative);
 
   /**
    * @brief Returns true if only the values of one given set of teh qubits is
@@ -112,7 +129,7 @@ public:
    * zero.
    */
   bool isOnlyOneSetNotZero(std::vector<unsigned int> qubits,
-                           std::vector<std::vector<unsigned int>> values);
+                           std::set<std::set<unsigned int>> values);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_REWRITECHECKER_H

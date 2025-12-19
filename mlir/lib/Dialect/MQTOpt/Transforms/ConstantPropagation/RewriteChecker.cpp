@@ -20,7 +20,7 @@ RewriteChecker::RewriteChecker(UnionTable ut) : unionTable(ut) {}
 
 RewriteChecker::~RewriteChecker() = default;
 
-std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
+std::pair<std::set<unsigned int>, std::set<unsigned int>>
 RewriteChecker::getSuperfluousControls(std::vector<unsigned int> qubitTargets,
                                        std::vector<unsigned int> qubitPosCtrls,
                                        std::vector<unsigned int> qubitNegCtrls,
@@ -29,27 +29,31 @@ RewriteChecker::getSuperfluousControls(std::vector<unsigned int> qubitTargets,
   throw std::logic_error("Not implemented");
 }
 
-std::optional<unsigned int> RewriteChecker::getEquivalentBit(unsigned int q) {
+std::optional<std::pair<unsigned int, bool>>
+RewriteChecker::getEquivalentBit(unsigned int q) {
   throw std::logic_error("Not implemented");
 }
 
-std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-RewriteChecker::getAntecedentsOfQubit(unsigned int q,
-                                      std::vector<unsigned int> qubits,
-                                std::vector<unsigned int> bits) {
+std::pair<std::set<unsigned int>, std::set<unsigned int>>
+RewriteChecker::getAntecedentsOfQubit(unsigned int q, bool negative,
+                                      std::set<unsigned int> qubitsPositive,
+                                      std::set<unsigned int> qubitsNegative,
+                                      std::set<unsigned int> bitsPositive,
+                                      std::set<unsigned int> bitsNegative) {
   throw std::logic_error("Not implemented");
 }
 
-std::pair<std::vector<unsigned int>, std::vector<unsigned int>>
-RewriteChecker::getAntecedentsOfBit(unsigned int b,
-                                    std::vector<unsigned int> qubits,
-                                    std::vector<unsigned int> bits) {
+std::pair<std::set<unsigned int>, std::set<unsigned int>>
+RewriteChecker::getAntecedentsOfBit(unsigned int b, bool negative,
+                                    std::set<unsigned int> qubitsPositive,
+                                    std::set<unsigned int> qubitsNegative,
+                                    std::set<unsigned int> bitsPositive,
+                                    std::set<unsigned int> bitsNegative) {
   throw std::logic_error("Not implemented");
 }
 
 bool RewriteChecker::isOnlyOneSetNotZero(
-    std::vector<unsigned int> qubits,
-    std::vector<std::vector<unsigned int>> values) {
+    std::vector<unsigned int> qubits, std::set<std::set<unsigned int>> values) {
   throw std::logic_error("Not implemented");
 }
 } // namespace mqt::ir::opt::qcp
