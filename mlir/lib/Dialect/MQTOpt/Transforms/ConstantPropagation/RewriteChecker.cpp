@@ -27,7 +27,49 @@ RewriteChecker::getSuperfluousControls(UnionTable unionTable,
                                        std::vector<unsigned int> qubitNegCtrls,
                                        std::vector<unsigned int> bitPosCtrls,
                                        std::vector<unsigned int> bitNegCtrls) {
-  throw std::logic_error("Not implemented");
+  std::set<unsigned int> superfluousQubits = {};
+  std::set<unsigned int> superfluousBits = {};
+  for (unsigned int posCtrlQubit : qubitPosCtrls) {
+    if (unionTable.isQubitAlwaysOne(posCtrlQubit)) {
+      superfluousQubits.insert(posCtrlQubit);
+    } else if (unionTable.isQubitAlwaysZero(posCtrlQubit)) {
+      superfluousQubits.clear();
+      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
+                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      return {superfluousQubits, {}};
+    }
+  }
+  for (unsigned int negCtrlQubit : qubitNegCtrls) {
+    if (unionTable.isQubitAlwaysZero(negCtrlQubit)) {
+      superfluousQubits.insert(negCtrlQubit);
+    } else if (unionTable.isQubitAlwaysOne(negCtrlQubit)) {
+      superfluousQubits.clear();
+      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
+                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      return {superfluousQubits, {}};
+    }
+  }
+  for (unsigned int posCtrlBit : bitPosCtrls) {
+    if (unionTable.isBitAlwaysOne(posCtrlBit)) {
+      superfluousBits.insert(posCtrlBit);
+    } else if (unionTable.isBitAlwaysZero(posCtrlBit)) {
+      superfluousQubits.clear();
+      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
+                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      return {superfluousQubits, {}};
+    }
+  }
+  for (unsigned int negCtrlBit : bitNegCtrls) {
+    if (unionTable.isBitAlwaysZero(negCtrlBit)) {
+      superfluousBits.insert(negCtrlBit);
+    } else if (unionTable.isBitAlwaysOne(negCtrlBit)) {
+      superfluousQubits.clear();
+      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
+                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      return {superfluousQubits, {}};
+    }
+  }
+  return {superfluousQubits, superfluousBits};
 }
 
 std::optional<std::pair<unsigned int, bool>>

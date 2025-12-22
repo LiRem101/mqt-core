@@ -228,7 +228,8 @@ bool HybridState::isBitAlwaysOne(size_t q) const { return bitValues.at(q); }
 
 bool HybridState::isBitAlwaysZero(size_t q) const { return !bitValues.at(q); }
 
-bool HybridState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
+bool HybridState::hasAlwaysZeroAmplitude(
+    std::vector<unsigned int> qubits, unsigned int value,
     std::vector<unsigned int> bits, std::vector<bool> bitValuesToCheck) const {
   bool amplitudesZero = false;
   if (!qubits.empty()) {

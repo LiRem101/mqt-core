@@ -205,7 +205,7 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
       try {
         std::vector<HybridState> newHybridState =
             hs.getHybridState()->propagateMeasurement(
-                quantumTarget,
+                mappingGlobalToLocalQubitIndices.at(quantumTarget),
                 mappingGlobalToLocalBitIndices.at(classicalTarget));
         for (HybridState const& newState : newHybridState) {
           newHybridStatesOrTops.push_back(

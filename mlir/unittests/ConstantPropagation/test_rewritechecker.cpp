@@ -290,7 +290,7 @@ TEST_F(RewriteCheckerTest, oneSetNonZeroOneQubit) {
   ut.propagateGate(qc::X, {1});
 
   ASSERT_FALSE(rc.isOnlyOneSetNotZero(ut, {0}, {{0}, {1}}));
-  ASSERT_TRUE(rc.isOnlyOneSetNotZero(ut, {0}, {{0}, {1}}));
+  ASSERT_TRUE(rc.isOnlyOneSetNotZero(ut, {1}, {{0}, {1}}));
 }
 
 TEST_F(RewriteCheckerTest, oneSetNonZeroTwoQubitFalse) {
@@ -339,15 +339,17 @@ protected:
     ut.propagateGate(qc::H, {0});
 
     ut.propagateGate(qc::H, {1});
-    ut.propagateGate(qc::X, {2}, {1});
     ut.propagateGate(qc::H, {1});
     ut.propagateMeasurement(1, 2); // bit 2 = false
 
+    ut.propagateGate(qc::H, {2});
+
     ut.propagateGate(qc::H, {3});
-    ut.propagateGate(qc::X, {4}, {3});
     ut.propagateGate(qc::Z, {3});
     ut.propagateGate(qc::H, {3});
     ut.propagateMeasurement(3, 3); // bit 3 = true
+
+    ut.propagateGate(qc::H, {4});
   }
 
   void TearDown() override {}
