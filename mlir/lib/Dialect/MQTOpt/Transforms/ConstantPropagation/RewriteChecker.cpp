@@ -92,7 +92,38 @@ RewriteChecker::getAntecedentsOfBit(UnionTable unionTable, unsigned int b,
                                     std::set<unsigned int> qubitsNegative,
                                     std::set<unsigned int> bitsPositive,
                                     std::set<unsigned int> bitsNegative) {
-  throw std::logic_error("Not implemented");
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> result;
+  // A value is antecedent of bit, if the combination antecedent = 1 and bit = 0
+  // does not exist
+  for (unsigned int posQubit : qubitsPositive) {
+    bool hasZeroAmplitude =
+        unionTable.hasAlwaysZeroAmplitude({posQubit}, 1, {b}, {negative});
+    if (hasZeroAmplitude) {
+      result.first.insert(posQubit);
+    }
+  }
+  for (unsigned int negQubit : qubitsNegative) {
+    bool hasZeroAmplitude =
+        unionTable.hasAlwaysZeroAmplitude({negQubit}, 0, {b}, {negative});
+    if (hasZeroAmplitude) {
+      result.first.insert(negQubit);
+    }
+  }
+  for (unsigned int posBit : bitsPositive) {
+    bool hasZeroAmplitude =
+        unionTable.hasAlwaysZeroAmplitude({}, 0, {posBit, b}, {true, negative});
+    if (hasZeroAmplitude) {
+      result.second.insert(posBit);
+    }
+  }
+  for (unsigned int negBit : bitsNegative) {
+    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+        {}, 0, {negBit, b}, {false, negative});
+    if (hasZeroAmplitude) {
+      result.second.insert(negBit);
+    }
+  }
+  return result;
 }
 
 bool RewriteChecker::isOnlyOneSetNotZero(

@@ -164,6 +164,7 @@ TEST_F(RewriteCheckerTest, ImplyingBitB) {
   ut.propagateMeasurement(0, 0);
   ut.propagateGate(qc::X, {1}, {}, {0});
   ut.propagateGate(qc::H, {1}, {0});
+  ut.propagateGate(qc::H, {0}, {}, {}, {}, {0});
   auto [antecedentQubits, antecedentBits] =
       rc.getAntecedentsOfBit(ut, 0, true, {}, {0}, {}, {});
   auto [antecedentQubitsEmptyA, antecedentBitsEmptyA] =
