@@ -228,9 +228,17 @@ bool HybridState::isBitAlwaysOne(size_t q) const { return bitValues.at(q); }
 
 bool HybridState::isBitAlwaysZero(size_t q) const { return !bitValues.at(q); }
 
-bool HybridState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                                         unsigned int value) const {
-  return qState.hasAlwaysZeroAmplitude(qubits, value);
+bool HybridState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
+    std::vector<unsigned int> bits, std::vector<bool> bitValuesToCheck) const {
+  bool amplitudesZero = false;
+  if (!qubits.empty()) {
+    amplitudesZero = qState.hasAlwaysZeroAmplitude(qubits, value);
+  }
+  bool bitValuesExist = true;
+  for (unsigned int i = 0; i < bits.size(); i++) {
+    bitValuesExist &= bitValuesToCheck.at(i) == this->bitValues.at(i);
+  }
+  return amplitudesZero || !bitValuesExist;
 }
 
 std::optional<bool>
@@ -341,12 +349,14 @@ bool HybridStateOrTop::isBitAlwaysZero(size_t q) const {
   return getHybridState()->isBitAlwaysZero(q);
 }
 
-bool HybridStateOrTop::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                                              unsigned int value) const {
+bool HybridStateOrTop::hasAlwaysZeroAmplitude(
+    std::vector<unsigned int> qubits, unsigned int value,
+    std::vector<unsigned int> bits, std::vector<bool> bitValues) const {
   if (isTop()) {
     return false;
   }
-  return getHybridState()->hasAlwaysZeroAmplitude(qubits, value);
+  return getHybridState()->hasAlwaysZeroAmplitude(qubits, value, bits,
+                                                  bitValues);
 }
 
 } // namespace mqt::ir::opt::qcp

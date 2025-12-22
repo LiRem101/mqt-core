@@ -373,11 +373,17 @@ bool UnionTable::allTop() {
 }
 
 bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                                        unsigned int value) {
-  for (const auto& [qubitIndizes, _] : indizesInSameState) {
+                                        unsigned int value,
+                                        std::vector<unsigned int> bits,
+                                        std::vector<bool> bitValues) {
+  for (const auto& [qubitIndizes, bitIndizes] : indizesInSameState) {
     std::vector<unsigned int> qubitsInThisState = {};
+    std::vector<unsigned int> bitsInThisState = {};
     unsigned int localValueForQubitsInThisState = 0;
+    std::vector<bool> valuesForBitsInThisState = {};
     unsigned int includedQubitIndex;
+    unsigned int includedBitIndex;
+    // Retrieve local qubit values
     for (unsigned int i = 0; i < qubits.size(); ++i) {
       if (qubitIndizes.contains(qubits.at(i))) {
         unsigned int localQubitIndex =
@@ -391,16 +397,37 @@ bool UnionTable::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
         }
       }
     }
-    if (!qubitsInThisState.empty()) {
-      for (HybridStateOrTop hs : *hRegOfQubits.at(includedQubitIndex)) {
-        if (!hs.hasAlwaysZeroAmplitude(qubitsInThisState,
-                                       localValueForQubitsInThisState)) {
-          return false;
-        }
+    // Retrieve global bit values
+    for (unsigned int i = 0; i < bits.size(); ++i) {
+      if (bitIndizes.contains(bits.at(i))) {
+        unsigned int localBitIndex =
+            mappingGlobalToLocalBitIndices.at(bits.at(i));
+        bitsInThisState.push_back(localBitIndex);
+        includedBitIndex = bits.at(i);
+        valuesForBitsInThisState.push_back(bitValues.at(includedBitIndex));
+      }
+    }
+    // Call hasAlwaysNonZeroAmplitude with the local values on the respective
+    // states
+    if (!qubitsInThisState.empty() || !bitsInThisState.empty()) {
+      std::vector<HybridStateOrTop> relevantStates;
+      if (!qubitsInThisState.empty()) {
+        relevantStates = *hRegOfQubits.at(includedQubitIndex);
+      } else {
+        relevantStates = *hRegOfBits.at(includedBitIndex);
+      }
+      bool noNonzeroAmplitude = true;
+      for (HybridStateOrTop hs : relevantStates) {
+        noNonzeroAmplitude &= hs.hasAlwaysZeroAmplitude(
+            qubitsInThisState, localValueForQubitsInThisState, bitsInThisState,
+            valuesForBitsInThisState);
+      }
+      if (noNonzeroAmplitude) {
+        return true;
       }
     }
   }
-  return true;
+  return false;
 }
 
 std::optional<bool> UnionTable::getIsBitEquivalentToQubit(unsigned int bit,
@@ -416,12 +443,12 @@ std::optional<bool> UnionTable::getIsBitEquivalentToQubit(unsigned int bit,
   if (!areTargetsInSameState) {
     bool qubitAlwaysZero = isQubitAlwaysZero(qubit);
     bool qubitAlwaysOne = isQubitAlwaysOne(qubit);
-    if (qubitAlwaysZero && isBitAlwaysZero(bit) ||
-        qubitAlwaysOne && isBitAlwaysOne(bit)) {
+    if ((qubitAlwaysZero && isBitAlwaysZero(bit)) ||
+        (qubitAlwaysOne && isBitAlwaysOne(bit))) {
       return true;
     }
-    if (qubitAlwaysZero && isBitAlwaysOne(bit) ||
-        qubitAlwaysOne && isBitAlwaysZero(bit)) {
+    if ((qubitAlwaysZero && isBitAlwaysOne(bit)) ||
+        (qubitAlwaysOne && isBitAlwaysZero(bit))) {
       return false;
     }
     return std::optional<bool>();

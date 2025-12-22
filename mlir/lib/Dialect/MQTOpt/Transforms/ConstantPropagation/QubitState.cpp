@@ -300,8 +300,12 @@ bool QubitState::isQubitAlwaysZero(size_t q) const {
 
 bool QubitState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
                                         unsigned int value) const {
+  unsigned int mask = 0;
+  for (unsigned int qubit : qubits) {
+    mask += static_cast<unsigned int>(pow(2, qubit) + 0.1);
+  }
   for (auto const& [q, _] : map) {
-    if (value == q) {
+    if ((q & mask) == value) {
       return false;
     }
   }

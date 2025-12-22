@@ -137,8 +137,8 @@ TEST_F(RewriteCheckerTest, ImplyingBitA) {
 TEST_F(RewriteCheckerTest, ImplyingQubitB) {
   ut.propagateGate(qc::H, {0});
   ut.propagateMeasurement(0, 0);
-  ut.propagateGate(qc::X, {1}, {}, {0});
   ut.propagateGate(qc::H, {1}, {0});
+  ut.propagateGate(qc::H, {0}, {}, {}, {}, {0});
   auto [antecedentQubits, antecedentBits] =
       rc.getAntecedentsOfQubit(ut, 0, false, {}, {}, {0}, {});
   auto [antecedentQubitsEmptyA, antecedentBitsEmptyA] =
@@ -248,9 +248,9 @@ TEST_F(RewriteCheckerTest, ImplyingQubitD) {
   auto [antecedentQubitsEmptyC, antecedentBitsEmptyC] =
       rc.getAntecedentsOfQubit(ut, 1, true, {}, {}, {}, {0});
 
-  ASSERT_EQ(antecedentQubits.size(), 1);
-  ASSERT_TRUE(antecedentBits.empty());
-  ASSERT_EQ(*antecedentQubits.begin(), 0);
+  ASSERT_TRUE(antecedentQubits.empty());
+  ASSERT_EQ(antecedentBits.size(), 1);
+  ASSERT_EQ(*antecedentBits.begin(), 0);
   ASSERT_TRUE(antecedentQubitsEmptyA.empty());
   ASSERT_TRUE(antecedentBitsEmptyA.empty());
   ASSERT_TRUE(antecedentQubitsEmptyB.empty());

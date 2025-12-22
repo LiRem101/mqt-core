@@ -101,7 +101,7 @@ public:
    * states. The procedure is done as if the qubit was measured, put to zero if
    * the measurement was one, and the result discarded.
    *
-   * @param quantumTarget The index of the qubit to be measured.
+   * @param target The index of the qubit to be measured.
    * @throws domain_error If the quantum state of the hybrid state is TOP.
    * @return One or two classical states corresponding to the measurement
    * outcomes during the reset, but with the qubit always in the zero state.
@@ -142,21 +142,26 @@ public:
   isBitAlwaysZero(size_t q) const;
 
   /**
-   * @brief Returns whether the given qubits have for value always a zero
-   * amplitude.
+   * @brief Checks if a given combination of bit-qubit values has a nonzero
+   * probability
    *
-   * This method receives a number of qubit indices and checks whether they have
-   * for a given value always a zero amplitude. If the qubit values are top, it
-   * is not guaranteed that the amplitude is always zero and false is returned.
+   * This method receives a number of qubit and bit indices and checks whether
+   * they have for a given value always a zero amplitude. If the qubit or bit
+   * values are top, it is not guaranteed that the amplitude is always zero and
+   * false is returned.
    *
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
+   * @param bits The bit indizes to check.
+   * @param bitValuesToCheck The values of the bits to check. The value at i is
+   * the value of bit index at i.
    * @returns True if the amplitude is always zero, false otherwise.
    */
   [[nodiscard("HybridState::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                         unsigned int value) const;
+  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
+                         std::vector<unsigned int> bits = {},
+                         std::vector<bool> bitValuesToCheck = {}) const;
 
   /**
    * @brief Returns whether the given qubit and bit always have the same value
@@ -224,22 +229,27 @@ public:
   isBitAlwaysZero(size_t q) const;
 
   /**
-   * @brief Returns whether the given qubits have for value always a zero
-   * amplitude.
+   * @brief Checks if a given combination of bit-qubit values has a nonzero
+   * probability
    *
-   * This method receives a number of qubit indices and checks whether they have
-   * for a given value always a zero amplitude. If the qubit values are top, it
-   * is not guaranteed that the amplitude is always zero and false is returned.
+   * This method receives a number of qubit and bit indices and checks whether
+   * they have for a given value always a zero amplitude. If the qubit or bit
+   * values are top, it is not guaranteed that the amplitude is always zero and
+   * false is returned.
    *
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
+   * @param bits The bit indizes to check.
+   * @param bitValues The values of the bits to check. The value at i is the
+   * value of bit index at i.
    * @returns True if the amplitude is always zero, false otherwise.
    */
   [[nodiscard(
       "HybridStateOrTop::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                         unsigned int value) const;
+  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
+                         std::vector<unsigned int> bits = {},
+                         std::vector<bool> bitValues = {}) const;
 };
 } // namespace mqt::ir::opt::qcp
 

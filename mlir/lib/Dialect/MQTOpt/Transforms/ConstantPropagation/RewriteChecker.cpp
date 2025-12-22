@@ -50,7 +50,39 @@ RewriteChecker::getAntecedentsOfQubit(UnionTable unionTable, unsigned int q,
                                       std::set<unsigned int> qubitsNegative,
                                       std::set<unsigned int> bitsPositive,
                                       std::set<unsigned int> bitsNegative) {
-  throw std::logic_error("Not implemented");
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> result;
+  // A value is antecedent of qubit, if the combination antecedent = 1 and qubit
+  // = 0 does not exist
+  unsigned int qubitValueToCheck = negative ? 1 : 0;
+  for (unsigned int posQubit : qubitsPositive) {
+    bool hasZeroAmplitude =
+        unionTable.hasAlwaysZeroAmplitude({q, posQubit}, qubitValueToCheck + 2);
+    if (hasZeroAmplitude) {
+      result.first.insert(posQubit);
+    }
+  }
+  for (unsigned int negQubit : qubitsNegative) {
+    bool hasZeroAmplitude =
+        unionTable.hasAlwaysZeroAmplitude({q, negQubit}, qubitValueToCheck);
+    if (hasZeroAmplitude) {
+      result.first.insert(negQubit);
+    }
+  }
+  for (unsigned int posBit : bitsPositive) {
+    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+        {q}, qubitValueToCheck, {posBit}, {true});
+    if (hasZeroAmplitude) {
+      result.second.insert(posBit);
+    }
+  }
+  for (unsigned int negBit : bitsNegative) {
+    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+        {q}, qubitValueToCheck, {negBit}, {false});
+    if (hasZeroAmplitude) {
+      result.second.insert(negBit);
+    }
+  }
+  return result;
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>

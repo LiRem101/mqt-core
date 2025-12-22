@@ -266,20 +266,26 @@ public:
   bool isBitAlwaysZero(size_t q);
 
   /**
-   * @brief Returns whether the given qubits have for value always a zero
-   * amplitude.
+   * @brief Checks if a given combination of bit-qubit values has a nonzero
+   * probability
    *
-   * This method receives a number of qubit indices and checks whether they have
-   * for a given value always a zero amplitude. If the qubit values are top, it
-   * is not guaranteed that the amplitude is always zero and false is returned.
+   * This method receives a number of qubit  and bit indices and checks whether
+   * they have for a given value always a zero amplitude. If the qubit or bit
+   * values are top, it is not guaranteed that the amplitude is always zero and
+   * false is returned.
    *
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
+   * @param bits The bit indizes to check.
+   * @param bitValues The values of the bits to check. The value at i is the
+   * value of bit index at i.
    * @returns True if the amplitude is always zero, false otherwise.
    */
   bool hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                              unsigned int value);
+                              unsigned int value,
+                              std::vector<unsigned int> bits = {},
+                              std::vector<bool> bitValues = {});
 
   /**
    * @brief Returns whether the given qubit and bit always have the same value
