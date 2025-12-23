@@ -308,6 +308,31 @@ TEST_F(RewriteCheckerTest, oneSetNonZeroTwoQubitTrue) {
   ASSERT_TRUE(rc.isOnlyOneSetNotZero(ut, {0, 1}, {{0, 1, 2}, {3}}));
 }
 
+TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitTrue) {
+  ut.propagateQubitAlloc();
+  ut.propagateQubitAlloc();
+  ut.propagateGate(qc::X, {0});
+  ut.propagateGate(qc::H, {1});
+  ut.propagateGate(qc::H, {2}, {0});
+
+  ASSERT_TRUE(rc.isOnlyOneSetNotZero(
+      ut, {0, 1, 2, 3},
+      {{0}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, {15}}));
+}
+
+TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitFalse) {
+  ut.propagateQubitAlloc();
+  ut.propagateQubitAlloc();
+  ut.propagateGate(qc::X, {0});
+  ut.propagateGate(qc::H, {1});
+  ut.propagateGate(qc::H, {2}, {0});
+  ut.propagateGate(qc::X, {3});
+
+  ASSERT_FALSE(rc.isOnlyOneSetNotZero(
+      ut, {0, 1, 2, 3},
+      {{0}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, {15}}));
+}
+
 TEST_F(RewriteCheckerTest, findNonSatisfiableCombinations) {
   ut.propagateQubitAlloc();
   ut.propagateGate(qc::H, {0});
@@ -316,7 +341,7 @@ TEST_F(RewriteCheckerTest, findNonSatisfiableCombinations) {
 
   std::pair<std::set<unsigned int>, std::set<unsigned int>> superfluousControls(
       {2}, {0, 1});
-  ASSERT_TRUE(superfluousControls.first.contains(2));
+  ASSERT_TRUE(false);
 }
 
 class RewriteCheckerSuperfluousTest : public ::testing::Test {
