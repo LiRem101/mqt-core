@@ -79,7 +79,8 @@ bool UnionTable::checkIfOnlyOneSetIsNotZero(
       auto it = std::next(involvedIndices.begin());
       std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
           remainingIndices(it, involvedIndices.end());
-      if (!checkIfOnlyOneSetIsNotZero(qubits, values, remainingIndices)) {
+      if (!checkIfOnlyOneSetIsNotZero(qubits, valuesThatAreNonZero,
+                                      remainingIndices)) {
         return false;
       }
     }
