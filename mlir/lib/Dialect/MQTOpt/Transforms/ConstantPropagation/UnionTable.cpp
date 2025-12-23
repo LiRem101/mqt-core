@@ -28,6 +28,64 @@ UnionTable::getInvolvedStates(std::set<unsigned int> qubits,
   }
   return involvedStates;
 }
+bool UnionTable::checkIfOnlyOneSetIsNotZero(
+    std::vector<unsigned int> qubits,
+    std::set<std::vector<unsigned int>> values,
+    std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+        involvedIndices) {
+  std::set<unsigned int> qubitIndices = involvedIndices.begin()->first;
+  // Get index of the given qubits in their vector to match with values
+  std::vector<unsigned int> qubitIndicesInGivenVector;
+  for (unsigned int q : qubitIndices) {
+    auto it = std::ranges::find(qubits, q);
+    std::size_t index = it - qubits.begin();
+    qubitIndicesInGivenVector.push_back(index);
+  }
+  // Check if the hybrid states contain only one set
+  for (HybridStateOrTop hs : *hRegOfQubits.at(*qubitIndices.begin())) {
+    if (hs.isTop()) {
+      return false;
+    }
+    std::set<std::vector<unsigned int>> valuesThatAreNonZero = {};
+    std::vector<unsigned int> nonzeroValuesOfCurrentValues = {};
+    for (std::vector<unsigned int> currentValues : values) {
+      for (unsigned int currentValue : currentValues) {
+        // map current values to the current qubitIndizes
+        unsigned int localValue = 0;
+        std::vector<unsigned int> localQubitVector = {};
+        for (unsigned int i = 0; i < qubitIndicesInGivenVector.size(); ++i) {
+          localQubitVector.push_back(mappingGlobalToLocalQubitIndices.at(
+              qubits.at(qubitIndicesInGivenVector.at(i))));
+          unsigned int mask = static_cast<unsigned int>(
+              pow(2, qubitIndicesInGivenVector.at(i)) + 0.1);
+          if ((mask & currentValue) != 0) {
+            localValue += static_cast<unsigned int>(pow(2, i) + 0.1);
+          }
+        }
+        if (!hs.hasAlwaysZeroAmplitude(localQubitVector, localValue)) {
+          nonzeroValuesOfCurrentValues.push_back(currentValue);
+        }
+      }
+      if (!nonzeroValuesOfCurrentValues.empty()) {
+        valuesThatAreNonZero.insert(nonzeroValuesOfCurrentValues);
+        nonzeroValuesOfCurrentValues.clear();
+      }
+    }
+    if (valuesThatAreNonZero.size() > 1) {
+      if (involvedIndices.size() == 1) {
+        return false;
+      }
+      // call the other qubits on the hybridState with the leftover sets
+      auto it = std::next(involvedIndices.begin());
+      std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+          remainingIndices(it, involvedIndices.end());
+      if (!checkIfOnlyOneSetIsNotZero(qubits, values, remainingIndices)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 UnionTable::UnionTable(unsigned int maxNonzeroAmplitudes,
                        unsigned int maxNumberOfBitValues)
@@ -472,5 +530,15 @@ std::optional<bool> UnionTable::getIsBitEquivalentToQubit(unsigned int bit,
     return false;
   }
   return std::optional<bool>();
+}
+
+bool UnionTable::isOnlyOneSetNotZero(
+    std::vector<unsigned int> qubits,
+    std::set<std::vector<unsigned int>> values) {
+  std::set<unsigned int> qubitsAsSet(qubits.begin(), qubits.end());
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+      involvedIndizes = getInvolvedStates(qubitsAsSet, {});
+
+  return checkIfOnlyOneSetIsNotZero(qubits, values, involvedIndizes);
 }
 } // namespace mqt::ir::opt::qcp

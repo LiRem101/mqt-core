@@ -138,7 +138,7 @@ public:
    */
   bool isOnlyOneSetNotZero(UnionTable unionTable,
                            std::vector<unsigned int> qubits,
-                           std::set<std::set<unsigned int>> values);
+                           std::set<std::vector<unsigned int>> values);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_REWRITECHECKER_H

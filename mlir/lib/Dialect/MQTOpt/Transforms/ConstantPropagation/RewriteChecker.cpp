@@ -170,7 +170,7 @@ RewriteChecker::getAntecedentsOfBit(UnionTable unionTable, unsigned int b,
 
 bool RewriteChecker::isOnlyOneSetNotZero(
     UnionTable unionTable, std::vector<unsigned int> qubits,
-    std::set<std::set<unsigned int>> values) {
-  throw std::logic_error("Not implemented");
+    std::set<std::vector<unsigned int>> values) {
+  return unionTable.isOnlyOneSetNotZero(qubits, values);
 }
 } // namespace mqt::ir::opt::qcp

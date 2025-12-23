@@ -63,6 +63,29 @@ class UnionTable {
   getInvolvedStates(std::set<unsigned int> qubits, std::set<unsigned int> bits);
 
   /**
+   * @brief Returns true if only the values of at maximum one given set of the
+   * qubits is nonzero.
+   *
+   * This method receives a number of qubit indices, vectors of possible
+   * amplitudes of the qubits and a set of pairs of involved indices. It checks
+   * whether more than one of the value sets corresponds to nonzero amplitudes.
+   * Does a recursive call to map to all HybridStates in case qubits from
+   * multiple states are involved.
+   *
+   * @param qubits The qubits which are being checked.
+   * @param values The sets of values for which is tested whether there is a
+   * nonzero amplitude.
+   * @involvedIndices The indices grouped by the qubits in one state.
+   * @returns True if at maximum the amplitudes in one set are not equal to
+   * zero.
+   */
+  bool checkIfOnlyOneSetIsNotZero(
+      std::vector<unsigned int> qubits,
+      std::set<std::vector<unsigned int>> values,
+      std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+          involvedIndices);
+
+  /**
    * @brief This method unifies two hybrid states.
    *
    * This method unifies the two hybrid states pointed to by involvedStates1
@@ -314,6 +337,23 @@ public:
    */
   std::optional<bool> getIsBitEquivalentToQubit(unsigned int bit,
                                                 unsigned int qubit);
+
+  /**
+   * @brief Returns true if only the values of one given set of teh qubits is
+   * nonzero.
+   *
+   * This method receives a number of qubit indices and vectors of possible
+   * amplitudes of the qubits. It checks whether more than one of the value sets
+   * corrsponds to nonzero amplitudes.
+   *
+   * @param qubits The qubits which are being checked.
+   * @param values The sets of values for which is tested whether there is a
+   * nonzero amplitude.
+   * @returns True if at maximum the amplitudes in one set are not equal to
+   * zero.
+   */
+  bool isOnlyOneSetNotZero(std::vector<unsigned int> qubits,
+                           std::set<std::vector<unsigned int>> values);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_UNIONTABLE_H
