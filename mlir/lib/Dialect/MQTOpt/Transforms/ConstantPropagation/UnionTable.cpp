@@ -11,6 +11,24 @@
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
 namespace mqt::ir::opt::qcp {
+std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+UnionTable::getInvolvedStates(std::set<unsigned int> qubits,
+                              std::set<unsigned int> bits) {
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+      involvedStates;
+  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
+           setsInSameState : indizesInSameState) {
+    std::set<unsigned int> qubitIndizes = setsInSameState.first;
+    std::set<unsigned int> bitIndizes = setsInSameState.second;
+    if (std::ranges::find_first_of(qubitIndizes, qubits) !=
+            qubitIndizes.end() ||
+        std::ranges::find_first_of(bitIndizes, bits) != bitIndizes.end()) {
+      involvedStates.insert(setsInSameState);
+    }
+  }
+  return involvedStates;
+}
+
 UnionTable::UnionTable(unsigned int maxNonzeroAmplitudes,
                        unsigned int maxNumberOfBitValues)
     : maxNonzeroAmplitudes(maxNonzeroAmplitudes),
@@ -64,26 +82,16 @@ void UnionTable::propagateGate(
     const std::vector<unsigned int>& posCtrlsClassical,
     const std::vector<unsigned int>& negCtrlsClassical,
     std::vector<double> params) {
-  std::vector<unsigned int> qubits;
-  qubits.insert(qubits.end(), targets.begin(), targets.end());
-  qubits.insert(qubits.end(), posCtrlsQuantum.begin(), posCtrlsQuantum.end());
-  qubits.insert(qubits.end(), negCtrlsQuantum.begin(), negCtrlsQuantum.end());
-  std::vector<unsigned int> bits;
-  bits.insert(bits.end(), posCtrlsClassical.begin(), posCtrlsClassical.end());
-  bits.insert(bits.end(), negCtrlsClassical.begin(), negCtrlsClassical.end());
+  std::set<unsigned int> qubits;
+  qubits.insert(targets.begin(), targets.end());
+  qubits.insert(posCtrlsQuantum.begin(), posCtrlsQuantum.end());
+  qubits.insert(negCtrlsQuantum.begin(), negCtrlsQuantum.end());
+  std::set<unsigned int> bits;
+  bits.insert(posCtrlsClassical.begin(), posCtrlsClassical.end());
+  bits.insert(negCtrlsClassical.begin(), negCtrlsClassical.end());
 
   std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
-      involvedStates;
-  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
-           setsInSameState : indizesInSameState) {
-    std::set<unsigned int> qubitIndizes = setsInSameState.first;
-    std::set<unsigned int> bitIndizes = setsInSameState.second;
-    if (std::ranges::find_first_of(qubitIndizes, qubits) !=
-            qubitIndizes.end() ||
-        std::ranges::find_first_of(bitIndizes, bits) != bitIndizes.end()) {
-      involvedStates.insert(setsInSameState);
-    }
-  }
+      involvedStates = getInvolvedStates(qubits, bits);
   if (involvedStates.size() > 1) {
     std::pair<std::set<unsigned int>, std::set<unsigned int>> currentStates =
         *involvedStates.begin();
@@ -140,18 +148,12 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
                                       unsigned int classicalTarget) {
 
   std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
-      involvedStates;
+      involvedStates = getInvolvedStates({quantumTarget}, {classicalTarget});
   bool bitExists = false;
-  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
-           setsInSameState : indizesInSameState) {
-    std::set<unsigned int> qubitIndizes = setsInSameState.first;
-    std::set<unsigned int> bitIndizes = setsInSameState.second;
-    if (qubitIndizes.contains(quantumTarget) ||
-        bitIndizes.contains(classicalTarget)) {
-      involvedStates.insert(setsInSameState);
-      bitExists |= bitIndizes.contains(classicalTarget);
-    }
+  for (const auto& [_, bitsInState] : involvedStates) {
+    bitExists |= bitsInState.contains(classicalTarget);
   }
+
   std::pair<std::set<unsigned int>, std::set<unsigned int>>
       involvedStateIndizes = *involvedStates.begin();
   indizesInSameState.erase(*involvedStates.begin());
@@ -239,16 +241,9 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
 }
 
 void UnionTable::propagateReset(unsigned int target) {
-  std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedIndizes;
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedIndizes =
+      *getInvolvedStates({target}, {}).begin();
 
-  for (std::pair<std::set<unsigned int>, std::set<unsigned int>> const&
-           setsInSameState : indizesInSameState) {
-    std::set<unsigned int> qubitIndizes = setsInSameState.first;
-    if (qubitIndizes.contains(target)) {
-      involvedIndizes = setsInSameState;
-      break;
-    }
-  }
   bool top = false;
 
   // Propagate reset into the states in involvedHybridStates

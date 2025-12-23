@@ -48,16 +48,31 @@ class UnionTable {
       indizesInSameState;
 
   /**
+   * @brief This method retrieves the states containing the given qubits and
+   * bits.
+   *
+   * This method retreives a set of pairs, with the pairs holding the qubit and
+   * bit indizes of all states that hold at least one of the given qubit and
+   * bit indizes.
+   *
+   * @param qubits The qubit indizes.
+   * @param bits The bit indizes
+   * @return A set of pairs with all involved qubit and bit indizes.
+   */
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+  getInvolvedStates(std::set<unsigned int> qubits, std::set<unsigned int> bits);
+
+  /**
    * @brief This method unifies two hybrid states.
    *
-   * This method unifies the two hybrid states pointed to by involvedStates1 and
-   * involvedStates2. If any of the hybridStates are top, the result will be
-   * top.
+   * This method unifies the two hybrid states pointed to by involvedStates1
+   * and involvedStates2. If any of the hybridStates are top, the result
+   * will be top.
    *
-   * @param involvedStates1 The first qubit and bit indizes of the states to be
-   * unified.
-   * @param involvedStates2 The first qubit and bit indizes of the states to be
-   * unified.
+   * @param involvedStates1 The first qubit and bit indizes of the states to
+   * be unified.
+   * @param involvedStates2 The first qubit and bit indizes of the states to
+   * be unified.
    */
   std::pair<std::set<unsigned int>, std::set<unsigned int>> unifyHybridStates(
       std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedStates1,
