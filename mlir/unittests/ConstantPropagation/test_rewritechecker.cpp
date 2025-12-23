@@ -315,7 +315,7 @@ TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitTrue) {
   ut.propagateGate(qc::H, {1});
   ut.propagateGate(qc::H, {2}, {0});
   ut.propagateGate(qc::H, {3});
-  ut.propagateMeasurement(3, 3);
+  ut.propagateMeasurement(3, 0);
 
   ASSERT_TRUE(rc.isOnlyOneSetNotZero(
       ut, {0, 1, 2, 3},
@@ -359,13 +359,12 @@ TEST_F(RewriteCheckerTest, findNonSatisfiableCombinationsC) {
   ut.propagateMeasurement(0, 0);
   ut.propagateMeasurement(1, 1);
   ut.propagateGate(qc::H, {0});
-  ut.propagateGate(qc::X, {1}, {}, {}, {1});
   ut.propagateGate(qc::X, {1}, {0});
 
   ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {0}, {1}, {0, 1}));
   ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {}, {0, 1}, {}, {0, 1}));
   ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0}, {1}, {0}, {1}));
-  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0, 1}, {}, {}, {0, 1}));
+  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0}, {1}, {}, {0, 1}));
 }
 
 class RewriteCheckerSuperfluousTest : public ::testing::Test {

@@ -76,7 +76,24 @@ bool RewriteChecker::areThereSatisfiableCombinations(
     std::vector<unsigned int> qubitNegCtrls,
     std::vector<unsigned int> bitPosCtrls,
     std::vector<unsigned int> bitNegCtrls) {
-  throw std::logic_error("Not implemented yet!");
+  std::vector<unsigned int> qubits = qubitNegCtrls;
+  unsigned int value = 0;
+  for (unsigned int i = qubitNegCtrls.size();
+       i < qubitNegCtrls.size() + qubitPosCtrls.size(); ++i) {
+    value += static_cast<unsigned int>(pow(2, i) + 0.1);
+    qubits.push_back(qubitPosCtrls.at(i - qubitNegCtrls.size()));
+  }
+  std::vector<unsigned int> bits = {};
+  std::vector<bool> bitValues = {};
+  for (unsigned int posBit : bitPosCtrls) {
+    bits.push_back(posBit);
+    bitValues.push_back(true);
+  }
+  for (unsigned int negBit : bitNegCtrls) {
+    bits.push_back(negBit);
+    bitValues.push_back(false);
+  }
+  return !unionTable.hasAlwaysZeroAmplitude(qubits, value, bits, bitValues);
 }
 
 std::optional<std::pair<unsigned int, bool>>
