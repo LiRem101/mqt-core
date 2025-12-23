@@ -8,12 +8,15 @@
  * Licensed under the MIT License
  */
 
-#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
-#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
+#include "ir/operations/OpType.hpp"
+#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/HybridState.hpp"
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
-#include <mlir/Dialect/MQTOpt/Transforms/Passes.h>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace mqt::ir::opt::qcp;
 
@@ -24,16 +27,8 @@ protected:
   void TearDown() override {}
 };
 
-// ##################################################
-// # Helper functions
-// ##################################################
-
-// ##################################################
-// # Basic tests
-// ##################################################
-
 TEST_F(HybridStateTest, ApplyHGate) {
-  HybridState hState = HybridState(1, 4, 2);
+  HybridState hState = mqt::ir::opt::qcp::HybridState(1, 4, 2);
   hState.propagateGate(qc::H, {0});
 
   EXPECT_THAT(hState.toString(),
@@ -172,7 +167,7 @@ TEST_F(HybridStateTest, handleErrorIfTwoManyAmplitudesAreNonzero) {
 TEST_F(HybridStateTest, doMeasurementWithOneResult) {
   HybridState hState = HybridState(1, 2, 2, {false}, 0.4);
   hState.propagateGate(qc::X, {0});
-  unsigned int bitIndex = hState.addClassicalBit();
+  const unsigned int bitIndex = hState.addClassicalBit();
   std::vector<HybridState> const res = hState.propagateMeasurement(0, bitIndex);
 
   EXPECT_EQ(bitIndex, 1);

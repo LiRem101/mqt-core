@@ -13,21 +13,30 @@
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/QubitState.hpp"
 
+#include "ir/operations/OpType.hpp"
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/GateToMap.h"
 
 #include <algorithm>
+#include <cmath>
 #include <complex>
 #include <cstddef>
 #include <cstdlib>
 #include <format>
 #include <map>
 #include <memory>
+#include <ostream>
+#include <ranges>
 #include <set>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include <variant>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
-QubitState::QubitState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes)
+QubitState::QubitState(const std::size_t nQubits,
+                       const std::size_t maxNonzeroAmplitudes)
     : nQubits(nQubits), maxNonzeroAmplitudes(maxNonzeroAmplitudes) {
   this->map = std::unordered_map<unsigned int, std::complex<double>>();
   this->map.insert({0, std::complex<double>(1.0, 0.0)});
@@ -50,8 +59,7 @@ void QubitState::print(std::ostream& os) const { os << this->toString(); }
 std::string QubitState::toString() const {
   std::string str;
   bool first = true;
-  for (std::map ordered = std::map<unsigned int, std::complex<double>>(
-           this->map.begin(), this->map.end());
+  for (auto ordered = std::map(this->map.begin(), this->map.end());
        auto const& [key, val] : ordered) {
     if (!first) {
       str += ", ";
@@ -69,7 +77,7 @@ std::string QubitState::toString() const {
   return str;
 }
 
-QubitState QubitState::unify(QubitState that,
+QubitState QubitState::unify(const QubitState& that,
                              std::vector<unsigned int> qubitsOccupiedByThat) {
 
   // Check if future state would be too large
@@ -86,9 +94,9 @@ QubitState QubitState::unify(QubitState that,
       unsigned int loopVarThat = that.nQubits - 1;
       unsigned int newKey = 0;
 
-      for (int i = nQubits + that.nQubits - 1; i >= 0; i--) {
-        bool inThat = std::ranges::find(qubitsOccupiedByThat, i) !=
-                      qubitsOccupiedByThat.end();
+      for (auto i = static_cast<int>(nQubits + that.nQubits - 1); i >= 0; i--) {
+        const bool inThat = std::ranges::find(qubitsOccupiedByThat, i) !=
+                            qubitsOccupiedByThat.end();
         bool isOne = false;
         if (inThat) {
           isOne = (keyThat &
@@ -107,19 +115,18 @@ QubitState QubitState::unify(QubitState that,
       newValues[newKey] = valThis * valThat;
     }
   }
-  QubitState newState =
-      QubitState(nQubits + that.nQubits, maxNonzeroAmplitudes);
+  auto newState = QubitState(nQubits + that.nQubits, maxNonzeroAmplitudes);
   newState.map = newValues;
 
   return newState;
 }
 
-void QubitState::propagateGate(qc::OpType gate,
-                               std::vector<unsigned int> targets,
-                               std::vector<unsigned int> posCtrls,
-                               std::vector<unsigned int> negCtrls,
-                               std::vector<double> params) {
-  auto gateMapping = getQubitMappingOfGates(gate, params);
+void QubitState::propagateGate(const qc::OpType gate,
+                               const std::vector<unsigned int>& targets,
+                               const std::vector<unsigned int>& posCtrls,
+                               const std::vector<unsigned int>& negCtrls,
+                               const std::vector<double>& params) {
+  const auto gateMapping = getQubitMappingOfGates(gate, params);
 
   unsigned int positiveCtrlMask = 0;
   unsigned int negativeCtrlMask = 0;
@@ -163,8 +170,8 @@ void QubitState::propagateGate(qc::OpType gate,
 }
 
 std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>>
-QubitState::measureQubit(unsigned int target) {
-  unsigned int qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
+QubitState::measureQubit(const unsigned int target) {
+  const auto qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
 
   double probabilityZero = 0.0;
   double probabilityOne = 0.0;
@@ -186,10 +193,10 @@ QubitState::measureQubit(unsigned int target) {
         "Probabilities of 0 and 1 do not add up to one after measurement.");
   }
 
-  QubitState stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
+  auto stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
   stateZero.map = newValuesZeroRes;
   stateZero.normalize();
-  QubitState stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
+  auto stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
   stateOne.map = newValuesOneRes;
   stateOne.normalize();
 
@@ -200,16 +207,16 @@ QubitState::measureQubit(unsigned int target) {
 
   if (probabilityZero < 1e-4) {
     return {{1, resPairOne}};
-  } else if (probabilityOne < 1e-4) {
-    return {{0, resPairZero}};
-  } else {
-    return {{0, resPairZero}, {1, resPairOne}};
   }
+  if (probabilityOne < 1e-4) {
+    return {{0, resPairZero}};
+  }
+  return {{0, resPairZero}, {1, resPairOne}};
 }
 
 std::set<std::pair<double, std::shared_ptr<QubitState>>>
-QubitState::resetQubit(unsigned int target) {
-  unsigned int qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
+QubitState::resetQubit(const unsigned int target) {
+  const auto qubitMask = static_cast<unsigned int>(pow(2, target) + 0.1);
 
   double probabilityZero = 0.0;
   double probabilityOne = 0.0;
@@ -221,7 +228,7 @@ QubitState::resetQubit(unsigned int target) {
       probabilityZero += norm(value);
       newValuesZeroRes.insert({key, value});
     } else {
-      unsigned int newKey = key ^ qubitMask;
+      const unsigned int newKey = key ^ qubitMask;
       probabilityOne += norm(value);
       newValuesOneRes.insert({newKey, value});
     }
@@ -232,10 +239,10 @@ QubitState::resetQubit(unsigned int target) {
         "Probabilities of 0 and 1 do not add up to one after measurement.");
   }
 
-  QubitState stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
+  auto stateZero = QubitState(nQubits, maxNonzeroAmplitudes);
   stateZero.map = newValuesZeroRes;
   stateZero.normalize();
-  QubitState stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
+  auto stateOne = QubitState(nQubits, maxNonzeroAmplitudes);
   stateOne.map = newValuesOneRes;
   stateOne.normalize();
 
@@ -246,73 +253,63 @@ QubitState::resetQubit(unsigned int target) {
 
   if (probabilityZero < 1e-4) {
     return {resPairOne};
-  } else if (probabilityOne < 1e-4) {
-    return {resPairZero};
-  } else {
-    return {resPairZero, resPairOne};
   }
-}
-
-void QubitState::removeQubit(unsigned int target) {
-  throw std::logic_error("Not implemented");
+  if (probabilityOne < 1e-4) {
+    return {resPairZero};
+  }
+  return {resPairZero, resPairOne};
 }
 
 void QubitState::normalize() {
   double denominator = 0.0;
-  for (const auto& [key, value] : map) {
+  for (const auto& value : map | std::views::values) {
     denominator += norm(value);
   }
-  for (const auto& [key, value] : map) {
-    map[key] /= sqrt(denominator);
+  for (const auto& key : map | std::views::keys) {
+    map[key] /= std::sqrt(denominator);
   }
 }
 
 bool QubitState::operator==(const QubitState& that) const {
-  if (this->getSize() != that.getSize())
+  if (this->getSize() != that.getSize()) {
     return false;
+  }
 
   return std::ranges::all_of(
       this->map, [&](const std::pair<unsigned int, std::complex<double>>& p) {
         auto [key, val] = p;
-        return (that.map.contains(key)) && (abs(val - that.map.at(key)) < 1e-4);
+        return that.map.contains(key) && abs(val - that.map.at(key)) < 1e-4;
       });
 }
 
-bool QubitState::isQubitAlwaysOne(size_t q) const {
-  unsigned int mask = static_cast<unsigned int>(pow(2, q) + 0.1);
-  for (auto const& [qubits, _] : map) {
-    if ((qubits & mask) != mask) {
-      return false;
-    }
-  }
-  return true;
+bool QubitState::isQubitAlwaysOne(const size_t q) const {
+  const auto mask =
+      static_cast<unsigned int>(pow(2, static_cast<double>(q)) + 0.1);
+  return std::ranges::all_of(map | std::views::keys, [mask](auto qubits) {
+    return (qubits & mask) == mask;
+  });
 }
 
-bool QubitState::isQubitAlwaysZero(size_t q) const {
-  unsigned int mask = static_cast<unsigned int>(pow(2, q) + 0.1);
-  for (auto const& [qubits, _] : map) {
-    if ((qubits & mask) != 0) {
-      return false;
-    }
-  }
-  return true;
+bool QubitState::isQubitAlwaysZero(const size_t q) const {
+  const auto mask =
+      static_cast<unsigned int>(pow(2, static_cast<double>(q)) + 0.1);
+  return std::ranges::all_of(map | std::views::keys, [mask](auto qubits) {
+    return (qubits & mask) == 0;
+  });
 }
 
-bool QubitState::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                                        unsigned int value) const {
+bool QubitState::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
+                                        const unsigned int value) const {
   unsigned int mask = 0;
-  for (unsigned int qubit : qubits) {
+  for (const unsigned int qubit : qubits) {
     mask += static_cast<unsigned int>(pow(2, qubit) + 0.1);
   }
-  for (auto const& [q, _] : map) {
-    if ((q & mask) == value) {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::all_of(map | std::views::keys, [mask, value](auto qbit) {
+    return (qbit & mask) != value;
+  });
 }
 
-QubitStateOrTop::QubitStateOrTop() : variant(TOP::T) {}
+QubitStateOrTop::QubitStateOrTop() : variant(T) {}
 
 QubitStateOrTop::QubitStateOrTop(TOP top) : variant(top) {}
 
@@ -326,7 +323,7 @@ QubitStateOrTop&
 QubitStateOrTop::operator=(const QubitStateOrTop& qubitStateOrTop) = default;
 
 QubitStateOrTop&
-QubitStateOrTop::operator=(std::shared_ptr<QubitState> qubitState) {
+QubitStateOrTop::operator=(const std::shared_ptr<QubitState>& qubitState) {
   this->variant = qubitState;
   return *this;
 }
@@ -339,11 +336,11 @@ QubitStateOrTop& QubitStateOrTop::operator=(const TOP& t) {
 bool QubitStateOrTop::operator==(const QubitStateOrTop& that) const {
   if (this->isTop() && that.isTop()) {
     return true;
-  } else if (this->isTop() || that.isTop()) {
-    return false;
-  } else {
-    return this->getQubitState() == that.getQubitState();
   }
+  if (this->isTop() || that.isTop()) {
+    return false;
+  }
+  return this->getQubitState() == that.getQubitState();
 }
 
 bool QubitStateOrTop::operator!=(const QubitStateOrTop& that) const {
@@ -372,29 +369,28 @@ QubitStateOrTop::isQubitState() const {
 QubitStateOrTop::toString() const {
   if (isTop()) {
     return "TOP";
-  } else {
-    return getQubitState()->toString();
   }
+  return getQubitState()->toString();
 }
 
 void QubitStateOrTop::print(std::ostream& os) const { os << this->toString(); }
 
-bool QubitStateOrTop::isQubitAlwaysOne(size_t q) const {
+bool QubitStateOrTop::isQubitAlwaysOne(const size_t q) const {
   if (isTop()) {
     return false;
   }
   return getQubitState()->isQubitAlwaysOne(q);
 }
 
-bool QubitStateOrTop::isQubitAlwaysZero(size_t q) const {
+bool QubitStateOrTop::isQubitAlwaysZero(const size_t q) const {
   if (isTop()) {
     return false;
   }
   return getQubitState()->isQubitAlwaysZero(q);
 }
 
-bool QubitStateOrTop::hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
-                                             unsigned int value) const {
+bool QubitStateOrTop::hasAlwaysZeroAmplitude(
+    const std::vector<unsigned int>& qubits, const unsigned int value) const {
   if (isTop()) {
     return false;
   }

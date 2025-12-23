@@ -12,70 +12,79 @@
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <optional>
-#include <stdexcept>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
-RewriteChecker::RewriteChecker() {}
+RewriteChecker::RewriteChecker() = default;
 
 RewriteChecker::~RewriteChecker() = default;
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getSuperfluousControls(UnionTable unionTable,
-                                       std::vector<unsigned int> qubitTargets,
-                                       std::vector<unsigned int> qubitPosCtrls,
-                                       std::vector<unsigned int> qubitNegCtrls,
-                                       std::vector<unsigned int> bitPosCtrls,
-                                       std::vector<unsigned int> bitNegCtrls) {
+RewriteChecker::getSuperfluousControls(
+    const UnionTable& unionTable, const std::vector<unsigned int>& qubitTargets,
+    const std::vector<unsigned int>& qubitPosCtrls,
+    const std::vector<unsigned int>& qubitNegCtrls,
+    const std::vector<unsigned int>& bitPosCtrls,
+    const std::vector<unsigned int>& bitNegCtrls) {
   std::set<unsigned int> superfluousQubits = {};
   std::set<unsigned int> superfluousBits = {};
-  for (unsigned int posCtrlQubit : qubitPosCtrls) {
+  for (unsigned int const posCtrlQubit : qubitPosCtrls) {
     if (unionTable.isQubitAlwaysOne(posCtrlQubit)) {
       superfluousQubits.insert(posCtrlQubit);
     } else if (unionTable.isQubitAlwaysZero(posCtrlQubit)) {
       superfluousQubits.clear();
-      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
-                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      std::ranges::for_each(qubitTargets, [&](const unsigned int i) {
+        superfluousQubits.insert(i);
+      });
       return {superfluousQubits, {}};
     }
   }
-  for (unsigned int negCtrlQubit : qubitNegCtrls) {
+  for (unsigned int const negCtrlQubit : qubitNegCtrls) {
     if (unionTable.isQubitAlwaysZero(negCtrlQubit)) {
       superfluousQubits.insert(negCtrlQubit);
     } else if (unionTable.isQubitAlwaysOne(negCtrlQubit)) {
       superfluousQubits.clear();
-      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
-                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      std::ranges::for_each(qubitTargets, [&](const unsigned int i) {
+        superfluousQubits.insert(i);
+      });
       return {superfluousQubits, {}};
     }
   }
-  for (unsigned int posCtrlBit : bitPosCtrls) {
+  for (unsigned int const posCtrlBit : bitPosCtrls) {
     if (unionTable.isBitAlwaysOne(posCtrlBit)) {
       superfluousBits.insert(posCtrlBit);
     } else if (unionTable.isBitAlwaysZero(posCtrlBit)) {
       superfluousQubits.clear();
-      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
-                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      std::ranges::for_each(qubitTargets, [&](const unsigned int i) {
+        superfluousQubits.insert(i);
+      });
       return {superfluousQubits, {}};
     }
   }
-  for (unsigned int negCtrlBit : bitNegCtrls) {
+  for (unsigned int const negCtrlBit : bitNegCtrls) {
     if (unionTable.isBitAlwaysZero(negCtrlBit)) {
       superfluousBits.insert(negCtrlBit);
     } else if (unionTable.isBitAlwaysOne(negCtrlBit)) {
       superfluousQubits.clear();
-      std::for_each(qubitTargets.cbegin(), qubitTargets.cend(),
-                    [&](unsigned int i) { superfluousQubits.insert(i); });
+      std::ranges::for_each(qubitTargets, [&](const unsigned int i) {
+        superfluousQubits.insert(i);
+      });
       return {superfluousQubits, {}};
     }
   }
   return {superfluousQubits, superfluousBits};
 }
+
 bool RewriteChecker::areThereSatisfiableCombinations(
-    UnionTable unionTable, std::vector<unsigned int> qubitPosCtrls,
-    std::vector<unsigned int> qubitNegCtrls,
-    std::vector<unsigned int> bitPosCtrls,
-    std::vector<unsigned int> bitNegCtrls) {
+    UnionTable unionTable, const std::vector<unsigned int>& qubitPosCtrls,
+    const std::vector<unsigned int>& qubitNegCtrls,
+    const std::vector<unsigned int>& bitPosCtrls,
+    const std::vector<unsigned int>& bitNegCtrls) {
   std::vector<unsigned int> qubits = qubitNegCtrls;
   unsigned int value = 0;
   for (unsigned int i = qubitNegCtrls.size();
@@ -85,11 +94,11 @@ bool RewriteChecker::areThereSatisfiableCombinations(
   }
   std::vector<unsigned int> bits = {};
   std::vector<bool> bitValues = {};
-  for (unsigned int posBit : bitPosCtrls) {
+  for (unsigned int const posBit : bitPosCtrls) {
     bits.push_back(posBit);
     bitValues.push_back(true);
   }
-  for (unsigned int negBit : bitNegCtrls) {
+  for (unsigned int const negBit : bitNegCtrls) {
     bits.push_back(negBit);
     bitValues.push_back(false);
   }
@@ -97,52 +106,51 @@ bool RewriteChecker::areThereSatisfiableCombinations(
 }
 
 std::optional<std::pair<unsigned int, bool>>
-RewriteChecker::getEquivalentBit(UnionTable unionTable, unsigned int q) {
-  unsigned int possibleBits = unionTable.getNumberOfBits();
+RewriteChecker::getEquivalentBit(UnionTable unionTable, const unsigned int q) {
+  const unsigned int possibleBits = unionTable.getNumberOfBits();
   for (unsigned int i = 0; i < possibleBits; ++i) {
-    std::optional<bool> result = unionTable.getIsBitEquivalentToQubit(i, q);
-    if (result.has_value()) {
-      return std::optional<std::pair<unsigned int, bool>>(
-          std::make_pair(i, result.value()));
+    if (std::optional<bool> result = unionTable.getIsBitEquivalentToQubit(i, q);
+        result.has_value()) {
+      return std::make_pair(i, result.value());
     }
   }
-  return std::optional<std::pair<unsigned int, bool>>();
+  return {};
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getAntecedentsOfQubit(UnionTable unionTable, unsigned int q,
-                                      bool negative,
-                                      std::set<unsigned int> qubitsPositive,
-                                      std::set<unsigned int> qubitsNegative,
-                                      std::set<unsigned int> bitsPositive,
-                                      std::set<unsigned int> bitsNegative) {
+RewriteChecker::getAntecedentsOfQubit(
+    UnionTable unionTable, unsigned int q, const bool negative,
+    const std::set<unsigned int>& qubitsPositive,
+    const std::set<unsigned int>& qubitsNegative,
+    const std::set<unsigned int>& bitsPositive,
+    const std::set<unsigned int>& bitsNegative) {
   std::pair<std::set<unsigned int>, std::set<unsigned int>> result;
   // A value is antecedent of qubit, if the combination antecedent = 1 and qubit
   // = 0 does not exist
-  unsigned int qubitValueToCheck = negative ? 1 : 0;
-  for (unsigned int posQubit : qubitsPositive) {
-    bool hasZeroAmplitude =
+  const unsigned int qubitValueToCheck = negative ? 1 : 0;
+  for (unsigned int const posQubit : qubitsPositive) {
+    const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({q, posQubit}, qubitValueToCheck + 2);
     if (hasZeroAmplitude) {
       result.first.insert(posQubit);
     }
   }
-  for (unsigned int negQubit : qubitsNegative) {
-    bool hasZeroAmplitude =
+  for (unsigned int const negQubit : qubitsNegative) {
+    const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({q, negQubit}, qubitValueToCheck);
     if (hasZeroAmplitude) {
       result.first.insert(negQubit);
     }
   }
-  for (unsigned int posBit : bitsPositive) {
-    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+  for (unsigned int const posBit : bitsPositive) {
+    const bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
         {q}, qubitValueToCheck, {posBit}, {true});
     if (hasZeroAmplitude) {
       result.second.insert(posBit);
     }
   }
-  for (unsigned int negBit : bitsNegative) {
-    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+  for (unsigned int const negBit : bitsNegative) {
+    const bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
         {q}, qubitValueToCheck, {negBit}, {false});
     if (hasZeroAmplitude) {
       result.second.insert(negBit);
@@ -152,38 +160,38 @@ RewriteChecker::getAntecedentsOfQubit(UnionTable unionTable, unsigned int q,
 }
 
 std::pair<std::set<unsigned int>, std::set<unsigned int>>
-RewriteChecker::getAntecedentsOfBit(UnionTable unionTable, unsigned int b,
-                                    bool negative,
-                                    std::set<unsigned int> qubitsPositive,
-                                    std::set<unsigned int> qubitsNegative,
-                                    std::set<unsigned int> bitsPositive,
-                                    std::set<unsigned int> bitsNegative) {
+RewriteChecker::getAntecedentsOfBit(
+    UnionTable unionTable, unsigned int b, bool negative,
+    const std::set<unsigned int>& qubitsPositive,
+    const std::set<unsigned int>& qubitsNegative,
+    const std::set<unsigned int>& bitsPositive,
+    const std::set<unsigned int>& bitsNegative) {
   std::pair<std::set<unsigned int>, std::set<unsigned int>> result;
   // A value is antecedent of bit, if the combination antecedent = 1 and bit = 0
   // does not exist
-  for (unsigned int posQubit : qubitsPositive) {
-    bool hasZeroAmplitude =
+  for (unsigned int const posQubit : qubitsPositive) {
+    const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({posQubit}, 1, {b}, {negative});
     if (hasZeroAmplitude) {
       result.first.insert(posQubit);
     }
   }
-  for (unsigned int negQubit : qubitsNegative) {
-    bool hasZeroAmplitude =
+  for (unsigned int const negQubit : qubitsNegative) {
+    const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({negQubit}, 0, {b}, {negative});
     if (hasZeroAmplitude) {
       result.first.insert(negQubit);
     }
   }
-  for (unsigned int posBit : bitsPositive) {
-    bool hasZeroAmplitude =
+  for (unsigned int const posBit : bitsPositive) {
+    const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({}, 0, {posBit, b}, {true, negative});
     if (hasZeroAmplitude) {
       result.second.insert(posBit);
     }
   }
-  for (unsigned int negBit : bitsNegative) {
-    bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
+  for (unsigned int const negBit : bitsNegative) {
+    const bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
         {}, 0, {negBit, b}, {false, negative});
     if (hasZeroAmplitude) {
       result.second.insert(negBit);
@@ -193,8 +201,8 @@ RewriteChecker::getAntecedentsOfBit(UnionTable unionTable, unsigned int b,
 }
 
 bool RewriteChecker::isOnlyOneSetNotZero(
-    UnionTable unionTable, std::vector<unsigned int> qubits,
-    std::set<std::vector<unsigned int>> values) {
+    UnionTable unionTable, const std::vector<unsigned int>& qubits,
+    const std::set<std::vector<unsigned int>>& values) {
   return unionTable.isOnlyOneSetNotZero(qubits, values);
 }
 } // namespace mqt::ir::opt::qcp

@@ -8,12 +8,17 @@
  * Licensed under the MIT License
  */
 
-#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
-#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
+#include "ir/operations/OpType.hpp"
+#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/QubitState.hpp"
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
-#include <mlir/Dialect/MQTOpt/Transforms/Passes.h>
+#include <map>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 using namespace mqt::ir::opt::qcp;
 
@@ -23,14 +28,6 @@ protected:
 
   void TearDown() override {}
 };
-
-// ##################################################
-// # Helper functions
-// ##################################################
-
-// ##################################################
-// # Basic tests
-// ##################################################
 
 TEST_F(QubitStateTest, ApplyHGate) {
   QubitState qState = QubitState(1, 4);

@@ -8,22 +8,13 @@
  * Licensed under the MIT License
  */
 
-#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp"
+#include "ir/operations/OpType.hpp"
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
-#include <mlir/Dialect/MQTOpt/Transforms/Passes.h>
 
 using namespace mqt::ir::opt::qcp;
-
-// ##################################################
-// # Helper functions
-// ##################################################
-
-// ##################################################
-// # Basic tests
-// ##################################################
 
 TEST(SimpleUnionTableTest, propagateQubitAlloc) {
   UnionTable ut = UnionTable(4, 2);

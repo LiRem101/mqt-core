@@ -12,10 +12,15 @@
 #define MQT_CORE_HYBRIDSTATE_H
 
 #include "QubitState.hpp"
+#include "ir/operations/OpType.hpp"
 
-#include <llvm/ADT/STLExtras.h>
+#include <cstddef>
 #include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
 #include <variant>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
 /**
@@ -30,7 +35,7 @@ class HybridState {
   std::vector<bool> bitValues;
   unsigned int maxNumberOfBitValues;
 
-  HybridState() = default;
+  HybridState() : probability(0.0), maxNumberOfBitValues(0) {}
 
 public:
   explicit HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
@@ -42,6 +47,7 @@ public:
 
   void print(std::ostream& os) const;
 
+  [[nodiscard("HybridState::toString called but ignored")]]
   std::string toString() const;
 
   /**
@@ -59,12 +65,12 @@ public:
    * @throw std::domain_error If the number of nonzero amplitudes would exceed
    * maxNonzeroAmplitudes.
    */
-  void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
-                     std::vector<unsigned int> posCtrlsQuantum = {},
-                     std::vector<unsigned int> negCtrlsQuantum = {},
+  void propagateGate(qc::OpType gate, const std::vector<unsigned int>& targets,
+                     const std::vector<unsigned int>& posCtrlsQuantum = {},
+                     const std::vector<unsigned int>& negCtrlsQuantum = {},
                      const std::vector<unsigned int>& posCtrlsClassical = {},
                      const std::vector<unsigned int>& negCtrlsClassical = {},
-                     std::vector<double> params = {});
+                     const std::vector<double>& params = {});
 
   /**
    * @brief This method adds a classical bit to the hybrid state and returns the
@@ -153,19 +159,20 @@ public:
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
-   * @param bits The bit indizes to check.
-   * @param bitValuesToCheck The values of the bits to check. The value at i is
-   * the value of bit index at i.
+   * @param bits The bit indices to check.
+   * @param bitValuesToCheck The values of the bits to check. The value at k is
+   * the value of bit index at k.
    * @returns True if the amplitude is always zero, false otherwise.
    */
   [[nodiscard("HybridState::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
-                         std::vector<unsigned int> bits = {},
+  hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
+                         unsigned int value,
+                         const std::vector<unsigned int>& bits = {},
                          std::vector<bool> bitValuesToCheck = {}) const;
 
   /**
-   * @brief Returns whether the given qubit and bit always have the same value
-   * or always a different value.
+   * @brief Returns whether the given qubit and the given bit always have the
+   * same value or always a different value.
    *
    * @param bit Index of bit.
    * @param qubit Index of qubit.
@@ -240,16 +247,17 @@ public:
    * @param qubits The qubits which are being checked.
    * @param value The value for which is tested whether there is a nonzero
    * amplitude.
-   * @param bits The bit indizes to check.
-   * @param bitValues The values of the bits to check. The value at i is the
-   * value of bit index at i.
+   * @param bits The bit indices to check.
+   * @param bitValues The values of the bits to check. The value at k is the
+   * value of bit index at k.
    * @returns True if the amplitude is always zero, false otherwise.
    */
   [[nodiscard(
       "HybridStateOrTop::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits, unsigned int value,
-                         std::vector<unsigned int> bits = {},
-                         std::vector<bool> bitValues = {}) const;
+  hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
+                         unsigned int value,
+                         const std::vector<unsigned int>& bits = {},
+                         const std::vector<bool>& bitValues = {}) const;
 };
 } // namespace mqt::ir::opt::qcp
 

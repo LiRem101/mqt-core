@@ -14,6 +14,9 @@
 #include "UnionTable.hpp"
 
 #include <optional>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
 /**
@@ -44,13 +47,13 @@ public:
    * @param bitNegCtrls The indices of the negatively controlling bits.
    * @returns A pair of superfluous qubits and superfluous bits.
    */
-  std::pair<std::set<unsigned int>, std::set<unsigned int>>
-  getSuperfluousControls(UnionTable unionTable,
-                         std::vector<unsigned int> qubitTargets,
-                         std::vector<unsigned int> qubitPosCtrls,
-                         std::vector<unsigned int> qubitNegCtrls = {},
-                         std::vector<unsigned int> bitPosCtrls = {},
-                         std::vector<unsigned int> bitNegCtrls = {});
+  static std::pair<std::set<unsigned int>, std::set<unsigned int>>
+  getSuperfluousControls(const UnionTable& unionTable,
+                         const std::vector<unsigned int>& qubitTargets,
+                         const std::vector<unsigned int>& qubitPosCtrls,
+                         const std::vector<unsigned int>& qubitNegCtrls = {},
+                         const std::vector<unsigned int>& bitPosCtrls = {},
+                         const std::vector<unsigned int>& bitNegCtrls = {});
 
   /**
    * @brief This method checks whether there are satisfiable combinations
@@ -65,17 +68,16 @@ public:
    * @param bitNegCtrls The indices of the negatively controlling bits.
    * @returns A pair of superfluous qubits and superfluous bits.
    */
-  bool
-  areThereSatisfiableCombinations(UnionTable unionTable,
-                                  std::vector<unsigned int> qubitPosCtrls,
-                                  std::vector<unsigned int> qubitNegCtrls = {},
-                                  std::vector<unsigned int> bitPosCtrls = {},
-                                  std::vector<unsigned int> bitNegCtrls = {});
+  static bool areThereSatisfiableCombinations(
+      UnionTable unionTable, const std::vector<unsigned int>& qubitPosCtrls,
+      const std::vector<unsigned int>& qubitNegCtrls = {},
+      const std::vector<unsigned int>& bitPosCtrls = {},
+      const std::vector<unsigned int>& bitNegCtrls = {});
 
   /**
    * @brief Returns an equivalent bit if that exists.
    *
-   * This method checks whether there is bit equivalent to a given qubit (i.e.
+   * This method checks whether there is a bit equivalent to a given qubit (i.e.
    * always has the same values as the qubit). If that is the case, the bit is
    * returned. If multiple bits are equivalent to the qubit, one of them is
    * returned randomly.
@@ -86,14 +88,14 @@ public:
    * @returns The index of an equivalent bit, if there is one, and whether the
    * inverted bit is equivalent to the qubit.
    */
-  std::optional<std::pair<unsigned int, bool>>
+  static std::optional<std::pair<unsigned int, bool>>
   getEquivalentBit(UnionTable unionTable, unsigned int q);
 
   /**
    * @brief Returns the qubits and bits that imply the given qubit.
    *
    * This method checks whether in the given vectors are qubits or bit that
-   * imply (are antecedents of) the given qubit. I.e. all qubits and bits a are
+   * imply (are antecedents of) the given qubit. I.e. all qubits and bits are
    * returned for which holds: a -> q.
    *
    * @param unionTable The UnionTable to be checked.
@@ -103,23 +105,23 @@ public:
    * @param qubitsPositive The qubits for which are checked if they imply q.
    * @param qubitsNegative The qubits for which their negations are checked if
    * they imply q.
-   * @param bitsNegative The bits for which are checked if they imply q.
+   * @param bitsPositive The bits for which are checked if they imply q.
    * @param bitsNegative The qubits for which their negations are checked if
    * they imply q.
    * @returns A pair of 1. qubits and 2. bits that are antecedents of q.
    */
-  std::pair<std::set<unsigned int>, std::set<unsigned int>>
+  static std::pair<std::set<unsigned int>, std::set<unsigned int>>
   getAntecedentsOfQubit(UnionTable unionTable, unsigned int q, bool negative,
-                        std::set<unsigned int> qubitsPositive,
-                        std::set<unsigned int> qubitsNegative,
-                        std::set<unsigned int> bitsPositive,
-                        std::set<unsigned int> bitsNegative);
+                        const std::set<unsigned int>& qubitsPositive,
+                        const std::set<unsigned int>& qubitsNegative,
+                        const std::set<unsigned int>& bitsPositive,
+                        const std::set<unsigned int>& bitsNegative);
 
   /**
    * @brief Returns the qubits and bits that imply the given bit.
    *
    * This method checks whether in the given vectors are qubits or bit that
-   * imply (are antecedents of) the given bit. I.e. all qubits and bits a are
+   * imply (are antecedents of) the given bit. I.e. all qubits and bits are
    * returned for which holds: a -> b.
    *
    * @param unionTable The UnionTable to be checked.
@@ -129,17 +131,17 @@ public:
    * @param qubitsPositive The qubits for which are checked if they imply b.
    * @param qubitsNegative The qubits for which their negations are checked if
    * they imply b.
-   * @param bitsNegative The bits for which are checked if they imply b.
+   * @param bitsPositive The bits for which are checked if they imply b.
    * @param bitsNegative The qubits for which their negations are checked if
    * they imply b.
    * @returns A pair of 1. qubits and 2. bits that are antecedents of b.
    */
-  std::pair<std::set<unsigned int>, std::set<unsigned int>>
+  static std::pair<std::set<unsigned int>, std::set<unsigned int>>
   getAntecedentsOfBit(UnionTable unionTable, unsigned int b, bool negative,
-                      std::set<unsigned int> qubitsPositive,
-                      std::set<unsigned int> qubitsNegative,
-                      std::set<unsigned int> bitsPositive,
-                      std::set<unsigned int> bitsNegative);
+                      const std::set<unsigned int>& qubitsPositive,
+                      const std::set<unsigned int>& qubitsNegative,
+                      const std::set<unsigned int>& bitsPositive,
+                      const std::set<unsigned int>& bitsNegative);
 
   /**
    * @brief Returns true if only the values of one given set of teh qubits is
@@ -147,7 +149,7 @@ public:
    *
    * This method receives a number of qubit indices and vectors of possible
    * amplitudes of the qubits. It checks whether more than one of the value sets
-   * corrsponds to nonzero amplitudes.
+   * corresponds to nonzero amplitudes.
    *
    * @param unionTable The UnionTable to be checked.
    * @param qubits The qubits which are being checked.
@@ -156,9 +158,10 @@ public:
    * @returns True if at maximum the amplitudes in one set are not equal to
    * zero.
    */
-  bool isOnlyOneSetNotZero(UnionTable unionTable,
-                           std::vector<unsigned int> qubits,
-                           std::set<std::vector<unsigned int>> values);
+  static bool
+  isOnlyOneSetNotZero(UnionTable unionTable,
+                      const std::vector<unsigned int>& qubits,
+                      const std::set<std::vector<unsigned int>>& values);
 };
 } // namespace mqt::ir::opt::qcp
 #endif // MQT_CORE_REWRITECHECKER_H

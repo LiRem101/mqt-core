@@ -13,19 +13,27 @@
 
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/HybridState.hpp"
 
+#include "ir/operations/OpType.hpp"
+#include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/QubitState.hpp"
+
 #include <algorithm>
-#include <complex>
 #include <cstddef>
 #include <format>
-#include <llvm/ADT/STLExtras.h>
+#include <map>
 #include <memory>
+#include <optional>
+#include <ostream>
+#include <set>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace mqt::ir::opt::qcp {
 HybridState::HybridState(std::size_t nQubits, std::size_t maxNonzeroAmplitudes,
-                         unsigned int maxNumberOfBitValues,
-                         std::vector<bool> bitValues, double probability)
+                         const unsigned int maxNumberOfBitValues,
+                         std::vector<bool> bitValues, const double probability)
     : qState(std::make_shared<QubitState>(nQubits, maxNonzeroAmplitudes)),
       probability(probability), bitValues(std::move(bitValues)),
       maxNumberOfBitValues(maxNumberOfBitValues) {}
@@ -35,7 +43,7 @@ HybridState::~HybridState() {
     auto qS = qState.getQubitState();
     qS.reset();
   }
-};
+}
 
 void HybridState::print(std::ostream& os) const { os << this->toString(); }
 
@@ -52,12 +60,12 @@ std::string HybridState::toString() const {
 }
 
 void HybridState::propagateGate(
-    qc::OpType gate, std::vector<unsigned int> targets,
-    std::vector<unsigned int> posCtrlsQuantum,
-    std::vector<unsigned int> negCtrlsQuantum,
+    const qc::OpType gate, const std::vector<unsigned int>& targets,
+    const std::vector<unsigned int>& posCtrlsQuantum,
+    const std::vector<unsigned int>& negCtrlsQuantum,
     const std::vector<unsigned int>& posCtrlsClassical,
     const std::vector<unsigned int>& negCtrlsClassical,
-    std::vector<double> params) {
+    const std::vector<double>& params) {
   if (qState.isTop()) {
     return;
   }
@@ -73,16 +81,15 @@ void HybridState::propagateGate(
     }
   }
 
-  auto qS = qState.getQubitState();
+  const auto qS = qState.getQubitState();
   try {
-    qS->propagateGate(gate, std::move(targets), std::move(posCtrlsQuantum),
-                      std::move(negCtrlsQuantum), std::move(params));
+    qS->propagateGate(gate, targets, posCtrlsQuantum, negCtrlsQuantum, params);
   } catch (std::domain_error const&) {
     qState.getQubitState().reset();
     qState = QubitStateOrTop(T);
   }
 }
-unsigned int HybridState::addClassicalBit(bool value) {
+unsigned int HybridState::addClassicalBit(const bool value) {
   if (bitValues.size() >= maxNumberOfBitValues) {
     throw std::domain_error("Number of bits would exceed number of allowed "
                             "bits. HybridState needs to be treated as TOP.");
@@ -92,8 +99,8 @@ unsigned int HybridState::addClassicalBit(bool value) {
 }
 
 std::vector<HybridState>
-HybridState::propagateMeasurement(unsigned int quantumTarget,
-                                  unsigned int classicalTarget) {
+HybridState::propagateMeasurement(const unsigned int quantumTarget,
+                                  const unsigned int classicalTarget) {
   if (qState.isTop()) {
     throw std::domain_error("Measured QuantumState is TOP. HybridState needs "
                             "to be treated as TOP.");
@@ -110,7 +117,7 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
   std::vector<HybridState> results;
   for (const auto& [resultBit, value] : measurementResults) {
     const double newProbability = value.first * probability;
-    auto newQS = QubitStateOrTop(value.second);
+    const auto newQS = QubitStateOrTop(value.second);
     auto newHybrid = HybridState();
 
     auto newBitValues = std::vector<bool>(bitValues.size());
@@ -132,7 +139,8 @@ HybridState::propagateMeasurement(unsigned int quantumTarget,
   return results;
 }
 
-std::vector<HybridState> HybridState::propagateReset(unsigned int target) {
+std::vector<HybridState>
+HybridState::propagateReset(const unsigned int target) {
   if (qState.isTop()) {
     throw std::domain_error("Measured QuantumState is TOP. HybridState needs "
                             "to be treated as TOP.");
@@ -144,7 +152,7 @@ std::vector<HybridState> HybridState::propagateReset(unsigned int target) {
   std::vector<HybridState> results;
   for (const auto& [prob, value] : resetResults) {
     const double newProbability = prob * probability;
-    auto newQS = QubitStateOrTop(value);
+    const auto newQS = QubitStateOrTop(value);
     auto newHybrid = HybridState();
 
     auto newBitValues = std::vector<bool>(bitValues.size());
@@ -185,10 +193,10 @@ HybridState HybridState::unify(HybridState that,
   }
 
   std::vector<bool> newBitValues;
-  unsigned int const numberOfNewbits = bitValues.size() + that.bitValues.size();
+  unsigned int const numberOfNewBits = bitValues.size() + that.bitValues.size();
   unsigned int thisCounter = 0;
   unsigned int thatCounter = 0;
-  for (unsigned int i = 0; i < numberOfNewbits; i++) {
+  for (unsigned int i = 0; i < numberOfNewBits; i++) {
     if (std::ranges::find(bitsOccupiedByThat, i) == bitsOccupiedByThat.end()) {
       newBitValues.push_back(bitValues[thisCounter]);
       thisCounter++;
@@ -229,8 +237,9 @@ bool HybridState::isBitAlwaysOne(size_t q) const { return bitValues.at(q); }
 bool HybridState::isBitAlwaysZero(size_t q) const { return !bitValues.at(q); }
 
 bool HybridState::hasAlwaysZeroAmplitude(
-    std::vector<unsigned int> qubits, unsigned int value,
-    std::vector<unsigned int> bits, std::vector<bool> bitValuesToCheck) const {
+    const std::vector<unsigned int>& qubits, const unsigned int value,
+    const std::vector<unsigned int>& bits,
+    std::vector<bool> bitValuesToCheck) const {
   bool amplitudesZero = false;
   if (!qubits.empty()) {
     amplitudesZero = qState.hasAlwaysZeroAmplitude(qubits, value);
@@ -253,7 +262,7 @@ HybridState::getIsBitEquivalentToQubit(const unsigned int bit,
       (!bitValues.at(bit) && qState.isQubitAlwaysZero(qubit))) {
     return true;
   }
-  return std::optional<bool>();
+  return {};
 }
 
 HybridStateOrTop::HybridStateOrTop() : variant(TOP::T) {}
@@ -351,8 +360,9 @@ bool HybridStateOrTop::isBitAlwaysZero(size_t q) const {
 }
 
 bool HybridStateOrTop::hasAlwaysZeroAmplitude(
-    std::vector<unsigned int> qubits, unsigned int value,
-    std::vector<unsigned int> bits, std::vector<bool> bitValues) const {
+    const std::vector<unsigned int>& qubits, const unsigned int value,
+    const std::vector<unsigned int>& bits,
+    const std::vector<bool>& bitValues) const {
   if (isTop()) {
     return false;
   }

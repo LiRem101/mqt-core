@@ -11,14 +11,18 @@
 #ifndef MQT_CORE_QUBITSTATE_H
 #define MQT_CORE_QUBITSTATE_H
 
-#include <algorithm>
+#include <cmath>
 #include <complex>
 #include <cstddef>
+#include <cstdint>
 #include <ir/operations/OpType.hpp>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <set>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -40,8 +44,8 @@ class QubitState {
   std::string qubitStringToBinary(unsigned int q) const {
     std::string str;
     for (int i = static_cast<int>(nQubits) - 1; i >= 0; i--) {
-      unsigned int currentDigit = pow(2, i);
-      if (q & currentDigit) {
+      if (const auto currentDigit = static_cast<unsigned int>(pow(2, i));
+          q & currentDigit) {
         str += "1";
         q -= currentDigit;
       } else {
@@ -72,7 +76,8 @@ class QubitState {
                          std::unordered_map<unsigned int, std::complex<double>>>
           gateMapping,
       std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets,
-      unsigned int bitmaskForPosCtrls, unsigned int bitmaskForNegCtrls) {
+      const unsigned int bitmaskForPosCtrls,
+      const unsigned int bitmaskForNegCtrls) {
     std::unordered_map<unsigned int, std::complex<double>> newValues;
 
     for (const auto& [key, value] : map) {
@@ -82,7 +87,7 @@ class QubitState {
         continue;
       }
 
-      unsigned int mapFrom;
+      unsigned int mapFrom = 0;
       std::vector<unsigned int> keysForNewValue(4);
 
       if ((key & bitmaskForQubitTargets[3]) == bitmaskForQubitTargets[3]) {
@@ -106,7 +111,6 @@ class QubitState {
         keysForNewValue[1] = key;
         keysForNewValue[0] = key - bitmaskForQubitTargets[1];
       } else {
-        mapFrom = 0;
         keysForNewValue[3] = key + bitmaskForQubitTargets[3];
         keysForNewValue[2] = key + bitmaskForQubitTargets[2];
         keysForNewValue[1] = key + bitmaskForQubitTargets[1];
@@ -115,8 +119,7 @@ class QubitState {
 
       auto mapForThisQubit = gateMapping[mapFrom];
       for (int i = 0; i < 4; i++) {
-        auto valueToI = mapForThisQubit[i];
-        if (abs(valueToI) > 1e-4) {
+        if (auto valueToI = mapForThisQubit[i]; abs(valueToI) > 1e-4) {
           newValues[keysForNewValue[i]] += valueToI * value;
         }
       }
@@ -147,7 +150,8 @@ class QubitState {
                          std::unordered_map<unsigned int, std::complex<double>>>
           gateMapping,
       std::unordered_map<unsigned int, unsigned int> bitmaskForQubitTargets,
-      unsigned int bitmaskForPosCtrls, unsigned int bitmaskForNegCtrls) {
+      const unsigned int bitmaskForPosCtrls,
+      const unsigned int bitmaskForNegCtrls) {
     std::unordered_map<unsigned int, std::complex<double>> newValues;
 
     for (const auto& [key, value] : map) {
@@ -157,7 +161,7 @@ class QubitState {
         continue;
       }
 
-      unsigned int mapFrom;
+      unsigned int mapFrom = 0;
       std::vector<unsigned int> keysForNewValue(2);
 
       if ((key & bitmaskForQubitTargets[1]) == bitmaskForQubitTargets[1]) {
@@ -165,15 +169,13 @@ class QubitState {
         keysForNewValue[1] = key;
         keysForNewValue[0] = key - bitmaskForQubitTargets[1];
       } else {
-        mapFrom = 0;
         keysForNewValue[1] = key + bitmaskForQubitTargets[1];
         keysForNewValue[0] = key;
       }
 
       auto mapForThisQubit = gateMapping[mapFrom];
       for (int i = 0; i < 2; i++) {
-        auto valueToI = mapForThisQubit[i];
-        if (abs(valueToI) > 1e-4) {
+        if (auto valueToI = mapForThisQubit[i]; abs(valueToI) > 1e-4) {
           newValues[keysForNewValue[i]] += valueToI * value;
         }
       }
@@ -205,12 +207,12 @@ public:
    * nonzero amplitudes. Otherwise, throws a domain_error.
    *
    * @param that The QubitState to unify this with.
-   * @param qubitsOccupiedByThat Qubit positions that that QubitState will
+   * @param qubitsOccupiedByThat Qubit positions that-QubitState will
    * provide.
    * @throw std::domain_error If the number of nonzero amplitudes would exceed
    * maxNonzeroAmplitudes of this.
    */
-  QubitState unify(QubitState that,
+  QubitState unify(const QubitState& that,
                    std::vector<unsigned int> qubitsOccupiedByThat);
 
   /**
@@ -228,10 +230,10 @@ public:
    * @throw std::domain_error If the number of nonzero amplitudes would exceed
    * maxNonzeroAmplitudes.
    */
-  void propagateGate(qc::OpType gate, std::vector<unsigned int> targets,
-                     std::vector<unsigned int> posCtrls = {},
-                     std::vector<unsigned int> negCtrls = {},
-                     std::vector<double> params = {});
+  void propagateGate(qc::OpType gate, const std::vector<unsigned int>& targets,
+                     const std::vector<unsigned int>& posCtrls = {},
+                     const std::vector<unsigned int>& negCtrls = {},
+                     const std::vector<double>& params = {});
 
   /**
    * @brief This method applies a measurement to the qubits.
@@ -265,16 +267,6 @@ public:
   resetQubit(unsigned int target);
 
   /**
-   * @brief This method removes a qubit from the state.
-   *
-   * This method removes a qubit from the state. It normalizes the sum of the
-   * squared amplitudes of the other qubits back to one.
-   *
-   * @param target The index of the qubit to be removed.
-   */
-  void removeQubit(unsigned int target);
-
-  /**
    * @brief This method normalizes the amplitudes of a state.
    */
   void normalize();
@@ -301,11 +293,11 @@ public:
    * @returns True if the amplitude is always zero, false otherwise.
    */
   [[nodiscard("QubitState::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+  hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
                          unsigned int value) const;
 };
 
-enum TOP { T };
+enum TOP : std::uint8_t { T };
 
 class QubitStateOrTop {
   std::variant<TOP, std::shared_ptr<QubitState>> variant;
@@ -321,7 +313,7 @@ public:
 
   QubitStateOrTop& operator=(const QubitStateOrTop& qubitStateOrTop);
 
-  QubitStateOrTop& operator=(std::shared_ptr<QubitState> qubitState);
+  QubitStateOrTop& operator=(const std::shared_ptr<QubitState>& qubitState);
 
   QubitStateOrTop& operator=(const TOP& t);
 
@@ -366,7 +358,7 @@ public:
    */
   [[nodiscard(
       "QubitStateOrTop::hasAlwaysZeroAmplitude called but ignored")]] bool
-  hasAlwaysZeroAmplitude(std::vector<unsigned int> qubits,
+  hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
                          unsigned int value) const;
 };
 } // namespace mqt::ir::opt::qcp
