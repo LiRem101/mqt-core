@@ -314,10 +314,12 @@ TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitTrue) {
   ut.propagateGate(qc::X, {0});
   ut.propagateGate(qc::H, {1});
   ut.propagateGate(qc::H, {2}, {0});
+  ut.propagateGate(qc::H, {3});
+  ut.propagateMeasurement(3, 3);
 
   ASSERT_TRUE(rc.isOnlyOneSetNotZero(
       ut, {0, 1, 2, 3},
-      {{0}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, {15}}));
+      {{0}, {1, 2, 3, 4, 5, 6, 7}, {8, 9, 10, 11, 12, 13, 14, 15}}));
 }
 
 TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitFalse) {
@@ -333,15 +335,37 @@ TEST_F(RewriteCheckerTest, oneSetNonZeroMultipleQubitFalse) {
       {{0}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, {15}}));
 }
 
-TEST_F(RewriteCheckerTest, findNonSatisfiableCombinations) {
-  ut.propagateQubitAlloc();
+TEST_F(RewriteCheckerTest, findNonSatisfiableCombinationsA) {
   ut.propagateGate(qc::H, {0});
   ut.propagateGate(qc::X, {1});
   ut.propagateGate(qc::X, {1}, {0});
 
-  std::pair<std::set<unsigned int>, std::set<unsigned int>> superfluousControls(
-      {2}, {0, 1});
-  ASSERT_TRUE(false);
+  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0, 1}));
+  ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {0}, {1}));
+}
+
+TEST_F(RewriteCheckerTest, findNonSatisfiableCombinationsB) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+
+  ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {0, 1}));
+  ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {}, {0, 1}));
+  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0}, {1}));
+}
+
+TEST_F(RewriteCheckerTest, findNonSatisfiableCombinationsC) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateMeasurement(0, 0);
+  ut.propagateMeasurement(1, 1);
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {}, {}, {1});
+  ut.propagateGate(qc::X, {1}, {0});
+
+  ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {0}, {1}, {0, 1}));
+  ASSERT_TRUE(rc.areThereSatisfiableCombinations(ut, {}, {0, 1}, {}, {0, 1}));
+  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0}, {1}, {0}, {1}));
+  ASSERT_FALSE(rc.areThereSatisfiableCombinations(ut, {0, 1}, {}, {}, {0, 1}));
 }
 
 class RewriteCheckerSuperfluousTest : public ::testing::Test {

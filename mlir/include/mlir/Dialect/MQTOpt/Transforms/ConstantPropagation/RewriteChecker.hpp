@@ -53,6 +53,26 @@ public:
                          std::vector<unsigned int> bitNegCtrls = {});
 
   /**
+   * @brief This method checks whether there are satisfiable combinations
+   *
+   * This method checks if there are any satisfiable combinations of the given
+   * qubits and bits.
+   *
+   * @param unionTable The UnionTable to be checked.
+   * @param qubitPosCtrls The indices of the positively controlling qubits.
+   * @param qubitNegCtrls The indices of the negatively controlling qubits.
+   * @param bitPosCtrls The indices of the positively controlling bits.
+   * @param bitNegCtrls The indices of the negatively controlling bits.
+   * @returns A pair of superfluous qubits and superfluous bits.
+   */
+  bool
+  areThereSatisfiableCombinations(UnionTable unionTable,
+                                  std::vector<unsigned int> qubitPosCtrls,
+                                  std::vector<unsigned int> qubitNegCtrls = {},
+                                  std::vector<unsigned int> bitPosCtrls = {},
+                                  std::vector<unsigned int> bitNegCtrls = {});
+
+  /**
    * @brief Returns an equivalent bit if that exists.
    *
    * This method checks whether there is bit equivalent to a given qubit (i.e.

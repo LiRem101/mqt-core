@@ -71,6 +71,13 @@ RewriteChecker::getSuperfluousControls(UnionTable unionTable,
   }
   return {superfluousQubits, superfluousBits};
 }
+bool RewriteChecker::areThereSatisfiableCombinations(
+    UnionTable unionTable, std::vector<unsigned int> qubitPosCtrls,
+    std::vector<unsigned int> qubitNegCtrls,
+    std::vector<unsigned int> bitPosCtrls,
+    std::vector<unsigned int> bitNegCtrls) {
+  throw std::logic_error("Not implemented yet!");
+}
 
 std::optional<std::pair<unsigned int, bool>>
 RewriteChecker::getEquivalentBit(UnionTable unionTable, unsigned int q) {
