@@ -282,6 +282,21 @@ TEST_F(UnionTableTest, doResetWithTwoResults) {
                          "-> 1.00}: p = 0.50; {|00> -> 1.00}: p = 0.50;}"));
 }
 
+TEST_F(UnionTableTest, swapGateApplication) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateGate(qc::X, {1});
+  ut.propagateGate(qc::X, {2});
+  ut.propagateGate(qc::SWAP, {1, 2});
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr("Qubits: 20, HybridStates: {{|01> -> 0.71, "
+                                 "|10> -> 0.71}: p = 1.00;}"));
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr(
+                  "Qubits: 1, HybridStates: {{|1> -> 1.00}: p = 1.00;}"));
+}
+
 class UnionTablePropertiesTest : public ::testing::Test {
 protected:
   UnionTable ut = UnionTable(3, 2);
