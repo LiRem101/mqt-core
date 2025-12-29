@@ -108,6 +108,15 @@ class UnionTable {
       std::pair<std::set<unsigned int>, std::set<unsigned int>>
           involvedStates2);
 
+  /**
+   * @brief This method swaps two qubits without fusing the hybrid states of the
+   * two.
+   *
+   * @param target1 Swapped with target2.
+   * @param target2 Swapped with target1.
+   */
+  void applySwapGate(unsigned int target1, unsigned int target2);
+
 public:
   UnionTable(unsigned int maxNonzeroAmplitudes,
              unsigned int maxNumberOfBitValues);

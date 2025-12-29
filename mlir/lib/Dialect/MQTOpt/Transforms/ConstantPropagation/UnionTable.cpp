@@ -199,6 +199,47 @@ UnionTable::unifyHybridStates(
   return newStatesInSameSet;
 }
 
+void UnionTable::applySwapGate(const unsigned int target1,
+                               const unsigned int target2) {
+  for (auto it = indicesInSameState.begin(); it != indicesInSameState.end();
+       ++it) {
+    if (it->first.contains(target1) && !it->first.contains(target2)) {
+      std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates;
+      for (auto qubits : it->first) {
+        if (qubits == target1) {
+          newStates.first.insert(target2);
+        } else {
+          newStates.first.insert(qubits);
+        }
+      }
+      indicesInSameState.erase(it);
+      indicesInSameState.insert(newStates);
+    } else if (!it->first.contains(target1) && it->first.contains(target2)) {
+      std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates;
+      for (auto qubits : it->first) {
+        if (qubits == target2) {
+          newStates.first.insert(target1);
+        } else {
+          newStates.first.insert(qubits);
+        }
+      }
+      indicesInSameState.erase(it);
+      indicesInSameState.insert(newStates);
+    }
+  }
+
+  const unsigned int localTarget2 =
+      mappingGlobalToLocalQubitIndices.at(target2);
+  const std::shared_ptr<std::vector<HybridStateOrTop>> ptrOfTarget2 =
+      hRegOfQubits.at(target2);
+
+  mappingGlobalToLocalQubitIndices.at(target2) =
+      mappingGlobalToLocalQubitIndices.at(target1);
+  mappingGlobalToLocalQubitIndices.at(target1) = localTarget2;
+  hRegOfQubits.at(target2) = hRegOfQubits.at(target1);
+  hRegOfQubits.at(target1) = ptrOfTarget2;
+}
+
 UnionTable::UnionTable(const unsigned int maxNonzeroAmplitudes,
                        const unsigned int maxNumberOfBitValues)
     : maxNonzeroAmplitudes(maxNonzeroAmplitudes),
@@ -247,6 +288,12 @@ void UnionTable::propagateGate(
     const std::vector<unsigned int>& posCtrlsClassical,
     const std::vector<unsigned int>& negCtrlsClassical,
     std::vector<double> params) {
+  if (gate == qc::SWAP && posCtrlsQuantum.empty() && negCtrlsQuantum.empty() &&
+      posCtrlsClassical.empty() && negCtrlsClassical.empty()) {
+    applySwapGate(targets.at(0), targets.at(1));
+    return;
+  }
+
   std::set<unsigned int> qubits;
   qubits.insert(targets.begin(), targets.end());
   qubits.insert(posCtrlsQuantum.begin(), posCtrlsQuantum.end());
