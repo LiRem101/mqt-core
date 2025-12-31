@@ -39,6 +39,7 @@ struct qcpObjects {
   llvm::DenseMap<mlir::Value, unsigned int> qubitToIndex;
   llvm::DenseMap<mlir::Value, std::vector<unsigned int>> memrefToQubitIndex;
   llvm::DenseMap<mlir::Value, int> integerValues;
+  llvm::DenseMap<mlir::Value, double> doubleValues;
   std::map<std::string, unsigned int> bitToIndex;
 };
 
@@ -48,8 +49,11 @@ using namespace mlir;
 /**
  *
  */
-WalkResult handleFunc([[maybe_unused]] func::FuncOp op) {
-  // TODO: HandleFuncs, throw not supported if it is not the entry point?
+WalkResult handleFunc(const func::FuncOp op) {
+  if (!isEntryPoint(op)) {
+    throw std::domain_error(
+        "Constant propagation does not support nested functions.");
+  }
   return WalkResult::advance();
 }
 
@@ -190,22 +194,58 @@ WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op) {
     int v = intAttr.getInt();
     qcp->integerValues[res] = v;
   }
+  if (auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
+    double v = doubleAttr.getValueAsDouble();
+    qcp->doubleValues[res] = v;
+  }
   return WalkResult::advance();
 }
 
 /**
  * @brief Propagte the unitary.
  */
-WalkResult handleUnitary(UnitaryInterface op, PatternRewriter& rewriter) {
-  // TODO: Propagate the unitary
+WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
+                         PatternRewriter& rewriter) {
+  std::vector<unsigned int> targetQubitIndices = {};
+  std::vector<unsigned int> posCtrlQubitIndices = {};
+  std::vector<unsigned int> negCtrlQubitIndices = {};
+  std::vector<double> params = {};
+  for (auto targetQubit : op.getInQubits()) {
+    targetQubitIndices.push_back(qcp->qubitToIndex[targetQubit]);
+  }
+  for (auto posCtrlQubit : op.getPosCtrlInQubits()) {
+    posCtrlQubitIndices.push_back(qcp->qubitToIndex[posCtrlQubit]);
+  }
+  for (auto negCtrlQubit : op.getNegCtrlInQubits()) {
+    negCtrlQubitIndices.push_back(qcp->qubitToIndex[negCtrlQubit]);
+  }
+  for (auto qubit : op.getAllInQubits()) {
+    auto newQubit = op.getCorrespondingOutput(qubit);
+    qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
+    // TODO: We can only do this if we have no classical dependence
+    qcp->qubitToIndex.erase(qubit);
+  }
+  for (auto param : op.getParams()) {
+    params.push_back(qcp->doubleValues[param]);
+  }
+  auto opName = op.getIdentifier().str();
+  auto opType = qc::opTypeFromString(opName);
+  // TODO: Bit dependence, check if gate should be removed
+  qcp->ut.propagateGate(opType, targetQubitIndices, posCtrlQubitIndices,
+                        negCtrlQubitIndices, {}, {}, params);
   return WalkResult::advance();
 }
 
 /**
  * @brief Propagate the measurement.
  */
-WalkResult handleReset(ResetOp op, PatternRewriter& rewriter) {
-  // TODO: Propagate the reset
+WalkResult handleReset(qcpObjects* qcp, ResetOp op, PatternRewriter& rewriter) {
+  auto qubit = op.getInQubit();
+  auto newQubit = op.getOutQubit();
+  qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
+  qcp->ut.propagateReset(qcp->qubitToIndex[qubit]);
+  // TODO: We can only do this if we have no classical dependence
+  qcp->qubitToIndex.erase(qubit);
   return WalkResult::advance();
 }
 
@@ -258,6 +298,7 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
                     llvm::DenseMap<mlir::Value, unsigned int>(),
                     llvm::DenseMap<mlir::Value, std::vector<unsigned int>>(),
                     llvm::DenseMap<mlir::Value, int>(),
+                    llvm::DenseMap<mlir::Value, double>(),
                     {}};
 
   /// Iterate work-list.
@@ -275,11 +316,11 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
         TypeSwitch<Operation*, WalkResult>(curr)
             /// mqtopt Dialect
             .Case<UnitaryInterface>([&](UnitaryInterface op) {
-              return handleUnitary(op, rewriter);
+              return handleUnitary(&qcp, op, rewriter);
             })
             .Case<QubitOp>([&](QubitOp op) { return handleQubit(op); })
             .Case<ResetOp>(
-                [&](ResetOp op) { return handleReset(op, rewriter); })
+                [&](ResetOp op) { return handleReset(&qcp, op, rewriter); })
             .Case<MeasureOp>(
                 [&](MeasureOp op) { return handleMeasure(op, rewriter); })
             .Case<AllocQubitOp>(
