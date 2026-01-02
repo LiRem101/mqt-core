@@ -14,7 +14,6 @@
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Architecture.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Common.h"
-#include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Layout.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Attributes.h"
@@ -25,7 +24,6 @@
 #include <algorithm>
 #include <chrono>
 #include <llvm/ADT/TypeSwitch.h>
-#include <map>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
@@ -47,7 +45,7 @@ struct qcpObjects {
   qcp::UnionTable ut;
   llvm::DenseMap<mlir::Value, unsigned int> qubitToIndex;
   llvm::DenseMap<mlir::Value, std::vector<unsigned int>> memrefToQubitIndex;
-  llvm::DenseMap<mlir::Value, int> integerValues;
+  llvm::DenseMap<mlir::Value, int64_t> integerValues;
   llvm::DenseMap<mlir::Value, double> doubleValues;
   llvm::DenseMap<mlir::Value, unsigned int> bitToIndex;
 };
@@ -116,13 +114,13 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     }
   }
 
-  auto thenResult = iterateThroughWorklist(rewriter, thenWorklist, qcp,
-                                           posBitForThen, negBitCtrls);
+  const auto thenResult = iterateThroughWorklist(rewriter, thenWorklist, qcp,
+                                                 posBitForThen, negBitCtrls);
 
   auto* lastThenOp = op.getThenRegion().front().getTerminator();
   auto thenYield = cast<scf::YieldOp>(lastThenOp);
-  auto thenYieldedValues = thenYield.getResults();
-  auto ifResults = op.getResults();
+  const auto thenYieldedValues = thenYield.getResults();
+  const auto ifResults = op.getResults();
 
   if (thenResult.failed()) {
     return thenResult;
@@ -232,7 +230,14 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
 /**
  * Save index from stored qubit in respective memrefToQubit spot
  */
-WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
+WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
+                       const std::vector<unsigned int>& posBitCtrls,
+                       const std::vector<unsigned int>& negBitCtrls) {
+  if (!posBitCtrls.empty() || !negBitCtrls.empty()) {
+    throw std::logic_error("Cannot handle store operation in conditional "
+                           "branches during constant propagation.");
+  }
+
   Value const storedValue = op.getValue();
   Value const memref = op.getMemref();
   auto const calledIndices = op.getIndices();
@@ -250,11 +255,18 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
 /**
  * Add constant value to qcp
  */
-WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op) {
+WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op,
+                          const std::vector<unsigned int>& posBitCtrls,
+                          const std::vector<unsigned int>& negBitCtrls) {
+  if (!posBitCtrls.empty() || !negBitCtrls.empty()) {
+    throw std::logic_error("Cannot handle load operation in conditional "
+                           "branches during constant propagation.");
+  }
+
   Value const res = op.getResult();
   auto attr = op.getValue();
   if (const auto intAttr = dyn_cast<IntegerAttr>(attr)) {
-    const long v = intAttr.getInt();
+    const auto v = intAttr.getInt();
     qcp->integerValues[res] = v;
   }
   if (const auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
@@ -305,13 +317,18 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 /**
  * @brief Propagate the measurement.
  */
-WalkResult handleReset(qcpObjects* qcp, ResetOp op, PatternRewriter& rewriter) {
+WalkResult handleReset(qcpObjects* qcp, ResetOp op,
+                       const std::vector<unsigned int>& posBitCtrls,
+                       const std::vector<unsigned int>& negBitCtrls,
+                       PatternRewriter& rewriter) {
   const auto qubit = op.getInQubit();
   const auto newQubit = op.getOutQubit();
   qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
+  // TODO: Reset depending on pos/neg Bit ctrls
   qcp->ut.propagateReset(qcp->qubitToIndex.at(qubit));
-  // TODO: We can only do this if we have no classical dependence
-  qcp->qubitToIndex.erase(qubit);
+  if (posBitCtrls.empty() && negBitCtrls.empty()) {
+    qcp->qubitToIndex.erase(qubit);
+  }
   return WalkResult::advance();
 }
 
@@ -319,6 +336,8 @@ WalkResult handleReset(qcpObjects* qcp, ResetOp op, PatternRewriter& rewriter) {
  * @brief Propagate the measurement.
  */
 WalkResult handleMeasure(qcpObjects* qcp, MeasureOp op,
+                         const std::vector<unsigned int>& posBitCtrls,
+                         const std::vector<unsigned int>& negBitCtrls,
                          PatternRewriter& rewriter) {
   const auto qubit = op.getInQubit();
   const auto newQubit = op.getOutQubit();
@@ -331,9 +350,11 @@ WalkResult handleMeasure(qcpObjects* qcp, MeasureOp op,
     bitIndex = qcp->ut.propagateBitDef(false);
     qcp->bitToIndex[outBit] = bitIndex;
   }
+  // TODO: Measurement depending on classical bits
   qcp->ut.propagateMeasurement(qcp->qubitToIndex.at(qubit), bitIndex);
-  // TODO: We can only do this if we have no classical dependence
-  qcp->qubitToIndex.erase(qubit);
+  if (posBitCtrls.empty() && negBitCtrls.empty()) {
+    qcp->qubitToIndex.erase(qubit);
+  }
   return WalkResult::advance();
 }
 
@@ -359,10 +380,12 @@ iterateThroughWorklist(PatternRewriter& rewriter,
               return handleUnitary(qcp, op, posBitCtrls, negBitCtrls, rewriter);
             })
             .Case<QubitOp>([&](QubitOp op) { return handleQubit(op); })
-            .Case<ResetOp>(
-                [&](ResetOp op) { return handleReset(qcp, op, rewriter); })
-            .Case<MeasureOp>(
-                [&](MeasureOp op) { return handleMeasure(qcp, op, rewriter); })
+            .Case<ResetOp>([&](ResetOp op) {
+              return handleReset(qcp, op, posBitCtrls, negBitCtrls, rewriter);
+            })
+            .Case<MeasureOp>([&](MeasureOp op) {
+              return handleMeasure(qcp, op, posBitCtrls, negBitCtrls, rewriter);
+            })
             .Case<AllocQubitOp>(
                 [&](AllocQubitOp op) { return handleQubitAlloc(qcp, op); })
             .Case<DeallocQubitOp>([&]([[maybe_unused]] DeallocQubitOp op) {
@@ -381,11 +404,12 @@ iterateThroughWorklist(PatternRewriter& rewriter,
                 })
             .Case<memref::LoadOp>(
                 [&](const memref::LoadOp op) { return handleLoad(qcp, op); })
-            .Case<memref::StoreOp>(
-                [&](const memref::StoreOp op) { return handleStore(qcp, op); })
+            .Case<memref::StoreOp>([&](const memref::StoreOp op) {
+              return handleStore(qcp, op, posBitCtrls, negBitCtrls);
+            })
             // arith dialect
             .Case<arith::ConstantOp>([&](const arith::ConstantOp op) {
-              return handleConstant(qcp, op);
+              return handleConstant(qcp, op, posBitCtrls, negBitCtrls);
             })
             /// func Dialect
             .Case<func::FuncOp>([&](func::FuncOp op) { return handleFunc(op); })
@@ -454,7 +478,7 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
   qcpObjects qcp = {ut,
                     llvm::DenseMap<Value, unsigned int>(),
                     llvm::DenseMap<Value, std::vector<unsigned int>>(),
-                    llvm::DenseMap<Value, int>(),
+                    llvm::DenseMap<Value, int64_t>(),
                     llvm::DenseMap<Value, double>(),
                     llvm::DenseMap<Value, unsigned int>()};
 
