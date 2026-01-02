@@ -8,17 +8,22 @@
  * Licensed under the MIT License
  */
 
+#include "ir/operations/OpType.hpp"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 #include "mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/UnionTable.hpp"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Architecture.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Common.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Transpilation/Layout.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Value.h"
+#include "mlir/Support/WalkResult.h"
 
 #include <chrono>
 #include <llvm/ADT/TypeSwitch.h>
+#include <map>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
@@ -27,6 +32,8 @@
 #include <mlir/IR/Visitors.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Support/LLVM.h>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace mqt::ir::opt {
@@ -130,10 +137,10 @@ WalkResult handleAlloc(qcpObjects* qcp, const memref::AllocOp op) {
                              elementTypeOfMemref +
                              " during constant propagation.");
     }
-    unsigned int numberOfQubits = shape.vec().at(0);
+    unsigned int const numberOfQubits = shape.vec().at(0);
     qcp->memrefToQubitIndex[res] = std::vector<unsigned int>(numberOfQubits);
     for (unsigned int i = 0; i < numberOfQubits; ++i) {
-      unsigned int qubitIndex = qcp->ut.propagateQubitAlloc();
+      unsigned int const qubitIndex = qcp->ut.propagateQubitAlloc();
       qcp->memrefToQubitIndex[res].at(i) = qubitIndex;
     }
   }
@@ -145,7 +152,8 @@ WalkResult handleAlloc(qcpObjects* qcp, const memref::AllocOp op) {
  */
 WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
   for (auto res : op->getOpResults()) {
-    auto abstractTypeOfMemref = res.getType().getAbstractType().getName().str();
+    std::string const abstractTypeOfMemref =
+        res.getType().getAbstractType().getName().str();
     if (abstractTypeOfMemref != "mqtopt.Qubit") {
       throw std::logic_error("Cannot handle memref.load on type " +
                              abstractTypeOfMemref +
@@ -153,14 +161,14 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
     }
     std::vector<unsigned int> const qubitIndicesOfThisMemref =
         qcp->memrefToQubitIndex.at(op.getMemref());
-    auto calledIndices = op.getIndices();
+    auto const calledIndices = op.getIndices();
     if (calledIndices.size() > 1) {
       throw std::logic_error("Cannot handle memref.load on multiple indices (" +
                              std::to_string(calledIndices.size()) +
                              " currently) during constant propagation.");
     }
-    int indexValue = qcp->integerValues[calledIndices.front()];
-    unsigned int qubitIndex = qubitIndicesOfThisMemref.at(indexValue);
+    int const indexValue = qcp->integerValues[calledIndices.front()];
+    unsigned int const qubitIndex = qubitIndicesOfThisMemref.at(indexValue);
     qcp->qubitToIndex[res] = qubitIndex;
   }
   return WalkResult::advance();
@@ -170,9 +178,9 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
  * Save index from stored qubit in respective memrefToQubit spot
  */
 WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
-  mlir::Value const storedValue = op.getValue();
-  mlir::Value const memref = op.getMemref();
-  auto calledIndices = op.getIndices();
+  Value const storedValue = op.getValue();
+  Value const memref = op.getMemref();
+  auto const calledIndices = op.getIndices();
   if (calledIndices.size() > 1) {
     throw std::logic_error("Cannot handle memref.load on multiple indices (" +
                            std::to_string(calledIndices.size()) +
@@ -188,21 +196,21 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
  * Add constant value to qcp
  */
 WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op) {
-  mlir::Value const res = op.getResult();
-  mlir::Attribute attr = op.getValue();
-  if (auto intAttr = dyn_cast<IntegerAttr>(attr)) {
-    int v = intAttr.getInt();
+  Value const res = op.getResult();
+  Attribute attr = op.getValue();
+  if (const auto intAttr = dyn_cast<IntegerAttr>(attr)) {
+    const int v = intAttr.getInt();
     qcp->integerValues[res] = v;
   }
-  if (auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
-    double v = doubleAttr.getValueAsDouble();
+  if (const auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
+    const double v = doubleAttr.getValueAsDouble();
     qcp->doubleValues[res] = v;
   }
   return WalkResult::advance();
 }
 
 /**
- * @brief Propagte the unitary.
+ * @brief Propagate the unitary.
  */
 WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
                          PatternRewriter& rewriter) {
@@ -228,8 +236,8 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   for (auto param : op.getParams()) {
     params.push_back(qcp->doubleValues[param]);
   }
-  auto opName = op.getIdentifier().str();
-  auto opType = qc::opTypeFromString(opName);
+  const auto opName = op.getIdentifier().str();
+  const auto opType = qc::opTypeFromString(opName);
   // TODO: Bit dependence, check if gate should be removed
   qcp->ut.propagateGate(opType, targetQubitIndices, posCtrlQubitIndices,
                         negCtrlQubitIndices, {}, {}, params);
@@ -240,8 +248,8 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
  * @brief Propagate the measurement.
  */
 WalkResult handleReset(qcpObjects* qcp, ResetOp op, PatternRewriter& rewriter) {
-  auto qubit = op.getInQubit();
-  auto newQubit = op.getOutQubit();
+  const auto qubit = op.getInQubit();
+  const auto newQubit = op.getOutQubit();
   qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
   qcp->ut.propagateReset(qcp->qubitToIndex[qubit]);
   // TODO: We can only do this if we have no classical dependence
@@ -293,12 +301,12 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
     // auto n = func->getName().stripDialect().str();
   }
 
-  auto ut = qcp::UnionTable(8, 8);
+  const auto ut = qcp::UnionTable(8, 8);
   qcpObjects qcp = {ut,
-                    llvm::DenseMap<mlir::Value, unsigned int>(),
-                    llvm::DenseMap<mlir::Value, std::vector<unsigned int>>(),
-                    llvm::DenseMap<mlir::Value, int>(),
-                    llvm::DenseMap<mlir::Value, double>(),
+                    llvm::DenseMap<Value, unsigned int>(),
+                    llvm::DenseMap<Value, std::vector<unsigned int>>(),
+                    llvm::DenseMap<Value, int>(),
+                    llvm::DenseMap<Value, double>(),
                     {}};
 
   /// Iterate work-list.
@@ -373,8 +381,7 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
  */
 struct QuantumConstantPropagationPass final
     : impl::QuantumConstantPropagationPassBase<QuantumConstantPropagationPass> {
-  using QuantumConstantPropagationPassBase<
-      QuantumConstantPropagationPass>::QuantumConstantPropagationPassBase;
+  using QuantumConstantPropagationPassBase::QuantumConstantPropagationPassBase;
 
   void runOnOperation() override {
     std::vector<std::string> v = getPropagator();
