@@ -161,11 +161,15 @@ public:
    * @param quantumTarget The index of the qubit to be measured.
    * @param classicalTarget The index of the bit to save the measurement result
    * in.
+   * @param posCtrlsClassical An array of the indices of the ctrl bits.
+   * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
    * @throws invalid_argument if classicalTarget is given, but is not found in
    * the existing bits and also not the next non-existing bit index.
    */
-  void propagateMeasurement(unsigned int quantumTarget,
-                            unsigned int classicalTarget);
+  void
+  propagateMeasurement(unsigned int quantumTarget, unsigned int classicalTarget,
+                       const std::vector<unsigned int>& posCtrlsClassical = {},
+                       const std::vector<unsigned int>& negCtrlsClassical = {});
 
   /**
    * @brief This method propagates a qubit reset.
@@ -175,8 +179,12 @@ public:
    * correspond to already assigned bit values.
    *
    * @param target The index of the qubit to be reset.
+   * @param posCtrlsClassical An array of the indices of the ctrl bits.
+   * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
    */
-  void propagateReset(unsigned int target);
+  void propagateReset(unsigned int target,
+                      const std::vector<unsigned int>& posCtrlsClassical = {},
+                      const std::vector<unsigned int>& negCtrlsClassical = {});
 
   /**
    * @brief This method propagates a qubit alloc and returns the qubit's index.

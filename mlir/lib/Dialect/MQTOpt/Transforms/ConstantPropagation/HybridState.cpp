@@ -98,9 +98,10 @@ unsigned int HybridState::addClassicalBit(const bool value) {
   return bitValues.size() - 1;
 }
 
-std::vector<HybridState>
-HybridState::propagateMeasurement(const unsigned int quantumTarget,
-                                  const unsigned int classicalTarget) {
+std::vector<HybridState> HybridState::propagateMeasurement(
+    const unsigned int quantumTarget, const unsigned int classicalTarget,
+    const std::vector<unsigned int>& posCtrlsClassical,
+    const std::vector<unsigned int>& negCtrlsClassical) {
   if (qState.isTop()) {
     throw std::domain_error("Measured QuantumState is TOP. HybridState needs "
                             "to be treated as TOP.");
@@ -111,10 +112,24 @@ HybridState::propagateMeasurement(const unsigned int quantumTarget,
         "Bit to save measurement result in does not exist.");
   }
 
+  std::vector<HybridState> results;
+
+  for (const unsigned int posCtrl : posCtrlsClassical) {
+    if (!bitValues.at(posCtrl)) {
+      results.push_back(*this);
+      return results;
+    }
+  }
+  for (const unsigned int negCtrl : negCtrlsClassical) {
+    if (bitValues.at(negCtrl)) {
+      results.push_back(*this);
+      return results;
+    }
+  }
+
   std::map<unsigned int, std::pair<double, std::shared_ptr<QubitState>>> const
       measurementResults = qState.getQubitState()->measureQubit(quantumTarget);
 
-  std::vector<HybridState> results;
   for (const auto& [resultBit, value] : measurementResults) {
     const double newProbability = value.first * probability;
     const auto newQS = QubitStateOrTop(value.second);
@@ -139,17 +154,33 @@ HybridState::propagateMeasurement(const unsigned int quantumTarget,
   return results;
 }
 
-std::vector<HybridState>
-HybridState::propagateReset(const unsigned int target) {
+std::vector<HybridState> HybridState::propagateReset(
+    const unsigned int target,
+    const std::vector<unsigned int>& posCtrlsClassical,
+    const std::vector<unsigned int>& negCtrlsClassical) {
   if (qState.isTop()) {
     throw std::domain_error("Measured QuantumState is TOP. HybridState needs "
                             "to be treated as TOP.");
   }
 
+  std::vector<HybridState> results;
+
+  for (const unsigned int posCtrl : posCtrlsClassical) {
+    if (!bitValues.at(posCtrl)) {
+      results.push_back(*this);
+      return results;
+    }
+  }
+  for (const unsigned int negCtrl : negCtrlsClassical) {
+    if (bitValues.at(negCtrl)) {
+      results.push_back(*this);
+      return results;
+    }
+  }
+
   std::set<std::pair<double, std::shared_ptr<QubitState>>> const resetResults =
       qState.getQubitState()->resetQubit(target);
 
-  std::vector<HybridState> results;
   for (const auto& [prob, value] : resetResults) {
     const double newProbability = prob * probability;
     const auto newQS = QubitStateOrTop(value);

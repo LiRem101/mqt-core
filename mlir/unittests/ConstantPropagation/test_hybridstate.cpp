@@ -177,38 +177,89 @@ TEST_F(HybridStateTest, doMeasurementWithOneResult) {
 }
 
 TEST_F(HybridStateTest, doMeasurementWithTwoResults) {
+  HybridState hState = HybridState(2, 2, 3, {false}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  hState.addClassicalBit(true);
+  hState.addClassicalBit(false);
+  std::vector<HybridState> const res =
+      hState.propagateMeasurement(0, 0, {1}, {2});
+
+  EXPECT_TRUE(size(res) == 2);
+  std::string const resString = res.at(0).toString() + res.at(1).toString();
+  EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 010, p = 0.20;"));
+  EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 011, p = 0.20;"));
+}
+
+TEST_F(HybridStateTest, doMeasurementWithNegPosCtrl) {
+  HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  hState.addClassicalBit(false);
+  std::vector<HybridState> const res = hState.propagateMeasurement(0, 0, {1});
+
+  EXPECT_TRUE(size(res) == 1);
+  EXPECT_THAT(
+      res.at(0).toString(),
+      testing::HasSubstr("{|00> -> 0.71, |11> -> 0.71}: 00, p = 0.40;"));
+}
+
+TEST_F(HybridStateTest, doMeasurementWithPosNegCtrl) {
   HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
   hState.propagateGate(qc::H, {0});
   hState.propagateGate(qc::X, {1}, {0});
   hState.addClassicalBit(true);
-  std::vector<HybridState> const res = hState.propagateMeasurement(0, 0);
+  std::vector<HybridState> const res =
+      hState.propagateMeasurement(0, 0, {}, {1});
 
-  EXPECT_TRUE(size(res) == 2);
-  std::string const resString = res.at(0).toString() + res.at(1).toString();
-  EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 10, p = 0.20;"));
-  EXPECT_THAT(resString, testing::HasSubstr("{|11> -> 1.00}: 11, p = 0.20;"));
+  EXPECT_TRUE(size(res) == 1);
+  EXPECT_THAT(
+      res.at(0).toString(),
+      testing::HasSubstr("{|00> -> 0.71, |11> -> 0.71}: 10, p = 0.40;"));
 }
 
 TEST_F(HybridStateTest, doResetWithOneResult) {
-  HybridState hState = HybridState(1, 2, 2, {false}, 0.4);
+  HybridState hState = HybridState(1, 2, 2, {true}, 0.4);
   hState.propagateGate(qc::X, {0});
-  std::vector<HybridState> const res = hState.propagateReset(0);
+  std::vector<HybridState> const res = hState.propagateReset(0, {0});
 
   EXPECT_EQ(size(res), 1);
   EXPECT_THAT(res.at(0).toString(),
-              testing::HasSubstr("{|0> -> 1.00}: 0, p = 0.40;"));
+              testing::HasSubstr("{|0> -> 1.00}: 1, p = 0.40;"));
 }
 
 TEST_F(HybridStateTest, doResetWithTwoResults) {
   HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
   hState.propagateGate(qc::H, {0});
   hState.propagateGate(qc::X, {1}, {0});
-  std::vector<HybridState> const res = hState.propagateReset(0);
+  std::vector<HybridState> const res = hState.propagateReset(0, {}, {0});
 
   EXPECT_TRUE(size(res) == 2);
   std::string const resString = res.at(0).toString() + res.at(1).toString();
   EXPECT_THAT(resString, testing::HasSubstr("{|00> -> 1.00}: 0, p = 0.20;"));
   EXPECT_THAT(resString, testing::HasSubstr("{|10> -> 1.00}: 0, p = 0.20;"));
+}
+
+TEST_F(HybridStateTest, doResetNegPosCtrl) {
+  HybridState hState = HybridState(2, 2, 2, {false}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  std::vector<HybridState> const res = hState.propagateReset(0, {0});
+
+  EXPECT_TRUE(size(res) == 1);
+  EXPECT_THAT(res.at(0).toString(),
+              testing::HasSubstr("{|00> -> 0.71, |11> -> 0.71}: 0, p = 0.40;"));
+}
+
+TEST_F(HybridStateTest, doResetPosNegCtrl) {
+  HybridState hState = HybridState(2, 2, 2, {true}, 0.4);
+  hState.propagateGate(qc::H, {0});
+  hState.propagateGate(qc::X, {1}, {0});
+  std::vector<HybridState> const res = hState.propagateReset(0, {}, {0});
+
+  EXPECT_TRUE(size(res) == 1);
+  EXPECT_THAT(res.at(0).toString(),
+              testing::HasSubstr("{|00> -> 0.71, |11> -> 0.71}: 1, p = 0.40;"));
 }
 
 TEST_F(HybridStateTest, addBitAndGetToTop) {

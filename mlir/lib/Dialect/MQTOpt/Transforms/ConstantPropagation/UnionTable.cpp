@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <ranges>
 #include <set>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -98,11 +99,11 @@ std::pair<std::set<unsigned int>, std::set<unsigned int>>
 UnionTable::unifyHybridStates(
     std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedStates1,
     std::pair<std::set<unsigned int>, std::set<unsigned int>> involvedStates2) {
-  std::vector<HybridStateOrTop> firstStates =
+  std::vector<HybridStateOrTop> const firstStates =
       !involvedStates1.first.empty()
           ? *hRegOfQubits.at(*involvedStates1.first.begin())
           : *hRegOfBits.at(*involvedStates1.second.begin());
-  std::vector<HybridStateOrTop> secondStates =
+  std::vector<HybridStateOrTop> const secondStates =
       !involvedStates2.first.empty()
           ? *hRegOfQubits.at(*involvedStates2.first.begin())
           : *hRegOfBits.at(*involvedStates2.second.begin());
@@ -356,11 +357,16 @@ void UnionTable::propagateGate(
   }
 }
 
-void UnionTable::propagateMeasurement(unsigned int quantumTarget,
-                                      unsigned int classicalTarget) {
+void UnionTable::propagateMeasurement(
+    unsigned int quantumTarget, unsigned int classicalTarget,
+    const std::vector<unsigned int>& posCtrlsClassical,
+    const std::vector<unsigned int>& negCtrlsClassical) {
 
+  std::set involvedBits = {classicalTarget};
+  involvedBits.insert(posCtrlsClassical.begin(), posCtrlsClassical.end());
+  involvedBits.insert(negCtrlsClassical.begin(), negCtrlsClassical.end());
   std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
-      involvedStates = getInvolvedStates({quantumTarget}, {classicalTarget});
+      involvedStates = getInvolvedStates({quantumTarget}, involvedBits);
   bool bitExists = false;
   for (const auto& bitsInState : involvedStates | std::views::values) {
     bitExists |= bitsInState.contains(classicalTarget);
@@ -368,12 +374,15 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
 
   std::pair<std::set<unsigned int>, std::set<unsigned int>>
       involvedStateIndices = *involvedStates.begin();
-  indicesInSameState.erase(*involvedStates.begin());
   if (involvedStates.size() > 1) {
-    indicesInSameState.erase(*++involvedStates.begin());
-    involvedStateIndices =
-        unifyHybridStates(*involvedStates.begin(), *++involvedStates.begin());
-    indicesInSameState.insert(involvedStateIndices);
+    std::pair<std::set<unsigned int>, std::set<unsigned int>> currentStates =
+        *involvedStates.begin();
+    auto nextStateIt = ++involvedStates.begin();
+    while (nextStateIt != involvedStates.end()) {
+      currentStates = unifyHybridStates(currentStates, *nextStateIt);
+      ++nextStateIt;
+    }
+    involvedStateIndices = currentStates;
   }
   if (!bitExists && classicalTarget != hRegOfBits.size()) {
     throw std::invalid_argument("New classical bit index needs to be equal to "
@@ -383,6 +392,7 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
       *hRegOfQubits.at(quantumTarget);
   bool top = false;
   if (!bitExists) {
+    indicesInSameState.erase(involvedStateIndices);
     involvedStateIndices.second.insert(mappingGlobalToLocalBitIndices.size());
     indicesInSameState.insert(involvedStateIndices);
     unsigned int localBitIndex = 0;
@@ -411,6 +421,16 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
         std::make_shared<std::vector<HybridStateOrTop>>(involvedHybridStates));
   }
 
+  // Get local vector for ctrl bits
+  std::vector<unsigned int> localPosCtrl = {};
+  for (const unsigned int posCtrlBit : posCtrlsClassical) {
+    localPosCtrl.push_back(mappingGlobalToLocalBitIndices.at(posCtrlBit));
+  }
+  std::vector<unsigned int> localNegCtrl = {};
+  for (const unsigned int posNegBit : negCtrlsClassical) {
+    localNegCtrl.push_back(mappingGlobalToLocalBitIndices.at(posNegBit));
+  }
+
   // Propagate measurement into the states in involvedHybridStates
   std::vector<HybridStateOrTop> newHybridStatesOrTops;
   for (HybridStateOrTop const& hs :
@@ -420,7 +440,8 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
         std::vector<HybridState> newHybridState =
             hs.getHybridState()->propagateMeasurement(
                 mappingGlobalToLocalQubitIndices.at(quantumTarget),
-                mappingGlobalToLocalBitIndices.at(classicalTarget));
+                mappingGlobalToLocalBitIndices.at(classicalTarget),
+                localPosCtrl, localNegCtrl);
         for (HybridState const& newState : newHybridState) {
           newHybridStatesOrTops.push_back(
               HybridStateOrTop(std::make_shared<HybridState>(newState)));
@@ -452,9 +473,29 @@ void UnionTable::propagateMeasurement(unsigned int quantumTarget,
   }
 }
 
-void UnionTable::propagateReset(unsigned int target) {
-  auto [involvedQubitIndices, involvedBitIndices] =
-      *getInvolvedStates({target}, {}).begin();
+void UnionTable::propagateReset(
+    unsigned int target, const std::vector<unsigned int>& posCtrlsClassical,
+    const std::vector<unsigned int>& negCtrlsClassical) {
+  std::set<unsigned int> involvedBits = {};
+  involvedBits.insert(posCtrlsClassical.begin(), posCtrlsClassical.end());
+  involvedBits.insert(negCtrlsClassical.begin(), negCtrlsClassical.end());
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>>
+      involvedStates = getInvolvedStates({target}, involvedBits);
+
+  std::pair<std::set<unsigned int>, std::set<unsigned int>>
+      involvedStateIndices = *involvedStates.begin();
+  if (involvedStates.size() > 1) {
+    std::pair<std::set<unsigned int>, std::set<unsigned int>> currentStates =
+        *involvedStates.begin();
+    auto nextStateIt = ++involvedStates.begin();
+    while (nextStateIt != involvedStates.end()) {
+      currentStates = unifyHybridStates(currentStates, *nextStateIt);
+      ++nextStateIt;
+    }
+    involvedStateIndices = currentStates;
+  }
+
+  auto [involvedQubitIndices, involvedBitIndices] = involvedStateIndices;
 
   bool top = false;
 

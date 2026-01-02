@@ -244,22 +244,46 @@ TEST_F(UnionTableTest, ApplyControlledTwoBitGate) {
 
 TEST_F(UnionTableTest, doMeasurementWithOneResult) {
   ut.propagateGate(qc::X, {0});
-  ut.propagateMeasurement(0, 0);
+  ut.propagateBitDef(true);
+  ut.propagateMeasurement(0, 1, {0});
 
   EXPECT_THAT(ut.toString(),
-              testing::HasSubstr("Qubits: 0, Bits: 0, HybridStates: {{|1> "
-                                 "-> 1.00}: 1, p = 1.00;}"));
+              testing::HasSubstr("Qubits: 0, Bits: 10, HybridStates: {{|1> "
+                                 "-> 1.00}: 11, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, doMeasurementWithTwoResults) {
   ut.propagateGate(qc::H, {0});
   ut.propagateGate(qc::X, {1}, {0});
-  ut.propagateMeasurement(0, 0);
+  ut.propagateBitDef(false);
+  ut.propagateMeasurement(0, 1, {}, {0});
 
   EXPECT_THAT(ut.toString(),
               testing::HasSubstr(
-                  "Qubits: 10, Bits: 0, HybridStates: {{|00> "
-                  "-> 1.00}: 0, p = 0.50; {|11> -> 1.00}: 1, p = 0.50;}"));
+                  "Qubits: 10, Bits: 10, HybridStates: {{|00> "
+                  "-> 1.00}: 00, p = 0.50; {|11> -> 1.00}: 10, p = 0.50;}"));
+}
+
+TEST_F(UnionTableTest, doMeasurementWithNegPosCtrl) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateBitDef(false);
+  ut.propagateMeasurement(0, 1, {0});
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr("Qubits: 10, Bits: 10, HybridStates: {{|00> "
+                                 "-> 0.71, |11> -> 0.71}: 00, p = 1.00;}"));
+}
+
+TEST_F(UnionTableTest, doMeasurementWithPosNegCtrl) {
+  ut.propagateGate(qc::H, {0});
+  ut.propagateGate(qc::X, {1}, {0});
+  ut.propagateBitDef(true);
+  ut.propagateMeasurement(0, 1, {}, {0});
+
+  EXPECT_THAT(ut.toString(),
+              testing::HasSubstr("Qubits: 10, Bits: 10, HybridStates: {{|00> "
+                                 "-> 0.71, |11> -> 0.71}: 01, p = 1.00;}"));
 }
 
 TEST_F(UnionTableTest, doResetWithOneResult) {
@@ -278,8 +302,8 @@ TEST_F(UnionTableTest, doResetWithTwoResults) {
 
   EXPECT_THAT(
       ut.toString(),
-      testing::HasSubstr("Qubits: 10, HybridStates: {{|10> "
-                         "-> 1.00}: p = 0.50; {|00> -> 1.00}: p = 0.50;}"));
+      testing::HasSubstr("Qubits: 10, HybridStates: {{|00> "
+                         "-> 1.00}: p = 0.50; {|10> -> 1.00}: p = 0.50;}"));
 }
 
 TEST_F(UnionTableTest, swapGateApplicationDifferentStates) {

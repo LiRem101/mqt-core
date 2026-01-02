@@ -92,13 +92,17 @@ public:
    * @param quantumTarget The index of the qubit to be measured.
    * @param classicalTarget The index of the bit to save the measurement result
    * in. Has to be a valid classical bit in the hybrid state.
+   * @param posCtrlsClassical An array of the indices of the ctrl bits.
+   * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
    * @throws domain_error If the quantum state of the hybrid state is TOP.
    * @throw invalid_argument If the bit is not a valid bit of the hybrid state.
    * @return One or two classical states corresponding to the measurement
    * outcomes.
    */
-  std::vector<HybridState> propagateMeasurement(unsigned int quantumTarget,
-                                                unsigned int classicalTarget);
+  std::vector<HybridState>
+  propagateMeasurement(unsigned int quantumTarget, unsigned int classicalTarget,
+                       const std::vector<unsigned int>& posCtrlsClassical = {},
+                       const std::vector<unsigned int>& negCtrlsClassical = {});
 
   /**
    * @brief This method applies a reset.
@@ -108,11 +112,16 @@ public:
    * the measurement was one, and the result discarded.
    *
    * @param target The index of the qubit to be measured.
+   * @param posCtrlsClassical An array of the indices of the ctrl bits.
+   * @param negCtrlsClassical An array of the indices of the negative ctrl bits.
    * @throws domain_error If the quantum state of the hybrid state is TOP.
    * @return One or two classical states corresponding to the measurement
    * outcomes during the reset, but with the qubit always in the zero state.
    */
-  std::vector<HybridState> propagateReset(unsigned int target);
+  std::vector<HybridState>
+  propagateReset(unsigned int target,
+                 const std::vector<unsigned int>& posCtrlsClassical = {},
+                 const std::vector<unsigned int>& negCtrlsClassical = {});
 
   /**
    * @brief This method unifies two HybridStates.

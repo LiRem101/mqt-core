@@ -372,7 +372,6 @@ iterateThroughWorklist(PatternRewriter& rewriter,
 
     rewriter.setInsertionPoint(curr);
 
-    // TODO: Handle declaration/initialization of classical bits
     const auto res =
         TypeSwitch<Operation*, WalkResult>(curr)
             /// mqtopt Dialect
