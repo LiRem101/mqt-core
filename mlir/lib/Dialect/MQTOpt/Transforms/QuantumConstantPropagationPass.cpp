@@ -22,6 +22,7 @@
 #include "mlir/IR/Value.h"
 #include "mlir/Support/WalkResult.h"
 
+#include <algorithm>
 #include <chrono>
 #include <llvm/ADT/TypeSwitch.h>
 #include <map>
@@ -56,7 +57,7 @@ using namespace mlir;
 
 LogicalResult
 iterateThroughWorklist(PatternRewriter& rewriter,
-                       const std::vector<Operation*>& worklist, qcpObjects qcp,
+                       std::vector<Operation*>& worklist, qcpObjects* qcp,
                        const std::vector<unsigned int>& posBitCtrls,
                        const std::vector<unsigned int>& negBitCtrls);
 
@@ -72,15 +73,6 @@ WalkResult handleFunc(const func::FuncOp op) {
 }
 
 /**
- *
- */
-WalkResult handleReturn() {
-  // TODO: Handle return
-  // As we only support entry point func, do not support that?
-  return WalkResult::advance();
-}
-
-/**
  * For-loops are not yet part of the constant propagation.
  */
 WalkResult handleFor() {
@@ -91,18 +83,73 @@ WalkResult handleFor() {
 /**
  *
  */
-WalkResult handleIf(scf::IfOp op, const std::vector<Operation*>& worklist) {
-  op.thenBlock();
-  // TODO: Handle if (save conditional bits in an additional object?)
-  return WalkResult::advance();
-}
+WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
+                    std::vector<Operation*>& worklist,
+                    const std::vector<unsigned int>& posBitCtrls,
+                    const std::vector<unsigned int>& negBitCtrls,
+                    PatternRewriter& rewriter) {
+  TypedValue<IntegerType> const cond = op.getCondition();
+  // TODO: What if we have more than one bit here?
+  unsigned int const conditionIndex = qcp->bitToIndex.at(cond);
+  auto posBitForThen = posBitCtrls;
+  posBitForThen.push_back(conditionIndex);
+  auto negBitsForElse = negBitCtrls;
+  negBitsForElse.push_back(conditionIndex);
 
-/**
- * @brief Handle yield/propagate qubit usage.
- */
-WalkResult handleYield(scf::YieldOp op, PatternRewriter& rewriter) {
-  // TODO: Handle yield, i.e. propagate qubit useage
-  return WalkResult::advance();
+  auto& thenRegion = op.getThenRegion();
+  auto& elseRegion = op.getElseRegion();
+  std::vector<Operation*> thenWorklist;
+  std::vector<Operation*> elseWorklist;
+
+  for (Block& block : thenRegion) {
+    for (Operation& operation : block) {
+      thenWorklist.push_back(&operation);
+      std::ranges::replace(worklist, &operation,
+                           static_cast<Operation*>(nullptr));
+    }
+  }
+  for (Block& block : elseRegion) {
+    for (Operation& operation : block) {
+      elseWorklist.push_back(&operation);
+      std::ranges::replace(worklist, &operation,
+                           static_cast<Operation*>(nullptr));
+    }
+  }
+
+  auto thenResult = iterateThroughWorklist(rewriter, thenWorklist, qcp,
+                                           posBitForThen, negBitCtrls);
+
+  auto* lastThenOp = op.getThenRegion().front().getTerminator();
+  auto thenYield = cast<scf::YieldOp>(lastThenOp);
+  auto thenYieldedValues = thenYield.getResults();
+  auto ifResults = op.getResults();
+
+  if (thenResult.failed()) {
+    return thenResult;
+  }
+
+  for (unsigned int i = 0; i < thenYieldedValues.size(); ++i) {
+    qcp->qubitToIndex[ifResults[i]] = qcp->qubitToIndex[thenYieldedValues[i]];
+    qcp->qubitToIndex.erase(thenYieldedValues[i]);
+  }
+
+  if (!elseWorklist.empty()) {
+    auto* elseTerm = op.getElseRegion().front().getTerminator();
+    auto elseYield = cast<scf::YieldOp>(elseTerm);
+    auto elseYieldedValues = elseYield.getResults();
+    for (unsigned int i = 0; i < elseYieldedValues.size(); ++i) {
+      auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
+      if (qcp->qubitToIndex[ifResults[i]] != indexOfElseValue) {
+        throw std::domain_error(
+            "Yield of else-Block yields different qubits than yield of "
+            "then-BLock. Not supported by constant propagation.");
+      }
+      qcp->qubitToIndex.erase(elseYieldedValues[i]);
+    }
+  }
+
+  return iterateThroughWorklist(rewriter, elseWorklist, qcp, posBitCtrls,
+                                negBitsForElse);
 }
 
 /**
@@ -175,7 +222,7 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
                              std::to_string(calledIndices.size()) +
                              " currently) during constant propagation.");
     }
-    int const indexValue = qcp->integerValues[calledIndices.front()];
+    int const indexValue = qcp->integerValues.at(calledIndices.front());
     unsigned int const qubitIndex = qubitIndicesOfThisMemref.at(indexValue);
     qcp->qubitToIndex[res] = qubitIndex;
   }
@@ -194,7 +241,7 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
                            std::to_string(calledIndices.size()) +
                            " currently) during constant propagation.");
   }
-  int const indexValue = qcp->integerValues[calledIndices.front()];
+  int const indexValue = qcp->integerValues.at(calledIndices.front());
   qcp->memrefToQubitIndex[memref].at(indexValue) =
       qcp->qubitToIndex.at(storedValue);
   return WalkResult::advance();
@@ -205,9 +252,9 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op) {
  */
 WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op) {
   Value const res = op.getResult();
-  Attribute attr = op.getValue();
+  auto attr = op.getValue();
   if (const auto intAttr = dyn_cast<IntegerAttr>(attr)) {
-    const int v = intAttr.getInt();
+    const long v = intAttr.getInt();
     qcp->integerValues[res] = v;
   }
   if (const auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
@@ -229,16 +276,16 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   std::vector<unsigned int> negCtrlQubitIndices = {};
   std::vector<double> params = {};
   for (auto targetQubit : op.getInQubits()) {
-    targetQubitIndices.push_back(qcp->qubitToIndex[targetQubit]);
+    targetQubitIndices.push_back(qcp->qubitToIndex.at(targetQubit));
   }
   for (auto posCtrlQubit : op.getPosCtrlInQubits()) {
-    posCtrlQubitIndices.push_back(qcp->qubitToIndex[posCtrlQubit]);
+    posCtrlQubitIndices.push_back(qcp->qubitToIndex.at(posCtrlQubit));
   }
   for (auto negCtrlQubit : op.getNegCtrlInQubits()) {
-    negCtrlQubitIndices.push_back(qcp->qubitToIndex[negCtrlQubit]);
+    negCtrlQubitIndices.push_back(qcp->qubitToIndex.at(negCtrlQubit));
   }
   for (auto param : op.getParams()) {
-    params.push_back(qcp->doubleValues[param]);
+    params.push_back(qcp->doubleValues.at(param));
   }
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
@@ -247,7 +294,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
                         negCtrlQubitIndices, posBitCtrls, negBitCtrls, params);
   for (auto qubit : op.getAllInQubits()) {
     auto newQubit = op.getCorrespondingOutput(qubit);
-    qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
+    qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
     if (posBitCtrls.empty() && negBitCtrls.empty()) {
       qcp->qubitToIndex.erase(qubit);
     }
@@ -261,8 +308,8 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 WalkResult handleReset(qcpObjects* qcp, ResetOp op, PatternRewriter& rewriter) {
   const auto qubit = op.getInQubit();
   const auto newQubit = op.getOutQubit();
-  qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
-  qcp->ut.propagateReset(qcp->qubitToIndex[qubit]);
+  qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
+  qcp->ut.propagateReset(qcp->qubitToIndex.at(qubit));
   // TODO: We can only do this if we have no classical dependence
   qcp->qubitToIndex.erase(qubit);
   return WalkResult::advance();
@@ -277,13 +324,14 @@ WalkResult handleMeasure(qcpObjects* qcp, MeasureOp op,
   const auto newQubit = op.getOutQubit();
   const auto outBit = op.getOutBit();
   unsigned int bitIndex = 0;
-  qcp->qubitToIndex[newQubit] = qcp->qubitToIndex[qubit];
+  qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
   if (qcp->bitToIndex.contains(outBit)) {
-    bitIndex = qcp->bitToIndex[outBit];
+    bitIndex = qcp->bitToIndex.at(outBit);
   } else {
     bitIndex = qcp->ut.propagateBitDef(false);
+    qcp->bitToIndex[outBit] = bitIndex;
   }
-  qcp->ut.propagateMeasurement(qcp->qubitToIndex[qubit], bitIndex);
+  qcp->ut.propagateMeasurement(qcp->qubitToIndex.at(qubit), bitIndex);
   // TODO: We can only do this if we have no classical dependence
   qcp->qubitToIndex.erase(qubit);
   return WalkResult::advance();
@@ -291,7 +339,7 @@ WalkResult handleMeasure(qcpObjects* qcp, MeasureOp op,
 
 LogicalResult
 iterateThroughWorklist(PatternRewriter& rewriter,
-                       const std::vector<Operation*>& worklist, qcpObjects qcp,
+                       std::vector<Operation*>& worklist, qcpObjects* qcp,
                        const std::vector<unsigned int>& posBitCtrls,
                        const std::vector<unsigned int>& negBitCtrls) {
   /// Iterate work-list.
@@ -308,16 +356,15 @@ iterateThroughWorklist(PatternRewriter& rewriter,
         TypeSwitch<Operation*, WalkResult>(curr)
             /// mqtopt Dialect
             .Case<UnitaryInterface>([&](UnitaryInterface op) {
-              return handleUnitary(&qcp, op, posBitCtrls, negBitCtrls,
-                                   rewriter);
+              return handleUnitary(qcp, op, posBitCtrls, negBitCtrls, rewriter);
             })
             .Case<QubitOp>([&](QubitOp op) { return handleQubit(op); })
             .Case<ResetOp>(
-                [&](ResetOp op) { return handleReset(&qcp, op, rewriter); })
+                [&](ResetOp op) { return handleReset(qcp, op, rewriter); })
             .Case<MeasureOp>(
-                [&](MeasureOp op) { return handleMeasure(&qcp, op, rewriter); })
+                [&](MeasureOp op) { return handleMeasure(qcp, op, rewriter); })
             .Case<AllocQubitOp>(
-                [&](AllocQubitOp op) { return handleQubitAlloc(&qcp, op); })
+                [&](AllocQubitOp op) { return handleQubitAlloc(qcp, op); })
             .Case<DeallocQubitOp>([&]([[maybe_unused]] DeallocQubitOp op) {
               return WalkResult::advance();
             })
@@ -327,38 +374,44 @@ iterateThroughWorklist(PatternRewriter& rewriter,
             })
             /// memref Dialect
             .Case<memref::AllocOp>(
-                [&](const memref::AllocOp op) { return handleAlloc(&qcp, op); })
+                [&](const memref::AllocOp op) { return handleAlloc(qcp, op); })
             .Case<memref::DeallocOp>(
                 [&]([[maybe_unused]] const memref::DeallocOp op) {
                   return WalkResult::advance();
                 })
             .Case<memref::LoadOp>(
-                [&](const memref::LoadOp op) { return handleLoad(&qcp, op); })
+                [&](const memref::LoadOp op) { return handleLoad(qcp, op); })
             .Case<memref::StoreOp>(
-                [&](const memref::StoreOp op) { return handleStore(&qcp, op); })
+                [&](const memref::StoreOp op) { return handleStore(qcp, op); })
             // arith dialect
             .Case<arith::ConstantOp>([&](const arith::ConstantOp op) {
-              return handleConstant(&qcp, op);
+              return handleConstant(qcp, op);
             })
             /// func Dialect
             .Case<func::FuncOp>([&](func::FuncOp op) { return handleFunc(op); })
             .Case<func::ReturnOp>([&]([[maybe_unused]] func::ReturnOp op) {
-              return handleReturn();
+              return WalkResult::advance();
             })
             /// scf Dialect
             .Case<scf::ForOp>([&](scf::ForOp op) { return handleFor(); })
-            .Case<scf::IfOp>(
-                [&](scf::IfOp op) { return handleIf(op, worklist); })
-            .Case<scf::YieldOp>(
-                [&](scf::YieldOp op) { return handleYield(op, rewriter); })
+            .Case<scf::IfOp>([&](scf::IfOp op) {
+              return handleIf(qcp, op, worklist, posBitCtrls, negBitCtrls,
+                              rewriter);
+            })
+            .Case<scf::YieldOp>([&]([[maybe_unused]] scf::YieldOp op) {
+              return WalkResult::advance();
+            })
             /// Skip the rest.
-            .Default([](auto) { return WalkResult::skip(); });
+            .Default([](auto) {
+              throw std::runtime_error("Unsupported operation");
+              return WalkResult::interrupt();
+            });
 
     if (res.wasInterrupted()) {
       return failure();
     }
   }
-  return failure();
+  return success();
 }
 
 /**
@@ -405,7 +458,7 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
                     llvm::DenseMap<Value, double>(),
                     llvm::DenseMap<Value, unsigned int>()};
 
-  return iterateThroughWorklist(rewriter, worklist, qcp, {}, {});
+  return iterateThroughWorklist(rewriter, worklist, &qcp, {}, {});
 }
 
 /**
