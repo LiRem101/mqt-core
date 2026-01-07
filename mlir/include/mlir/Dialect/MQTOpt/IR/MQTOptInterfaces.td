@@ -160,6 +160,15 @@ def UnitaryInterface : OpInterface<"UnitaryInterface"> {
                 return $_op.getParams();
             }]>,
         InterfaceMethod<
+            /*desc=*/        "Get static params.",
+            /*returnType=*/  "std::optional<llvm::ArrayRef<double>>",
+            /*methodName=*/  "getStaticParams",
+            /*args=*/        (ins),
+            /*methodBody=*/  [{}],
+            /*defaultImpl=*/ [{
+                return $_op.getStaticParamsAttr();
+            }]>,
+        InterfaceMethod<
             /*desc=*/        "Get the corresponding input qubit for a given output qubit.",
             /*returnType=*/  "mlir::Value",
             /*methodName=*/  "getCorrespondingInput",

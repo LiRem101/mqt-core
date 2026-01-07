@@ -165,11 +165,15 @@ UnionTable::unifyHybridStates(
         break;
       }
       if (!encounteredTop) {
-        HybridState newHybridState = hs1.getHybridState()->unify(
-            *hs2.getHybridState(), qubitIndicesOfSecondState,
-            bitIndicesOfSecondState);
-        newHybridStates.push_back(
-            {HybridStateOrTop(std::make_shared<HybridState>(newHybridState))});
+        try {
+          HybridState newHybridState = hs1.getHybridState()->unify(
+              *hs2.getHybridState(), qubitIndicesOfSecondState,
+              bitIndicesOfSecondState);
+          newHybridStates.push_back({HybridStateOrTop(
+              std::make_shared<HybridState>(newHybridState))});
+        } catch (std::domain_error const&) {
+          encounteredTop = true;
+        }
       }
       if (hs2.isHybridState()) {
         hs2.getHybridState().reset();
@@ -202,30 +206,40 @@ UnionTable::unifyHybridStates(
 
 void UnionTable::applySwapGate(const unsigned int target1,
                                const unsigned int target2) {
+  bool changed = false;
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates1;
+  std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates2;
+  std::set<std::pair<std::set<unsigned int>, std::set<unsigned int>>> toErase =
+      {};
   for (auto it = indicesInSameState.begin(); it != indicesInSameState.end();
        ++it) {
     if (it->first.contains(target1) && !it->first.contains(target2)) {
-      std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates;
+      changed = true;
       for (auto qubits : it->first) {
         if (qubits == target1) {
-          newStates.first.insert(target2);
+          newStates1.first.insert(target2);
         } else {
-          newStates.first.insert(qubits);
+          newStates1.first.insert(qubits);
         }
       }
-      indicesInSameState.erase(it);
-      indicesInSameState.insert(newStates);
+      toErase.insert(*it);
     } else if (!it->first.contains(target1) && it->first.contains(target2)) {
-      std::pair<std::set<unsigned int>, std::set<unsigned int>> newStates;
+      changed = true;
       for (auto qubits : it->first) {
         if (qubits == target2) {
-          newStates.first.insert(target1);
+          newStates2.first.insert(target1);
         } else {
-          newStates.first.insert(qubits);
+          newStates2.first.insert(qubits);
         }
       }
-      indicesInSameState.erase(it);
-      indicesInSameState.insert(newStates);
+      toErase.insert(*it);
+    }
+  }
+  if (changed) {
+    indicesInSameState.insert(newStates1);
+    indicesInSameState.insert(newStates2);
+    for (const auto& erasing : toErase) {
+      indicesInSameState.erase(erasing);
     }
   }
 
@@ -289,6 +303,9 @@ void UnionTable::propagateGate(
     const std::vector<unsigned int>& posCtrlsClassical,
     const std::vector<unsigned int>& negCtrlsClassical,
     std::vector<double> params) {
+  if (gate == qc::Barrier) {
+    return;
+  }
   if (gate == qc::SWAP && posCtrlsQuantum.empty() && negCtrlsQuantum.empty() &&
       posCtrlsClassical.empty() && negCtrlsClassical.empty()) {
     applySwapGate(targets.at(0), targets.at(1));

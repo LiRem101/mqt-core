@@ -45,6 +45,7 @@ struct qcpObjects {
   qcp::UnionTable ut;
   llvm::DenseMap<mlir::Value, unsigned int> qubitToIndex;
   llvm::DenseMap<mlir::Value, std::vector<unsigned int>> memrefToQubitIndex;
+  llvm::DenseMap<mlir::Value, std::vector<unsigned int>> memrefToBitIndex;
   llvm::DenseMap<mlir::Value, int64_t> integerValues;
   llvm::DenseMap<mlir::Value, double> doubleValues;
   llvm::DenseMap<mlir::Value, unsigned int> bitToIndex;
@@ -201,6 +202,38 @@ WalkResult handleAlloc(qcpObjects* qcp, const memref::AllocOp op) {
 }
 
 /**
+ * Add allocated memref into memrefToBitIndex
+ */
+WalkResult handleAlloca(qcpObjects* qcp, const memref::AllocaOp op) {
+  for (auto res : op->getOpResults()) {
+    auto shape = cast<MemRefType>(res.getType()).getShape();
+    if (shape.size() > 1) {
+      throw std::logic_error(
+          "Cannot handle memref.alloca dimension higher than "
+          "1 in constant propagation (is " +
+          std::to_string(shape.size()) + ").");
+    }
+    auto elementTypeOfMemref = cast<MemRefType>(res.getType())
+                                   .getElementType()
+                                   .getAbstractType()
+                                   .getName()
+                                   .str();
+    if (elementTypeOfMemref != "builtin.integer") {
+      throw std::logic_error("Cannot handle memref.alloc on type " +
+                             elementTypeOfMemref +
+                             " during constant propagation.");
+    }
+    unsigned int const numberOfBits = shape.vec().at(0);
+    qcp->memrefToBitIndex[res] = std::vector<unsigned int>(numberOfBits);
+    for (unsigned int i = 0; i < numberOfBits; ++i) {
+      unsigned int const bitIndex = qcp->ut.propagateBitDef(false);
+      qcp->memrefToBitIndex[res].at(i) = bitIndex;
+    }
+  }
+  return WalkResult::advance();
+}
+
+/**
  * Retrieve qubit from map and save in qubitToIndex
  */
 WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
@@ -237,6 +270,13 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
     throw std::logic_error("Cannot handle store operation in conditional "
                            "branches during constant propagation.");
   }
+  std::string const abstractTypeOfMemref =
+        op.getValue().getType().getAbstractType().getName().str();
+  if (abstractTypeOfMemref != "mqtopt.Qubit" && abstractTypeOfMemref != "builtin.integer") {
+    throw std::logic_error("Cannot handle memref.load on type " +
+                           abstractTypeOfMemref +
+                           " during constant propagation.");
+  }
 
   Value const storedValue = op.getValue();
   Value const memref = op.getMemref();
@@ -247,8 +287,13 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
                            " currently) during constant propagation.");
   }
   int const indexValue = qcp->integerValues.at(calledIndices.front());
-  qcp->memrefToQubitIndex[memref].at(indexValue) =
-      qcp->qubitToIndex.at(storedValue);
+  if (abstractTypeOfMemref == "mqtopt.Qubit") {
+    qcp->memrefToQubitIndex[memref].at(indexValue) =
+        qcp->qubitToIndex.at(storedValue);
+  } else {
+    qcp->memrefToBitIndex[memref].at(indexValue) =
+        qcp->bitToIndex.at(storedValue);
+  }
   return WalkResult::advance();
 }
 
@@ -298,6 +343,12 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   }
   for (auto param : op.getParams()) {
     params.push_back(qcp->doubleValues.at(param));
+  }
+  auto staticParams = op.getStaticParams();
+  if (staticParams.has_value()) {
+    for (auto param : staticParams.value()) {
+      params.push_back(param);
+    }
   }
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
@@ -397,6 +448,9 @@ iterateThroughWorklist(PatternRewriter& rewriter,
             /// memref Dialect
             .Case<memref::AllocOp>(
                 [&](const memref::AllocOp op) { return handleAlloc(qcp, op); })
+            .Case<memref::AllocaOp>([&](const memref::AllocaOp op) {
+              return handleAlloca(qcp, op);
+            })
             .Case<memref::DeallocOp>(
                 [&]([[maybe_unused]] const memref::DeallocOp op) {
                   return WalkResult::advance();
@@ -476,6 +530,7 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx,
   const auto ut = qcp::UnionTable(8, 8);
   qcpObjects qcp = {ut,
                     llvm::DenseMap<Value, unsigned int>(),
+                    llvm::DenseMap<Value, std::vector<unsigned int>>(),
                     llvm::DenseMap<Value, std::vector<unsigned int>>(),
                     llvm::DenseMap<Value, int64_t>(),
                     llvm::DenseMap<Value, double>(),
