@@ -271,8 +271,9 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
                            "branches during constant propagation.");
   }
   std::string const abstractTypeOfMemref =
-        op.getValue().getType().getAbstractType().getName().str();
-  if (abstractTypeOfMemref != "mqtopt.Qubit" && abstractTypeOfMemref != "builtin.integer") {
+      op.getValue().getType().getAbstractType().getName().str();
+  if (abstractTypeOfMemref != "mqtopt.Qubit" &&
+      abstractTypeOfMemref != "builtin.integer") {
     throw std::logic_error("Cannot handle memref.load on type " +
                            abstractTypeOfMemref +
                            " during constant propagation.");

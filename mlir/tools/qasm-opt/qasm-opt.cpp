@@ -19,6 +19,8 @@
 #include "mlir/Dialect/MQTRef/Translation/ImportQuantumComputation.h"
 #include "qasm3/Importer.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/MemoryBuffer.h>
 
@@ -47,6 +49,15 @@ std::string getOutputString(mlir::OwningOpRef<mlir::ModuleOp>* module) {
 }
 
 int main(const int argc, char** argv) {
+  std::ifstream file("/home/lian/DLR/mqt-core/mqt-core/ErrorQasm");
+  std::set<std::string> errorLines; // or std::unordered_set<std::string>
+  std::string line;
+  while (std::getline(file, line)) {
+    line.erase(line.size() - 1);
+    line.erase(0, 1);
+    errorLines.insert(line);
+  }
+
   mlir::registerAllPasses();
   mqt::ir::opt::registerMQTOptPasses();
   mqt::ir::registerMQTRefToMQTOptPasses();
@@ -66,16 +77,10 @@ int main(const int argc, char** argv) {
   context->appendDialectRegistry(registry);
   context->loadAllAvailableDialects();
 
-  qc::QuantumComputation qc = qasm3::Importer::importf("simple.qasm");
-  auto module = translateQuantumComputationToMLIR(context.get(), qc);
-
-  const auto mqtRefString = getOutputString(&module);
-
   mlir::MlirOptMainConfig config =
       mlir::MlirOptMainConfig::createFromCLOptions();
 
   std::string toolName = "Quantum optimizer driver\n";
-  std::string outputFile = "-";
 
   std::string inputFilename, outputFilename;
   std::tie(inputFilename, outputFilename) =
@@ -84,11 +89,72 @@ int main(const int argc, char** argv) {
   int ac = argc;
   llvm::InitLLVM y(ac, argv);
 
-  std::unique_ptr<llvm::MemoryBuffer> buffer =
-      llvm::MemoryBuffer::getMemBuffer(mqtRefString);
+  std::string errorFile = "ErrorQasm";
+  std::filesystem::path inputRoot = "MQTBench";
+  std::filesystem::path outputRoot = "MLIRCollection/MQTBench";
+  for (const auto& entry :
+       std::filesystem::recursive_directory_iterator(inputRoot)) {
+    if (entry.is_regular_file()) {
+      std::filesystem::path relative =
+          std::filesystem::relative(entry.path(), inputRoot);
+      std::filesystem::path outputFile = outputRoot / relative;
+      std::string outputFileString = outputFile.string();
+      std::size_t pos = outputFileString.find(".qasm");
+      if (pos != std::string::npos) {
+        outputFileString.replace(pos, 5, ".mlir"); // 5 = length of ".qasm"
+      }
 
-  llvm::raw_ostream& ostr = llvm::outs();
+      if (errorLines.contains(entry.path()) ||
+          std::filesystem::exists(outputFileString)) {
+        std::cout << "Skipping " << entry.path() << std::endl;
+        continue;
+      }
+      std::filesystem::create_directories(outputFile.parent_path());
+      std::ifstream in(entry.path());
+      std::string content((std::istreambuf_iterator<char>(in)),
+                          std::istreambuf_iterator<char>());
 
-  return mlir::asMainReturnCode(
-      mlir::MlirOptMain(ostr, std::move(buffer), registry, config));
+      qc::QuantumComputation qc;
+      try {
+        qc = qasm3::Importer::importf(entry.path());
+      } catch (const std::exception& e) {
+        std::cerr << "Error while processing file " << entry.path()
+                  << std::endl;
+        std::ofstream outFile(errorFile, std::ios::app);
+        if (outFile.is_open()) {
+          outFile << entry.path() << std::endl;
+          outFile.close();
+        } else {
+          std::cerr << "Unable to open error file";
+        }
+        continue;
+      }
+
+      auto module = translateQuantumComputationToMLIR(context.get(), qc);
+
+      const auto mqtRefString = getOutputString(&module);
+
+      std::unique_ptr<llvm::MemoryBuffer> buffer =
+          llvm::MemoryBuffer::getMemBuffer(mqtRefString);
+
+      std::error_code ec;
+      llvm::raw_fd_ostream file(outputFileString, ec);
+
+      auto res = mlir::MlirOptMain(file, std::move(buffer), registry, config);
+
+      if (res.failed()) {
+        std::cerr << "Error while processing file " << entry.path()
+                  << std::endl;
+        std::ofstream outFile(errorFile, std::ios::app);
+        if (outFile.is_open()) {
+          outFile << entry.path() << std::endl;
+          outFile.close();
+        } else {
+          std::cerr << "Unable to open error file";
+        }
+      } else {
+        std::cout << "Processed: " << entry.path() << std::endl;
+      }
+    }
+  }
 }
