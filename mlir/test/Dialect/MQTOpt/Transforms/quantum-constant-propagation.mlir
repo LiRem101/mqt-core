@@ -11,7 +11,7 @@
 // -----
 // This test checks if CNOTs or the controls of CNOTs are removed if we can classically determine the ctrls value.
 module {
-  func.func @testReducePosCtrls() {
+  func.func @testReducePosCtrls() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -56,7 +56,7 @@ module {
 // -----
 // This test checks if CNOTs or the controls of CNOTs are removed if we can classically determine the neg ctrls value.
 module {
-  func.func @testReduceNegCtrls() {
+  func.func @testReduceNegCtrls() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -101,7 +101,7 @@ module {
 // -----
 // This test checks that CNOTs are not changed if the target is not in |0> or |1>.
 module {
-  func.func @testDontRemoveIfTargetInSuperposition() {
+  func.func @testDontRemoveIfTargetInSuperposition() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -124,7 +124,7 @@ module {
 // -----
 // This test checks that implied Qubits are removed from a controlled gate.
 module {
-  func.func @testRemoveImpliedQubits() {
+  func.func @testRemoveImpliedQubits() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -159,7 +159,7 @@ module {
 // -----
 // This test checks that gates whose quantum controls cannot be satisfied are removed.
 module {
-  func.func @testUnsatisfiableQuantumCombination() {
+  func.func @testUnsatisfiableQuantumCombination() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -189,7 +189,7 @@ module {
 // -----
 // This test checks that gates whose quantum and classical controls cannot be satisfied are removed.
 module {
-  func.func @testUnsatisfiableHybridCombination() {
+  func.func @testUnsatisfiableHybridCombination() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -222,7 +222,7 @@ module {
 // -----
 // This test checks that gates are unconditionally applied if the bit they depend on is always zero.
 module {
-  func.func @testRemoveClassicalConditionalIfItsZero() {
+  func.func @testRemoveClassicalConditionalIfItsZero() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
 
@@ -237,8 +237,8 @@ module {
         %q0_3_if = mqtopt.x() %q0_3 : !mqtopt.Qubit
         scf.yield %q0_3_if  : !mqtopt.Qubit
     } else {
-        %q0_3_else = mqtopt.h() %q0_3 : !mqtopt.Qubit
-        scf.yield %q0_3_else : !mqtopt.Qubit, !mqtopt.Qubit
+        %q0_2_else = mqtopt.h() %q0_3 : !mqtopt.Qubit
+        scf.yield %q0_3_else : !mqtopt.Qubit
     }
 
     // CHECK: mqtopt.deallocQubit %[[Q0_4]]
@@ -251,24 +251,24 @@ module {
 // -----
 // This test checks that gates are unconditionally applied if the bit they depend on is always one.
 module {
-  func.func @testRemoveClassicalConditionalIfItsOne() {
+  func.func @testRemoveClassicalConditionalIfItsOne() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
 
     // CHECK: %[[Q0_1:.*]] = mqtopt.x() %[[Q0_0]] : !mqtopt.Qubit
     // CHECK: %[[Q0_2:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_1]]
-    // CHECK: %[[Q0_4:.*]] = mqtopt.x() %[[Q0_3]] : !mqtopt.Qubit
+    // CHECK: %[[Q0_3:.*]] = mqtopt.x() %[[Q0_2]] : !mqtopt.Qubit
     %q0_1 = mqtopt.x() %q0_0 : !mqtopt.Qubit
     %q0_2, %c0 = mqtopt.measure %q0_1
     %q0_3 = scf.if %c0 -> (!mqtopt.Qubit) {
         %q0_2_if = mqtopt.x() %q0_2 : !mqtopt.Qubit
         scf.yield %q0_2_if  : !mqtopt.Qubit
     } else {
-        %q0_3_else = mqtopt.h() %q0_2 : !mqtopt.Qubit
-        scf.yield %q0_2_else : !mqtopt.Qubit, !mqtopt.Qubit
+        %q0_2_else = mqtopt.h() %q0_2 : !mqtopt.Qubit
+        scf.yield %q0_2_else : !mqtopt.Qubit
     }
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_4]]
+    // CHECK: mqtopt.deallocQubit %[[Q0_3]]
     mqtopt.deallocQubit %q0_3
 
     return
@@ -278,7 +278,7 @@ module {
 // -----
 // This test checks that conditionals are not changed if we cannot tell the bits value.
 module {
-  func.func @testDoNotRemoveClassicalConditionaIfItsOne() {
+  func.func @testDoNotRemoveClassicalConditional() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
 
@@ -297,8 +297,8 @@ module {
         %q0_2_if = mqtopt.x() %q0_2 : !mqtopt.Qubit
         scf.yield %q0_2_if  : !mqtopt.Qubit
     } else {
-        %q0_3_else = mqtopt.h() %q0_2 : !mqtopt.Qubit
-        scf.yield %q0_2_else : !mqtopt.Qubit, !mqtopt.Qubit
+        %q0_2_else = mqtopt.h() %q0_2 : !mqtopt.Qubit
+        scf.yield %q0_2_else : !mqtopt.Qubit
     }
 
     // CHECK: mqtopt.deallocQubit %[[Q0_3]]
@@ -311,7 +311,7 @@ module {
 // -----
 // This test checks that a quantum conditional is replaced by a classical if a qubit and a classical bit are equivalent.
 module {
-  func.func @testEquivalentPositiveClassicalAndQuantumControl() {
+  func.func @testEquivalentPositiveClassicalAndQuantumControl() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -348,7 +348,7 @@ module {
 // This test checks that multiple quantum conditionals are replaced by a classical if a qubit and a classical bit are
 // equivalent.
 module {
-  func.func @testEquivalentClassicalAndQuantumControl() {
+  func.func @testEquivalentClassicalAndQuantumControl() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -386,7 +386,7 @@ module {
 // -----
 // This test checks if a classical control is removed if the quantum control implies the classical one.
 module {
-  func.func @testQuantumImpliesClassical() {
+  func.func @testQuantumImpliesClassical() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -418,7 +418,7 @@ module {
 // -----
 // This test checks if a quantum control is removed if the classical control implies the quantum one.
 module {
-  func.func @testClassicalImpliesQuantum() {
+  func.func @testClassicalImpliesQuantum() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -457,7 +457,7 @@ module {
 // -----
 // This test checks if a classical neg control is removed if it is implied by a quantum control.
 module {
-  func.func @testQuantumImpliesNegClassical() {
+  func.func @testQuantumImpliesNegClassical() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -491,7 +491,7 @@ module {
 // -----
 // This test checks if a quantum neg control is removed if it is implied by a classical control.
 module {
-  func.func @testClassicalImpliesNegQuantum() {
+  func.func @testClassicalImpliesNegQuantum() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -530,7 +530,7 @@ module {
 // -----
 // This test checks if a phase gate is removed if it only adds a global phase.
 module {
-  func.func @testRemoveSingleQubitPhaseGate() {
+  func.func @testRemoveSingleQubitPhaseGate() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
 
@@ -552,7 +552,7 @@ module {
 // -----
 // This test checks if a multi-qubit phase gate is removed if it only adds a global phase.
 module {
-  func.func @testRemoveMultiQubitPhaseGate() {
+  func.func @testRemoveMultiQubitPhaseGate() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit

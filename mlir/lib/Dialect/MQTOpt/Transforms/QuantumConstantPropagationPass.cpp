@@ -21,10 +21,13 @@
 #include "mlir/IR/Value.h"
 #include "mlir/Support/WalkResult.h"
 
+#include "llvm/ADT/STLExtras.h"
+
 #include <algorithm>
 #include <chrono>
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/Operation.h>
@@ -60,6 +63,25 @@ iterateThroughWorklist(PatternRewriter& rewriter,
                        const std::vector<unsigned int>& posBitCtrls,
                        const std::vector<unsigned int>& negBitCtrls);
 
+WalkResult removeIfElseBlock(scf::IfOp op, Block* blockToKeep,
+                             Block* blockToErase,
+                             std::vector<Operation*>& worklist,
+                             PatternRewriter& rewriter) {
+  scf::YieldOp const yieldOp = cast<scf::YieldOp>(blockToKeep->getTerminator());
+  for (auto [result, yielded] :
+       llvm::zip(op.getResults(), yieldOp->getOperands())) {
+    result.replaceAllUsesWith(yielded);
+  }
+  yieldOp->erase();
+  rewriter.inlineBlockBefore(blockToKeep, op, op.getResults());
+  for (Operation const& operation : *blockToErase) {
+    std::ranges::replace(worklist, &operation,
+                         static_cast<Operation*>(nullptr));
+  }
+  rewriter.eraseOp(op);
+  return WalkResult::advance();
+}
+
 /**
  *
  */
@@ -90,6 +112,14 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   TypedValue<IntegerType> const cond = op.getCondition();
   // TODO: What if we have more than one bit here?
   unsigned int const conditionIndex = qcp->bitToIndex.at(cond);
+  if (qcp->ut.isBitAlwaysOne(conditionIndex)) {
+    return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
+                             rewriter);
+  }
+  if (qcp->ut.isBitAlwaysZero(conditionIndex)) {
+    return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
+                             rewriter);
+  }
   auto posBitForThen = posBitCtrls;
   posBitForThen.push_back(conditionIndex);
   auto negBitsForElse = negBitCtrls;
@@ -135,10 +165,10 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   if (!elseWorklist.empty()) {
     auto* elseTerm = op.getElseRegion().front().getTerminator();
     auto elseYield = cast<scf::YieldOp>(elseTerm);
-    auto elseYieldedValues = elseYield.getResults();
+    const auto elseYieldedValues = elseYield.getResults();
     for (unsigned int i = 0; i < elseYieldedValues.size(); ++i) {
-      auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
-      if (qcp->qubitToIndex[ifResults[i]] != indexOfElseValue) {
+      if (auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
+          qcp->qubitToIndex[ifResults[i]] != indexOfElseValue) {
         throw std::domain_error(
             "Yield of else-Block yields different qubits than yield of "
             "then-BLock. Not supported by constant propagation.");
@@ -149,14 +179,6 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
 
   return iterateThroughWorklist(rewriter, elseWorklist, qcp, posBitCtrls,
                                 negBitsForElse);
-}
-
-/**
- *
- */
-WalkResult handleQubit(QubitOp op) {
-  // TODO: Check usages for QubitOp and handle
-  throw std::domain_error("handleQubit op not yet implemented.");
 }
 
 /**
@@ -430,7 +452,6 @@ iterateThroughWorklist(PatternRewriter& rewriter,
             .Case<UnitaryInterface>([&](UnitaryInterface op) {
               return handleUnitary(qcp, op, posBitCtrls, negBitCtrls, rewriter);
             })
-            .Case<QubitOp>([&](QubitOp op) { return handleQubit(op); })
             .Case<ResetOp>([&](ResetOp op) {
               return handleReset(qcp, op, posBitCtrls, negBitCtrls, rewriter);
             })
