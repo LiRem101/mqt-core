@@ -278,7 +278,7 @@ module {
 // -----
 // This test checks that conditionals are not changed if we cannot tell the bits value.
 module {
-  func.func @testRemoveClassicalConditionalIfItsOne() {
+  func.func @testDoNotRemoveClassicalConditionaIfItsOne() {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
 
@@ -428,11 +428,11 @@ module {
     // CHECK: %[[Q0_2:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_1]]
     // CHECK: %[[Q1_1:.*]], %[[Q0_3:.*]] = mqtopt.x() %[[Q1_0]] nctrl %[[Q0_2]] : !mqtopt.Qubit nctrl !mqtopt.Qubit
     // CHECK: %[[Q0_4:.*]], %[[Q1_2:.*]] = mqtopt.h() %[[Q0_3]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[Q1_3:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit) {
+    // CHECK: %[[Q0_5:.*]], %[[Q1_3:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit, !mqtopt.Qubit) {
     // CHECK:     %[[Q1_2_if:.*]] = mqtopt.x() %[[Q1_2]] : !mqtopt.Qubit
-    // CHECK:     scf.yield %[[Q1_2_if]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_2_if]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: } else {
-    // CHECK:     scf.yield %[[Q1_2]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_2]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: }
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q0_2, %c0 = mqtopt.measure %q0_1
@@ -445,7 +445,7 @@ module {
         scf.yield %q0_4, %q1_2 : !mqtopt.Qubit, !mqtopt.Qubit
     }
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_4]]
+    // CHECK: mqtopt.deallocQubit %[[Q0_5]]
     // CHECK: mqtopt.deallocQubit %[[Q1_3]]
     mqtopt.deallocQubit %q0_5
     mqtopt.deallocQubit %q1_3
@@ -501,11 +501,11 @@ module {
     // CHECK: %[[Q0_2:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_1]]
     // CHECK: %[[Q0_3:.*]] = mqtopt.x() %[[Q0_2]] : !mqtopt.Qubit
     // CHECK: %[[Q1_1:.*]], %[[Q0_4:.*]] = mqtopt.h() %[[Q1_0]] ctrl %[[Q0_3]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[Q0_5:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit) {
+    // CHECK: %[[Q0_5:.*]], %[[Q1_2:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit) {
     // CHECK:     %[[Q0_4_if:.*]] = mqtopt.x() %[[Q0_4]] : !mqtopt.Qubit
-    // CHECK:     scf.yield %[[Q0_4_if]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_4_if]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: } else {
-    // CHECK:     scf.yield %[[Q0_4]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: }
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q0_2, %c0 = mqtopt.measure %q0_1
@@ -519,7 +519,7 @@ module {
     }
 
     // CHECK: mqtopt.deallocQubit %[[Q0_5]]
-    // CHECK: mqtopt.deallocQubit %[[Q1_1]]
+    // CHECK: mqtopt.deallocQubit %[[Q1_2]]
     mqtopt.deallocQubit %q0_5
     mqtopt.deallocQubit %q1_2
 
