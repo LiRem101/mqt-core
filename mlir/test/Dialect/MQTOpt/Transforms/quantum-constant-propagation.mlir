@@ -176,7 +176,7 @@ module {
     // CHECK: %[[Q1_2:.*]], %[[Q0_2:.*]] = mqtopt.x() %[[Q1_1]] ctrl %[[Q0_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q1_1 = mqtopt.x() %q1_0 : !mqtopt.Qubit
-    %q1_2, %q0_2 = mqtopt.x() %q1_1 ctrl %q0_1, : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %q1_2, %q0_2 = mqtopt.x() %q1_1 ctrl %q0_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q2_1, %q0_3, %q1_3 = mqtopt.x() %q2_0 ctrl %q0_2, %q1_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
 
     // CHECK: mqtopt.deallocQubit %[[Q0_2]]
@@ -205,7 +205,7 @@ module {
     // CHECK: %[[Q0_3:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_2]]
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q1_1 = mqtopt.x() %q1_0 : !mqtopt.Qubit
-    %q1_2, %q0_2 = mqtopt.x() %q1_1 ctrl %q0_1, : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %q1_2, %q0_2 = mqtopt.x() %q1_1 ctrl %q0_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_3, %c0 = mqtopt.measure %q0_2
     %q0_4, %q1_3 = scf.if %c0 -> (!mqtopt.Qubit, !mqtopt.Qubit) {
         %q0_3_if, %q1_2_if = mqtopt.x() %q0_3 ctrl %q1_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit

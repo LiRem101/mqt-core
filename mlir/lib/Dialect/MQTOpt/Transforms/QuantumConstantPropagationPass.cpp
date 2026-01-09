@@ -109,7 +109,7 @@ WalkResult handleFor() {
 }
 
 WalkResult removeGate(UnitaryInterface op, PatternRewriter& rewriter) {
-  for (auto outQubit : op.getAllOutQubits()) {
+  for (const auto outQubit : op.getAllOutQubits()) {
     rewriter.replaceAllUsesWith(outQubit, op.getCorrespondingInput(outQubit));
   }
   rewriter.eraseOp(op);
@@ -130,7 +130,6 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
     if (indicesToRemove.contains(qubitIndex)) {
       rewriter.replaceAllUsesWith(op.getCorrespondingOutput(qubitValues),
                                   qubitValues);
-      // TODO: Remove ctrl
     } else if (auto it = llvm::find(posCtrlInQubitsOfOp, qubitValues);
                it != posCtrlInQubitsOfOp.end()) {
       newPosInCtrlOperands.push_back(qubitValues);
@@ -150,10 +149,6 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
     staticParams = DenseF64ArrayAttr::get(rewriter.getContext(),
                                           op.getStaticParams().value());
   }
-  // auto newOp = rewriter.replaceOpWithNewOp<RZOp>(
-  //     op, qubitType, newPosOutCtrlResultTypes, newNegOutCtrlResultTypes,
-  //     staticParams, mlir::DenseBoolArrayAttr{}, op.getParams(), inQubits,
-  //     newPosInCtrlOperands, newNegInCtrlOperands);
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
   switch (opType) {
@@ -260,7 +255,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     auto elseYield = cast<scf::YieldOp>(elseTerm);
     const auto elseYieldedValues = elseYield.getResults();
     for (unsigned int i = 0; i < elseYieldedValues.size(); ++i) {
-      if (auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
+      if (const auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
           qcp->qubitToIndex[ifResults[i]] != indexOfElseValue) {
         throw std::domain_error(
             "Yield of else-Block yields different qubits than yield of "
@@ -468,11 +463,16 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   }
   // Check if parts of or the whole gate are superfluous
   if (op.isControlled()) {
-    std::pair<std::set<unsigned int>, std::set<unsigned int>> superfluous =
-        qcp::RewriteChecker::getSuperfluousControls(
+    std::pair<std::set<unsigned int>, std::set<unsigned int>> const
+        superfluous = qcp::RewriteChecker::getSuperfluousControls(
             qcp->ut, targetQubitIndices, posCtrlQubitIndices,
             negCtrlQubitIndices, posBitCtrls, negBitCtrls);
-    if (superfluous.first.contains(targetQubitIndices.at(0))) {
+    bool const areThereSatisfiableCombinations =
+        qcp::RewriteChecker::areThereSatisfiableCombinations(
+            qcp->ut, posCtrlQubitIndices, negCtrlQubitIndices, posBitCtrls,
+            negBitCtrls);
+    if (superfluous.first.contains(targetQubitIndices.at(0)) ||
+        !areThereSatisfiableCombinations) {
       return removeGate(op, rewriter);
     }
     if (!superfluous.first.empty()) {
@@ -508,8 +508,11 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
  */
 WalkResult handleReset(qcpObjects* qcp, ResetOp op,
                        const std::vector<unsigned int>& posBitCtrls,
-                       const std::vector<unsigned int>& negBitCtrls,
-                       PatternRewriter& rewriter) {
+                       const std::vector<unsigned int>& negBitCtrls) {
+  if (!posBitCtrls.empty() || !negBitCtrls.empty()) {
+    throw std::logic_error("Cannot handle store operation in conditional "
+                           "branches during constant propagation.");
+  }
   const auto qubit = op.getInQubit();
   const auto newQubit = op.getOutQubit();
   qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
@@ -526,8 +529,7 @@ WalkResult handleReset(qcpObjects* qcp, ResetOp op,
  */
 WalkResult handleMeasure(qcpObjects* qcp, MeasureOp op,
                          const std::vector<unsigned int>& posBitCtrls,
-                         const std::vector<unsigned int>& negBitCtrls,
-                         PatternRewriter& rewriter) {
+                         const std::vector<unsigned int>& negBitCtrls) {
   const auto qubit = op.getInQubit();
   const auto newQubit = op.getOutQubit();
   const auto outBit = op.getOutBit();
@@ -564,17 +566,18 @@ iterateThroughWorklist(PatternRewriter& rewriter,
     const auto res =
         TypeSwitch<Operation*, WalkResult>(curr)
             /// mqtopt Dialect
-            .Case<UnitaryInterface>([&](UnitaryInterface op) {
+            .Case<UnitaryInterface>([&](const UnitaryInterface op) {
               return handleUnitary(qcp, op, posBitCtrls, negBitCtrls, rewriter);
             })
-            .Case<ResetOp>([&](ResetOp op) {
-              return handleReset(qcp, op, posBitCtrls, negBitCtrls, rewriter);
+            .Case<ResetOp>([&](const ResetOp op) {
+              return handleReset(qcp, op, posBitCtrls, negBitCtrls);
             })
-            .Case<MeasureOp>([&](MeasureOp op) {
-              return handleMeasure(qcp, op, posBitCtrls, negBitCtrls, rewriter);
+            .Case<MeasureOp>([&](const MeasureOp op) {
+              return handleMeasure(qcp, op, posBitCtrls, negBitCtrls);
             })
-            .Case<AllocQubitOp>(
-                [&](AllocQubitOp op) { return handleQubitAlloc(qcp, op); })
+            .Case<AllocQubitOp>([&](const AllocQubitOp op) {
+              return handleQubitAlloc(qcp, op);
+            })
             .Case<DeallocQubitOp>([&]([[maybe_unused]] DeallocQubitOp op) {
               return WalkResult::advance();
             })
@@ -602,13 +605,14 @@ iterateThroughWorklist(PatternRewriter& rewriter,
               return handleConstant(qcp, op, posBitCtrls, negBitCtrls);
             })
             /// func Dialect
-            .Case<func::FuncOp>([&](func::FuncOp op) { return handleFunc(op); })
+            .Case<func::FuncOp>(
+                [&](const func::FuncOp op) { return handleFunc(op); })
             .Case<func::ReturnOp>([&]([[maybe_unused]] func::ReturnOp op) {
               return WalkResult::advance();
             })
             /// scf Dialect
-            .Case<scf::ForOp>([&](scf::ForOp op) { return handleFor(); })
-            .Case<scf::IfOp>([&](scf::IfOp op) {
+            .Case<scf::ForOp>([&](scf::ForOp) { return handleFor(); })
+            .Case<scf::IfOp>([&](const scf::IfOp op) {
               return handleIf(qcp, op, worklist, posBitCtrls, negBitCtrls,
                               rewriter);
             })
