@@ -57,6 +57,13 @@ struct qcpObjects {
 namespace {
 using namespace mlir;
 
+#define CREATE_OP_CASE(opType)                                                 \
+  case qc::OpType::opType:                                                     \
+    return rewriter.replaceOpWithNewOp<opType##Op>(                            \
+        op, qubitType, newPosOutCtrlResultTypes, newNegOutCtrlResultTypes,     \
+        staticParams, mlir::DenseBoolArrayAttr{}, op.getParams(), inQubits,    \
+        newPosInCtrlOperands, newNegInCtrlOperands);
+
 LogicalResult
 iterateThroughWorklist(PatternRewriter& rewriter,
                        std::vector<Operation*>& worklist, qcpObjects* qcp,
@@ -99,6 +106,92 @@ WalkResult handleFunc(const func::FuncOp op) {
 WalkResult handleFor() {
   throw std::domain_error(
       "Handling of for-loops not yet supported by constant propagation.");
+}
+
+WalkResult removeGate(UnitaryInterface op, PatternRewriter& rewriter) {
+  for (auto outQubit : op.getAllOutQubits()) {
+    rewriter.replaceAllUsesWith(outQubit, op.getCorrespondingInput(outQubit));
+  }
+  rewriter.eraseOp(op);
+  return WalkResult::advance();
+}
+
+UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
+                             const std::set<unsigned int>& indicesToRemove,
+                             PatternRewriter& rewriter) {
+  SmallVector<Value> newPosInCtrlOperands;
+  SmallVector<Type> newPosOutCtrlResultTypes;
+  SmallVector<Value> newNegInCtrlOperands;
+  SmallVector<Type> newNegOutCtrlResultTypes;
+
+  auto posCtrlInQubitsOfOp = op.getPosCtrlInQubits();
+  auto negCtrlInQubitsOfOp = op.getNegCtrlInQubits();
+  for (const auto& [qubitValues, qubitIndex] : qcp->qubitToIndex) {
+    if (indicesToRemove.contains(qubitIndex)) {
+      rewriter.replaceAllUsesWith(op.getCorrespondingOutput(qubitValues),
+                                  qubitValues);
+      // TODO: Remove ctrl
+    } else if (auto it = llvm::find(posCtrlInQubitsOfOp, qubitValues);
+               it != posCtrlInQubitsOfOp.end()) {
+      newPosInCtrlOperands.push_back(qubitValues);
+      newPosOutCtrlResultTypes.push_back(
+          op.getCorrespondingOutput(qubitValues).getType());
+    } else if (auto nit = llvm::find(negCtrlInQubitsOfOp, qubitValues);
+               nit != negCtrlInQubitsOfOp.end()) {
+      newNegInCtrlOperands.push_back(qubitValues);
+      newNegOutCtrlResultTypes.push_back(
+          op.getCorrespondingOutput(qubitValues).getType());
+    }
+  }
+  const auto qubitType = QubitType::get(rewriter.getContext());
+  auto inQubits = op.getInQubits();
+  auto staticParams = DenseF64ArrayAttr{};
+  if (op.getStaticParams().has_value()) {
+    staticParams = DenseF64ArrayAttr::get(rewriter.getContext(),
+                                          op.getStaticParams().value());
+  }
+  // auto newOp = rewriter.replaceOpWithNewOp<RZOp>(
+  //     op, qubitType, newPosOutCtrlResultTypes, newNegOutCtrlResultTypes,
+  //     staticParams, mlir::DenseBoolArrayAttr{}, op.getParams(), inQubits,
+  //     newPosInCtrlOperands, newNegInCtrlOperands);
+  const auto opName = op.getIdentifier().str();
+  const auto opType = qc::opTypeFromString(opName);
+  switch (opType) {
+    CREATE_OP_CASE(I)
+    CREATE_OP_CASE(H)
+    CREATE_OP_CASE(X)
+    CREATE_OP_CASE(Y)
+    CREATE_OP_CASE(Z)
+    CREATE_OP_CASE(S)
+    CREATE_OP_CASE(Sdg)
+    CREATE_OP_CASE(T)
+    CREATE_OP_CASE(Tdg)
+    CREATE_OP_CASE(V)
+    CREATE_OP_CASE(Vdg)
+    CREATE_OP_CASE(U)
+    CREATE_OP_CASE(U2)
+    CREATE_OP_CASE(P)
+    CREATE_OP_CASE(SX)
+    CREATE_OP_CASE(SXdg)
+    CREATE_OP_CASE(RX)
+    CREATE_OP_CASE(RY)
+    CREATE_OP_CASE(RZ)
+    CREATE_OP_CASE(SWAP)
+    CREATE_OP_CASE(iSWAP)
+    CREATE_OP_CASE(iSWAPdg)
+    CREATE_OP_CASE(Peres)
+    CREATE_OP_CASE(Peresdg)
+    CREATE_OP_CASE(DCX)
+    CREATE_OP_CASE(ECR)
+    CREATE_OP_CASE(RXX)
+    CREATE_OP_CASE(RYY)
+    CREATE_OP_CASE(RZZ)
+    CREATE_OP_CASE(RZX)
+    CREATE_OP_CASE(XXminusYY)
+    CREATE_OP_CASE(XXplusYY)
+  default:
+    throw std::runtime_error("Unsupported operation type");
+  }
 }
 
 /**
@@ -275,7 +368,7 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
                              std::to_string(calledIndices.size()) +
                              " currently) during constant propagation.");
     }
-    int const indexValue = qcp->integerValues.at(calledIndices.front());
+    long const indexValue = qcp->integerValues.at(calledIndices.front());
     unsigned int const qubitIndex = qubitIndicesOfThisMemref.at(indexValue);
     qcp->qubitToIndex[res] = qubitIndex;
   }
@@ -309,7 +402,7 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
                            std::to_string(calledIndices.size()) +
                            " currently) during constant propagation.");
   }
-  int const indexValue = qcp->integerValues.at(calledIndices.front());
+  long const indexValue = qcp->integerValues.at(calledIndices.front());
   if (abstractTypeOfMemref == "mqtopt.Qubit") {
     qcp->memrefToQubitIndex[memref].at(indexValue) =
         qcp->qubitToIndex.at(storedValue);
@@ -373,9 +466,31 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       params.push_back(param);
     }
   }
+  // Check if parts of or the whole gate are superfluous
+  if (op.isControlled()) {
+    std::pair<std::set<unsigned int>, std::set<unsigned int>> superfluous =
+        qcp::RewriteChecker::getSuperfluousControls(
+            qcp->ut, targetQubitIndices, posCtrlQubitIndices,
+            negCtrlQubitIndices, posBitCtrls, negBitCtrls);
+    if (superfluous.first.contains(targetQubitIndices.at(0))) {
+      return removeGate(op, rewriter);
+    }
+    if (!superfluous.first.empty()) {
+      // Remove superfluous quantum controls
+      op = removeCtrls(qcp, op, superfluous.first, rewriter);
+      posCtrlQubitIndices = {};
+      negCtrlQubitIndices = {};
+      for (auto posCtrlQubit : op.getPosCtrlInQubits()) {
+        posCtrlQubitIndices.push_back(qcp->qubitToIndex.at(posCtrlQubit));
+      }
+      for (auto negCtrlQubit : op.getNegCtrlInQubits()) {
+        negCtrlQubitIndices.push_back(qcp->qubitToIndex.at(negCtrlQubit));
+      }
+    }
+  }
+
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
-  // TODO: Check if gate should be removed
   qcp->ut.propagateGate(opType, targetQubitIndices, posCtrlQubitIndices,
                         negCtrlQubitIndices, posBitCtrls, negBitCtrls, params);
   for (auto qubit : op.getAllInQubits()) {

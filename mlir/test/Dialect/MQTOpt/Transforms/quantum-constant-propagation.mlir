@@ -33,21 +33,25 @@ module {
     // CHECK: %[[Q2_1:.*]] = mqtopt.h() %[[Q2_0]] : !mqtopt.Qubit
     // CHECK: %[[Q2_2:.*]] = mqtopt.z() %[[Q2_1]] : !mqtopt.Qubit
     // CHECK: %[[Q2_3:.*]] = mqtopt.h() %[[Q2_2]] : !mqtopt.Qubit
-    // CHECK: %[[Q3_1:.*]] = mqtopt.x() %[[Q3_0]] : !mqtopt.Qubit
+    // CHECK: %[[Q3_1:.*]] = mqtopt.rx(static [-3.926991e-01]) %[[Q3_0]] : !mqtopt.Qubit
+    // CHECK: %[[c0:.*]] = arith.constant 3.000000e-01 : f64
+    // CHECK: %[[Q3_2:.*]] = mqtopt.ry(%[[c0]]) %[[Q3_1]] : !mqtopt.Qubit
 
     %q2_1 = mqtopt.h() %q2_0 : !mqtopt.Qubit
     %q2_2 = mqtopt.z() %q2_1 : !mqtopt.Qubit
     %q2_3 = mqtopt.h() %q2_2 : !mqtopt.Qubit
-    %q3_1, %q2_4 = mqtopt.x() %q3_0 ctrl %q2_3 : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %q3_1, %q2_4 = mqtopt.rx(static [-3.926991e-01]) %q3_0 ctrl %q2_3 : !mqtopt.Qubit ctrl !mqtopt.Qubit
+    %c0_f64 = arith.constant 3.000000e-01 : f64
+    %q3_2, %q2_5 = mqtopt.ry(%c0_f64) %q3_1 ctrl %q2_4 : !mqtopt.Qubit ctrl !mqtopt.Qubit
 
     // CHECK: mqtopt.deallocQubit %[[Q0_3]]
     // CHECK: mqtopt.deallocQubit %[[Q1_0]]
     // CHECK: mqtopt.deallocQubit %[[Q2_3]]
-    // CHECK: mqtopt.deallocQubit %[[Q3_1]]
+    // CHECK: mqtopt.deallocQubit %[[Q3_2]]
     mqtopt.deallocQubit %q0_4
     mqtopt.deallocQubit %q1_1
-    mqtopt.deallocQubit %q2_4
-    mqtopt.deallocQubit %q3_1
+    mqtopt.deallocQubit %q2_5
+    mqtopt.deallocQubit %q3_2
 
     return
   }
