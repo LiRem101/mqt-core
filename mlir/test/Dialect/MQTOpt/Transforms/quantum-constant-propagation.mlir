@@ -241,7 +241,7 @@ module {
         %q0_3_if = mqtopt.x() %q0_3 : !mqtopt.Qubit
         scf.yield %q0_3_if  : !mqtopt.Qubit
     } else {
-        %q0_2_else = mqtopt.h() %q0_3 : !mqtopt.Qubit
+        %q0_3_else = mqtopt.h() %q0_3 : !mqtopt.Qubit
         scf.yield %q0_3_else : !mqtopt.Qubit
     }
 
@@ -443,7 +443,7 @@ module {
     %q1_1, %q0_3 = mqtopt.x() %q1_0 nctrl %q0_2 : !mqtopt.Qubit nctrl !mqtopt.Qubit
     %q0_4, %q1_2 = mqtopt.h() %q0_3 ctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_5, %q1_3 = scf.if %c0 -> (!mqtopt.Qubit, !mqtopt.Qubit) {
-        %q0_4_if, %q1_2_if = mqtopt.x() %q0_4 ctrl %q1_2, : !mqtopt.Qubit ctrl !mqtopt.Qubit
+        %q1_2_if, %q0_4_if = mqtopt.x() %q1_2 ctrl %q0_4 : !mqtopt.Qubit ctrl !mqtopt.Qubit
         scf.yield %q0_4_if, %q1_2_if  : !mqtopt.Qubit, !mqtopt.Qubit
     } else {
         scf.yield %q0_4, %q1_2 : !mqtopt.Qubit, !mqtopt.Qubit
@@ -479,7 +479,7 @@ module {
     %q0_5, %q1_2 = scf.if %c0 -> (!mqtopt.Qubit, !mqtopt.Qubit) {
         scf.yield %q0_4, %q1_1  : !mqtopt.Qubit, !mqtopt.Qubit
     } else {
-        %q0_4_else, %q1_1_else = mqtopt.x() %q0_4 ctrl %q1_1, : !mqtopt.Qubit ctrl !mqtopt.Qubit
+        %q0_4_else, %q1_1_else = mqtopt.x() %q0_4 ctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
         scf.yield %q0_4_else, %q1_1_else : !mqtopt.Qubit, !mqtopt.Qubit
     }
 

@@ -60,10 +60,11 @@ using namespace mlir;
 
 #define CREATE_OP_CASE(opType)                                                 \
   case qc::OpType::opType:                                                     \
-    return rewriter.replaceOpWithNewOp<opType##Op>(                            \
-        op, qubitType, newPosOutCtrlResultTypes, newNegOutCtrlResultTypes,     \
-        staticParams, mlir::DenseBoolArrayAttr{}, op.getParams(), inQubits,    \
-        newPosInCtrlOperands, newNegInCtrlOperands);
+    newOp = rewriter.create<opType##Op>(                                       \
+        op->getLoc(), qubitType, newPosOutCtrlResultTypes,                     \
+        newNegOutCtrlResultTypes, staticParams, mlir::DenseBoolArrayAttr{},    \
+        op.getParams(), inQubits, newPosInCtrlOperands, newNegInCtrlOperands); \
+    break;
 
 LogicalResult
 iterateThroughWorklist(PatternRewriter& rewriter,
@@ -127,22 +128,23 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
 
   auto posCtrlInQubitsOfOp = op.getPosCtrlInQubits();
   auto negCtrlInQubitsOfOp = op.getNegCtrlInQubits();
-  for (const auto& [qubitValues, qubitIndex] : qcp->qubitToIndex) {
+  for (const auto& qubitIn : op.getAllCtrlInQubits()) {
+    const unsigned int qubitIndex = qcp->qubitToIndex.at(qubitIn);
     if (indicesToRemove.contains(qubitIndex)) {
-      rewriter.replaceAllUsesWith(op.getCorrespondingOutput(qubitValues),
-                                  qubitValues);
-    } else if (auto it = llvm::find(posCtrlInQubitsOfOp, qubitValues);
+      rewriter.replaceAllUsesWith(op.getCorrespondingOutput(qubitIn), qubitIn);
+    } else if (auto it = llvm::find(posCtrlInQubitsOfOp, qubitIn);
                it != posCtrlInQubitsOfOp.end()) {
-      newPosInCtrlOperands.push_back(qubitValues);
+      newPosInCtrlOperands.push_back(qubitIn);
       newPosOutCtrlResultTypes.push_back(
-          op.getCorrespondingOutput(qubitValues).getType());
-    } else if (auto nit = llvm::find(negCtrlInQubitsOfOp, qubitValues);
+          op.getCorrespondingOutput(qubitIn).getType());
+    } else if (auto nit = llvm::find(negCtrlInQubitsOfOp, qubitIn);
                nit != negCtrlInQubitsOfOp.end()) {
-      newNegInCtrlOperands.push_back(qubitValues);
+      newNegInCtrlOperands.push_back(qubitIn);
       newNegOutCtrlResultTypes.push_back(
-          op.getCorrespondingOutput(qubitValues).getType());
+          op.getCorrespondingOutput(qubitIn).getType());
     }
   }
+
   const auto qubitType = QubitType::get(rewriter.getContext());
   auto inQubits = op.getInQubits();
   auto staticParams = DenseF64ArrayAttr{};
@@ -152,6 +154,7 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
   }
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
+  UnitaryInterface newOp;
   switch (opType) {
     CREATE_OP_CASE(I)
     CREATE_OP_CASE(H)
@@ -188,6 +191,14 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
   default:
     throw std::runtime_error("Unsupported operation type");
   }
+
+  for (const auto qubit : newOp.getAllInQubits()) {
+    rewriter.replaceAllUsesWith(op.getCorrespondingOutput(qubit),
+                                newOp.getCorrespondingOutput(qubit));
+  }
+  rewriter.eraseOp(op);
+
+  return newOp;
 }
 
 /**
@@ -252,6 +263,13 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   }
 
   if (!elseWorklist.empty()) {
+    auto elseResult = iterateThroughWorklist(rewriter, elseWorklist, qcp,
+                                             posBitCtrls, negBitsForElse);
+
+    if (elseResult.failed()) {
+      return elseResult;
+    }
+
     auto* elseTerm = op.getElseRegion().front().getTerminator();
     auto elseYield = cast<scf::YieldOp>(elseTerm);
     const auto elseYieldedValues = elseYield.getResults();
@@ -267,15 +285,9 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     }
   }
 
-  auto elseResult = iterateThroughWorklist(rewriter, elseWorklist, qcp,
-                                           posBitCtrls, negBitsForElse);
-
-  if (elseResult.failed()) {
-    return elseResult;
-  }
-
-  if (llvm::hasSingleElement(op.getThenRegion()) &&
-      (elseWorklist.empty() || llvm::hasSingleElement(op.getElseRegion()))) {
+  if (llvm::isa<scf::YieldOp>(op.thenBlock()->front()) &&
+      (elseWorklist.empty() ||
+       llvm::isa<scf::YieldOp>(op.elseBlock()->front()))) {
     // Remove if-else
     scf::YieldOp const yieldOp =
         cast<scf::YieldOp>(op.thenBlock()->getTerminator());
@@ -507,13 +519,11 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
     std::set<unsigned int> ctrlQubitsToRemove = superfluous.first;
     std::set<unsigned int> remainingPosCtrlQubits = {};
     std::set<unsigned int> remainingNegCtrlQubits = {};
-    std::set_difference(
-        posCtrlQubitIndices.begin(), posCtrlQubitIndices.end(),
-        ctrlQubitsToRemove.begin(), ctrlQubitsToRemove.end(),
+    std::ranges::set_difference(
+        posCtrlQubitIndices, ctrlQubitsToRemove,
         std::inserter(remainingPosCtrlQubits, remainingPosCtrlQubits.begin()));
-    std::set_difference(
-        negCtrlQubitIndices.begin(), negCtrlQubitIndices.end(),
-        ctrlQubitsToRemove.begin(), ctrlQubitsToRemove.end(),
+    std::ranges::set_difference(
+        negCtrlQubitIndices, ctrlQubitsToRemove,
         std::inserter(remainingNegCtrlQubits, remainingNegCtrlQubits.begin()));
 
     // Find all antecedents to remove
@@ -522,32 +532,18 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
           antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
               qcp->ut, posCtrlQubit, false, remainingPosCtrlQubits,
               remainingNegCtrlQubits, {}, {});
-      ctrlQubitsToRemove.insert(antecedents.first.begin(),
-                                antecedents.first.end());
+      if (!antecedents.first.empty() || !antecedents.second.empty()) {
+        ctrlQubitsToRemove.insert(posCtrlQubit);
+      }
     }
     for (const unsigned int negCtrlQubit : remainingNegCtrlQubits) {
       const std::pair<std::set<unsigned int>, std::set<unsigned int>>
           antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
               qcp->ut, negCtrlQubit, true, remainingPosCtrlQubits,
               remainingNegCtrlQubits, {}, {});
-      ctrlQubitsToRemove.insert(antecedents.first.begin(),
-                                antecedents.first.end());
-    }
-    for (const unsigned int posCtrlBit : posBitCtrls) {
-      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
-          antecedents = qcp::RewriteChecker::getAntecedentsOfBit(
-              qcp->ut, posCtrlBit, false, remainingPosCtrlQubits,
-              remainingNegCtrlQubits, {}, {});
-      ctrlQubitsToRemove.insert(antecedents.first.begin(),
-                                antecedents.first.end());
-    }
-    for (const unsigned int negCtrlBit : negBitCtrls) {
-      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
-          antecedents = qcp::RewriteChecker::getAntecedentsOfBit(
-              qcp->ut, negCtrlBit, true, remainingPosCtrlQubits,
-              remainingNegCtrlQubits, {}, {});
-      ctrlQubitsToRemove.insert(antecedents.first.begin(),
-                                antecedents.first.end());
+      if (!antecedents.first.empty() || !antecedents.second.empty()) {
+        ctrlQubitsToRemove.insert(negCtrlQubit);
+      }
     }
     // TODO: Check whether to replace by bit
     if (!ctrlQubitsToRemove.empty()) {
