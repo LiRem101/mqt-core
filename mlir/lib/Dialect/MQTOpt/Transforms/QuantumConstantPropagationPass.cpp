@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/MQTOpt/Transforms/ConstantPropagation/RewriteChecker.hpp>
@@ -475,9 +476,56 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         !areThereSatisfiableCombinations) {
       return removeGate(op, rewriter);
     }
-    if (!superfluous.first.empty()) {
+
+    std::set<unsigned int> ctrlQubitsToRemove = superfluous.first;
+    std::set<unsigned int> remainingPosCtrlQubits = {};
+    std::set<unsigned int> remainingNegCtrlQubits = {};
+    std::set_difference(
+        posCtrlQubitIndices.begin(), posCtrlQubitIndices.end(),
+        ctrlQubitsToRemove.begin(), ctrlQubitsToRemove.end(),
+        std::inserter(remainingPosCtrlQubits, remainingPosCtrlQubits.begin()));
+    std::set_difference(
+        negCtrlQubitIndices.begin(), negCtrlQubitIndices.end(),
+        ctrlQubitsToRemove.begin(), ctrlQubitsToRemove.end(),
+        std::inserter(remainingNegCtrlQubits, remainingNegCtrlQubits.begin()));
+
+    // Find all antecedents to remove
+    for (const unsigned int posCtrlQubit : remainingPosCtrlQubits) {
+      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
+          antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
+              qcp->ut, posCtrlQubit, false, remainingPosCtrlQubits,
+              remainingNegCtrlQubits, {}, {});
+      ctrlQubitsToRemove.insert(antecedents.first.begin(),
+                                antecedents.first.end());
+    }
+    for (const unsigned int negCtrlQubit : remainingNegCtrlQubits) {
+      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
+          antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
+              qcp->ut, negCtrlQubit, true, remainingPosCtrlQubits,
+              remainingNegCtrlQubits, {}, {});
+      ctrlQubitsToRemove.insert(antecedents.first.begin(),
+                                antecedents.first.end());
+    }
+    for (const unsigned int posCtrlBit : posBitCtrls) {
+      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
+          antecedents = qcp::RewriteChecker::getAntecedentsOfBit(
+              qcp->ut, posCtrlBit, false, remainingPosCtrlQubits,
+              remainingNegCtrlQubits, {}, {});
+      ctrlQubitsToRemove.insert(antecedents.first.begin(),
+                                antecedents.first.end());
+    }
+    for (const unsigned int negCtrlBit : negBitCtrls) {
+      const std::pair<std::set<unsigned int>, std::set<unsigned int>>
+          antecedents = qcp::RewriteChecker::getAntecedentsOfBit(
+              qcp->ut, negCtrlBit, true, remainingPosCtrlQubits,
+              remainingNegCtrlQubits, {}, {});
+      ctrlQubitsToRemove.insert(antecedents.first.begin(),
+                                antecedents.first.end());
+    }
+    // TODO: Check whether to replace by bit
+    if (!ctrlQubitsToRemove.empty()) {
       // Remove superfluous quantum controls
-      op = removeCtrls(qcp, op, superfluous.first, rewriter);
+      op = removeCtrls(qcp, op, ctrlQubitsToRemove, rewriter);
       posCtrlQubitIndices = {};
       negCtrlQubitIndices = {};
       for (auto posCtrlQubit : op.getPosCtrlInQubits()) {

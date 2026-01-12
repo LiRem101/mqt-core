@@ -131,14 +131,14 @@ RewriteChecker::getAntecedentsOfQubit(
   for (unsigned int const posQubit : qubitsPositive) {
     const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({q, posQubit}, qubitValueToCheck + 2);
-    if (hasZeroAmplitude) {
+    if (hasZeroAmplitude && posQubit != q) {
       result.first.insert(posQubit);
     }
   }
   for (unsigned int const negQubit : qubitsNegative) {
     const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({q, negQubit}, qubitValueToCheck);
-    if (hasZeroAmplitude) {
+    if (hasZeroAmplitude && negQubit != q) {
       result.first.insert(negQubit);
     }
   }
@@ -186,14 +186,14 @@ RewriteChecker::getAntecedentsOfBit(
   for (unsigned int const posBit : bitsPositive) {
     const bool hasZeroAmplitude =
         unionTable.hasAlwaysZeroAmplitude({}, 0, {posBit, b}, {true, negative});
-    if (hasZeroAmplitude) {
+    if (hasZeroAmplitude && posBit != b) {
       result.second.insert(posBit);
     }
   }
   for (unsigned int const negBit : bitsNegative) {
     const bool hasZeroAmplitude = unionTable.hasAlwaysZeroAmplitude(
         {}, 0, {negBit, b}, {false, negative});
-    if (hasZeroAmplitude) {
+    if (hasZeroAmplitude && negBit != b) {
       result.second.insert(negBit);
     }
   }

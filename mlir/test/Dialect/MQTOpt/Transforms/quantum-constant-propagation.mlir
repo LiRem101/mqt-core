@@ -177,7 +177,7 @@ module {
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q1_1 = mqtopt.x() %q1_0 : !mqtopt.Qubit
     %q1_2, %q0_2 = mqtopt.x() %q1_1 ctrl %q0_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    %q2_1, %q0_3, %q1_3 = mqtopt.x() %q2_0 ctrl %q0_2, %q1_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
+    %q2_1, %q0_3, %q1_3 = mqtopt.s() %q2_0 ctrl %q0_2, %q1_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit, !mqtopt.Qubit
 
     // CHECK: mqtopt.deallocQubit %[[Q0_2]]
     // CHECK: mqtopt.deallocQubit %[[Q1_2]]
