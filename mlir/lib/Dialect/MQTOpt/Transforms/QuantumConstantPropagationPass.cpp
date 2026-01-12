@@ -247,8 +247,8 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   }
 
   for (unsigned int i = 0; i < thenYieldedValues.size(); ++i) {
-    qcp->qubitToIndex[ifResults[i]] = qcp->qubitToIndex[thenYieldedValues[i]];
-    qcp->qubitToIndex.erase(thenYieldedValues[i]);
+    qcp->qubitToIndex[ifResults[i]] =
+        qcp->qubitToIndex.at(thenYieldedValues[i]);
   }
 
   if (!elseWorklist.empty()) {
@@ -256,7 +256,8 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     auto elseYield = cast<scf::YieldOp>(elseTerm);
     const auto elseYieldedValues = elseYield.getResults();
     for (unsigned int i = 0; i < elseYieldedValues.size(); ++i) {
-      if (const auto indexOfElseValue = qcp->qubitToIndex[elseYieldedValues[i]];
+      if (const auto indexOfElseValue =
+              qcp->qubitToIndex.at(elseYieldedValues[i]);
           qcp->qubitToIndex[ifResults[i]] != indexOfElseValue) {
         throw std::domain_error(
             "Yield of else-Block yields different qubits than yield of "
@@ -266,8 +267,34 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     }
   }
 
-  return iterateThroughWorklist(rewriter, elseWorklist, qcp, posBitCtrls,
-                                negBitsForElse);
+  auto elseResult = iterateThroughWorklist(rewriter, elseWorklist, qcp,
+                                           posBitCtrls, negBitsForElse);
+
+  if (elseResult.failed()) {
+    return elseResult;
+  }
+
+  if (llvm::hasSingleElement(op.getThenRegion()) &&
+      (elseWorklist.empty() || llvm::hasSingleElement(op.getElseRegion()))) {
+    // Remove if-else
+    scf::YieldOp const yieldOp =
+        cast<scf::YieldOp>(op.thenBlock()->getTerminator());
+    for (auto [result, yielded] :
+         llvm::zip(op.getResults(), yieldOp->getOperands())) {
+      result.replaceAllUsesWith(yielded);
+    }
+    for (Operation const& operation : *op.thenBlock()) {
+      std::ranges::replace(worklist, &operation,
+                           static_cast<Operation*>(nullptr));
+    }
+    for (Operation const& operation : *op.elseBlock()) {
+      std::ranges::replace(worklist, &operation,
+                           static_cast<Operation*>(nullptr));
+    }
+    rewriter.eraseOp(op);
+  }
+
+  return WalkResult::advance();
 }
 
 /**
