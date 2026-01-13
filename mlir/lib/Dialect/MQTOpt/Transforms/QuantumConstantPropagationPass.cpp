@@ -37,6 +37,7 @@
 #include <mlir/IR/Visitors.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Support/LLVM.h>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -200,6 +201,44 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
   rewriter.eraseOp(op);
 
   return newOp;
+}
+
+WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
+                         const std::set<std::pair<unsigned int, bool>> conds,
+                         PatternRewriter& rewriter) {
+  std::vector<std::pair<Value, bool>> valConds = {};
+  for (auto& [val, index] : qcp->bitToIndex) {
+    for (const auto& [indexOfCond, nonInverse] : conds) {
+      if (indexOfCond == index) {
+        valConds.emplace_back(val, nonInverse);
+        break;
+      }
+    }
+  }
+  mlir::Value q;
+  for (const auto& [qu, _] : qcp->qubitToIndex) {
+    q = qu;
+    break;
+  }
+  auto* ctx = rewriter.getContext();
+  ctx->loadDialect<scf::SCFDialect>();
+  ctx->loadDialect<arith::ArithDialect>();
+  auto loc = op.getLoc();
+  auto cond = valConds.at(0).first;
+
+  rewriter.setInsertionPoint(op);
+  auto ifOp = rewriter.create<scf::IfOp>(
+      loc, /*resultTypes=*/op->getResultTypes(), cond,
+      /*withElseRegion=*/true);
+  rewriter.setInsertionPointToStart(ifOp.thenBlock());
+  Operation* thenClone = rewriter.clone(*op);
+  rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getResults());
+
+  rewriter.setInsertionPointToStart(ifOp.elseBlock());
+  rewriter.create<scf::YieldOp>(loc, thenClone->getOperands());
+
+  rewriter.replaceOp(op, ifOp.getResults());
+  return WalkResult::advance();
 }
 
 /**
@@ -483,6 +522,8 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   std::vector<unsigned int> targetQubitIndices = {};
   std::vector<unsigned int> posCtrlQubitIndices = {};
   std::vector<unsigned int> negCtrlQubitIndices = {};
+  std::vector<unsigned int> posBitCtrlsHere = posBitCtrls;
+  std::vector<unsigned int> negBitCtrlsHere = negBitCtrls;
   std::vector<double> params = {};
   for (auto targetQubit : op.getInQubits()) {
     targetQubitIndices.push_back(qcp->qubitToIndex.at(targetQubit));
@@ -548,7 +589,44 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         ctrlQubitsToRemove.insert(negCtrlQubit);
       }
     }
-    // TODO: Check whether to replace by bit
+    // Check whether to replace by bit
+    std::set<std::pair<unsigned int, bool>> bitDependenceToAdd = {};
+    std::ranges::set_difference(
+        posCtrlQubitIndices, ctrlQubitsToRemove,
+        std::inserter(remainingPosCtrlQubits, remainingPosCtrlQubits.begin()));
+    std::ranges::set_difference(
+        negCtrlQubitIndices, ctrlQubitsToRemove,
+        std::inserter(remainingNegCtrlQubits, remainingNegCtrlQubits.begin()));
+    for (const auto posCtrlQubit : remainingPosCtrlQubits) {
+      const std::optional<std::pair<unsigned int, bool>> optionalImplBit =
+          qcp::RewriteChecker::getEquivalentBit(qcp->ut, posCtrlQubit);
+      if (optionalImplBit.has_value()) {
+        std::pair<unsigned int, bool> implyingBit = *optionalImplBit;
+        // The return says whether the inverse bit is equivalent to the
+        // qubit But we now want to now whether the dependence is pos or
+        // neg
+        implyingBit.second = !implyingBit.second;
+        bitDependenceToAdd.insert(implyingBit);
+        ctrlQubitsToRemove.insert(posCtrlQubit);
+      }
+    }
+    for (const auto negCtrlQubit : remainingNegCtrlQubits) {
+      const std::optional<std::pair<unsigned int, bool>> optionalImplBit =
+          qcp::RewriteChecker::getEquivalentBit(qcp->ut, negCtrlQubit);
+      if (optionalImplBit.has_value()) {
+        std::pair<unsigned int, bool> implyingBit = *optionalImplBit;
+        bitDependenceToAdd.insert(implyingBit);
+        ctrlQubitsToRemove.insert(negCtrlQubit);
+      }
+    }
+    for (const auto& [bitIndex, value] : bitDependenceToAdd) {
+      if (value) {
+        posBitCtrlsHere.push_back(bitIndex);
+      } else {
+        negBitCtrlsHere.push_back(bitIndex);
+      }
+    }
+
     if (!ctrlQubitsToRemove.empty()) {
       // Remove superfluous quantum controls
       op = removeCtrls(qcp, op, ctrlQubitsToRemove, rewriter);
@@ -561,12 +639,17 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         negCtrlQubitIndices.push_back(qcp->qubitToIndex.at(negCtrlQubit));
       }
     }
+
+    if (!bitDependenceToAdd.empty()) {
+      putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
+    }
   }
 
   const auto opName = op.getIdentifier().str();
   const auto opType = qc::opTypeFromString(opName);
   qcp->ut.propagateGate(opType, targetQubitIndices, posCtrlQubitIndices,
-                        negCtrlQubitIndices, posBitCtrls, negBitCtrls, params);
+                        negCtrlQubitIndices, posBitCtrlsHere, negBitCtrlsHere,
+                        params);
   for (auto qubit : op.getAllInQubits()) {
     auto newQubit = op.getCorrespondingOutput(qubit);
     qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
@@ -710,20 +793,20 @@ iterateThroughWorklist(PatternRewriter& rewriter,
  * @brief Do quantum constant propagation.
  *
  * @details
- * Collects all functions marked with the 'entry_point' attribute, builds a
- * preorder worklist of their operations, and processes that list.
+ * Collects all functions marked with the 'entry_point' attribute, builds
+ * a preorder worklist of their operations, and processes that list.
  *
  * @note
- * We consciously avoid MLIR pattern drivers: Idiomatic MLIR transformation
- * patterns are independent and order-agnostic. Since we require state-sharing
- * between patterns for the transformation we violate this assumption.
- * Essentially this is also the reason why we can't utilize MLIR's
- * `applyPatternsGreedily` function. Moreover, we require pre-order traversal
- * which current drivers of MLIR don't support. However, even if such a driver
- * would exist, it would probably not return logical results which we require
- * for error-handling (similarly to `walkAndApplyPatterns`). Consequently, a
- * custom driver would be required in any case, which adds unnecessary code to
- * maintain.
+ * We consciously avoid MLIR pattern drivers: Idiomatic MLIR
+ * transformation patterns are independent and order-agnostic. Since we
+ * require state-sharing between patterns for the transformation we
+ * violate this assumption. Essentially this is also the reason why we
+ * can't utilize MLIR's `applyPatternsGreedily` function. Moreover, we
+ * require pre-order traversal which current drivers of MLIR don't
+ * support. However, even if such a driver would exist, it would probably
+ * not return logical results which we require for error-handling
+ * (similarly to `walkAndApplyPatterns`). Consequently, a custom driver
+ * would be required in any case, which adds unnecessary code to maintain.
  */
 LogicalResult route(ModuleOp module, MLIRContext* ctx,
                     std::vector<std::string>& v) {
