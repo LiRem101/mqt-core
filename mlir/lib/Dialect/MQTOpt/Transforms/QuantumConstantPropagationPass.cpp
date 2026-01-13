@@ -215,11 +215,6 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       }
     }
   }
-  mlir::Value q;
-  for (const auto& [qu, _] : qcp->qubitToIndex) {
-    q = qu;
-    break;
-  }
   auto* ctx = rewriter.getContext();
   ctx->loadDialect<scf::SCFDialect>();
   ctx->loadDialect<arith::ArithDialect>();
@@ -231,13 +226,26 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       loc, /*resultTypes=*/op->getResultTypes(), cond,
       /*withElseRegion=*/true);
   rewriter.setInsertionPointToStart(ifOp.thenBlock());
-  Operation* thenClone = rewriter.clone(*op);
-  rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getResults());
+  UnitaryInterface thenClone = cast<UnitaryInterface>(rewriter.clone(*op));
+  auto yieldThen =
+      rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getResults());
 
   rewriter.setInsertionPointToStart(ifOp.elseBlock());
   rewriter.create<scf::YieldOp>(loc, thenClone->getOperands());
 
   rewriter.replaceOp(op, ifOp.getResults());
+
+  for (auto qubit : thenClone.getAllInQubits()) {
+    auto newQubit = thenClone.getCorrespondingOutput(qubit);
+    qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
+  }
+
+  for (unsigned i = 0; i < ifOp.getNumResults(); ++i) {
+    Value const yieldedThen = yieldThen.getOperand(i);
+    Value const ifResult = ifOp.getResult(i);
+    qcp->qubitToIndex[ifResult] = qcp->qubitToIndex.at(yieldedThen);
+  }
+
   return WalkResult::advance();
 }
 
@@ -525,6 +533,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   std::vector<unsigned int> posBitCtrlsHere = posBitCtrls;
   std::vector<unsigned int> negBitCtrlsHere = negBitCtrls;
   std::vector<double> params = {};
+  std::set<std::pair<unsigned int, bool>> bitDependenceToAdd = {};
   for (auto targetQubit : op.getInQubits()) {
     targetQubitIndices.push_back(qcp->qubitToIndex.at(targetQubit));
   }
@@ -590,7 +599,6 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       }
     }
     // Check whether to replace by bit
-    std::set<std::pair<unsigned int, bool>> bitDependenceToAdd = {};
     std::ranges::set_difference(
         posCtrlQubitIndices, ctrlQubitsToRemove,
         std::inserter(remainingPosCtrlQubits, remainingPosCtrlQubits.begin()));
@@ -614,7 +622,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       const std::optional<std::pair<unsigned int, bool>> optionalImplBit =
           qcp::RewriteChecker::getEquivalentBit(qcp->ut, negCtrlQubit);
       if (optionalImplBit.has_value()) {
-        std::pair<unsigned int, bool> implyingBit = *optionalImplBit;
+        std::pair<unsigned int, bool> const implyingBit = *optionalImplBit;
         bitDependenceToAdd.insert(implyingBit);
         ctrlQubitsToRemove.insert(negCtrlQubit);
       }
@@ -641,7 +649,10 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
     }
 
     if (!bitDependenceToAdd.empty()) {
-      putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
+      WalkResult res = putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
+      if (res.wasInterrupted()) {
+        return res;
+      }
     }
   }
 
@@ -650,6 +661,9 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
   qcp->ut.propagateGate(opType, targetQubitIndices, posCtrlQubitIndices,
                         negCtrlQubitIndices, posBitCtrlsHere, negBitCtrlsHere,
                         params);
+  if (!bitDependenceToAdd.empty()) {
+    return WalkResult::advance();
+  }
   for (auto qubit : op.getAllInQubits()) {
     auto newQubit = op.getCorrespondingOutput(qubit);
     qcp->qubitToIndex[newQubit] = qcp->qubitToIndex.at(qubit);
