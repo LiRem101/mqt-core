@@ -22,6 +22,7 @@
 #include "mlir/Support/WalkResult.h"
 
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Support/Casting.h"
 
 #include <algorithm>
 #include <chrono>
@@ -403,7 +404,7 @@ WalkResult handleLoad(qcpObjects* qcp, memref::LoadOp op) {
                              std::to_string(calledIndices.size()) +
                              " currently) during constant propagation.");
     }
-    long const indexValue = qcp->integerValues.at(calledIndices.front());
+    int64_t const indexValue = qcp->integerValues.at(calledIndices.front());
     unsigned int const qubitIndex = qubitIndicesOfThisMemref.at(indexValue);
     qcp->qubitToIndex[res] = qubitIndex;
   }
@@ -437,7 +438,7 @@ WalkResult handleStore(qcpObjects* qcp, memref::StoreOp op,
                            std::to_string(calledIndices.size()) +
                            " currently) during constant propagation.");
   }
-  long const indexValue = qcp->integerValues.at(calledIndices.front());
+  int64_t const indexValue = qcp->integerValues.at(calledIndices.front());
   if (abstractTypeOfMemref == "mqtopt.Qubit") {
     qcp->memrefToQubitIndex[memref].at(indexValue) =
         qcp->qubitToIndex.at(storedValue);
@@ -527,11 +528,13 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         std::inserter(remainingNegCtrlQubits, remainingNegCtrlQubits.begin()));
 
     // Find all antecedents to remove
+    const std::set setPosBitCtrl(posBitCtrls.begin(), posBitCtrls.end());
+    const std::set setNegBitCtrl(negBitCtrls.begin(), negBitCtrls.end());
     for (const unsigned int posCtrlQubit : remainingPosCtrlQubits) {
       const std::pair<std::set<unsigned int>, std::set<unsigned int>>
           antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
               qcp->ut, posCtrlQubit, false, remainingPosCtrlQubits,
-              remainingNegCtrlQubits, {}, {});
+              remainingNegCtrlQubits, setPosBitCtrl, setNegBitCtrl);
       if (!antecedents.first.empty() || !antecedents.second.empty()) {
         ctrlQubitsToRemove.insert(posCtrlQubit);
       }
@@ -540,7 +543,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       const std::pair<std::set<unsigned int>, std::set<unsigned int>>
           antecedents = qcp::RewriteChecker::getAntecedentsOfQubit(
               qcp->ut, negCtrlQubit, true, remainingPosCtrlQubits,
-              remainingNegCtrlQubits, {}, {});
+              remainingNegCtrlQubits, setPosBitCtrl, setNegBitCtrl);
       if (!antecedents.first.empty() || !antecedents.second.empty()) {
         ctrlQubitsToRemove.insert(negCtrlQubit);
       }

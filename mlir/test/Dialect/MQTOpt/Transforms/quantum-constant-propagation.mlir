@@ -172,7 +172,7 @@ module {
     %q2_0 = mqtopt.allocQubit
 
     // CHECK: %[[Q0_1:.*]] = mqtopt.h() %[[Q0_0]] : !mqtopt.Qubit
-    // CHECK: %[[Q1_1:.*]] = mqtopt.h() %[[Q1_0]] : !mqtopt.Qubit
+    // CHECK: %[[Q1_1:.*]] = mqtopt.x() %[[Q1_0]] : !mqtopt.Qubit
     // CHECK: %[[Q1_2:.*]], %[[Q0_2:.*]] = mqtopt.x() %[[Q1_1]] ctrl %[[Q0_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q1_1 = mqtopt.x() %q1_0 : !mqtopt.Qubit
@@ -516,7 +516,7 @@ module {
     %q0_3 = mqtopt.x() %q0_2 : !mqtopt.Qubit
     %q1_1, %q0_4 = mqtopt.h() %q1_0 ctrl %q0_3 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_5, %q1_2 = scf.if %c0 -> (!mqtopt.Qubit, !mqtopt.Qubit) {
-        %q0_4_if, %q1_1_if = mqtopt.x() %q0_4 nctrl %q1_1, : !mqtopt.Qubit nctrl !mqtopt.Qubit
+        %q0_4_if, %q1_1_if = mqtopt.x() %q0_4 nctrl %q1_1 : !mqtopt.Qubit nctrl !mqtopt.Qubit
         scf.yield %q0_4_if, %q1_1_if  : !mqtopt.Qubit, !mqtopt.Qubit
     } else {
         scf.yield %q0_4, %q1_1 : !mqtopt.Qubit, !mqtopt.Qubit
