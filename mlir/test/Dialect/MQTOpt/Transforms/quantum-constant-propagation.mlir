@@ -181,7 +181,7 @@ module {
 
     // CHECK: mqtopt.deallocQubit %[[Q0_2]]
     // CHECK: mqtopt.deallocQubit %[[Q1_2]]
-    // CHECK: mqtopt.deallocQubit %[[Q3_0]]
+    // CHECK: mqtopt.deallocQubit %[[Q2_0]]
     mqtopt.deallocQubit %q0_3
     mqtopt.deallocQubit %q1_3
     mqtopt.deallocQubit %q2_1
@@ -353,6 +353,7 @@ module {
 // equivalent.
 module {
   func.func @testEquivalentClassicalAndQuantumControl() attributes {passthrough = ["entry_point"]} {
+    // CHECK: %[[true:.*]] = arith.constant true
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q2_0:.*]] = mqtopt.allocQubit
@@ -367,8 +368,14 @@ module {
     // CHECK:     %[[Q2_0_if:.*]] = mqtopt.x() %[[Q2_0]] : !mqtopt.Qubit
     // CHECK:     scf.yield %[[Q2_0_if]] : !mqtopt.Qubit
     // CHECK: } else {
-    // CHECK:     %[[Q2_0_else:.*]] = mqtopt.y() %[[Q2_0]] : !mqtopt.Qubit
-    // CHECK:     scf.yield %[[Q2_0_else]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q2_0]] : !mqtopt.Qubit
+    // CHECK: }
+    // CHECK: %[[c1:.*]] = arith.xori %[[c0]], %[[true]] : i1
+    // CHECK: %[[Q2_2:.*]] = scf.if %[[c1]] -> (!mqtopt.Qubit) {
+    // CHECK:     %[[Q2_2_if:.*]] = mqtopt.y() %[[Q2_1]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q2_2_if]] : !mqtopt.Qubit
+    // CHECK: } else {
+    // CHECK:     scf.yield %[[Q2_1]] : !mqtopt.Qubit
     // CHECK: }
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q1_1, %q0_2 = mqtopt.x() %q1_0 ctrl %q0_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
@@ -378,7 +385,7 @@ module {
 
     // CHECK: mqtopt.deallocQubit %[[Q0_3]]
     // CHECK: mqtopt.deallocQubit %[[Q1_1]]
-    // CHECK: mqtopt.deallocQubit %[[Q2_1]]
+    // CHECK: mqtopt.deallocQubit %[[Q2_2]]
     mqtopt.deallocQubit %q0_3
     mqtopt.deallocQubit %q1_3
     mqtopt.deallocQubit %q2_2
@@ -389,6 +396,7 @@ module {
 
 // -----
 // This test checks if a classical control is removed if the quantum control implies the classical one.
+// Not yet implemented
 module {
   func.func @testQuantumImpliesClassical() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
@@ -404,7 +412,7 @@ module {
     %q0_2, %c0 = mqtopt.measure %q0_1
     %q1_1, %q0_3 = mqtopt.h() %q1_0 ctrl %q0_2 : !mqtopt.Qubit ctrl !mqtopt.Qubit
     %q0_4, %q1_2 = scf.if %c0 -> (!mqtopt.Qubit, !mqtopt.Qubit) {
-        %q0_3_if, %q1_1_if = mqtopt.x() %q0_3 ctrl %q1_1, : !mqtopt.Qubit ctrl !mqtopt.Qubit
+        %q0_3_if, %q1_1_if = mqtopt.x() %q0_3 ctrl %q1_1 : !mqtopt.Qubit ctrl !mqtopt.Qubit
         scf.yield %q0_3_if, %q1_1_if  : !mqtopt.Qubit, !mqtopt.Qubit
     } else {
         scf.yield %q0_3, %q1_1 : !mqtopt.Qubit, !mqtopt.Qubit
@@ -423,6 +431,7 @@ module {
 // This test checks if a quantum control is removed if the classical control implies the quantum one.
 module {
   func.func @testClassicalImpliesQuantum() attributes {passthrough = ["entry_point"]} {
+    // CHECK: %[[true:.*]] = arith.constant true
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -430,13 +439,28 @@ module {
 
     // CHECK: %[[Q0_1:.*]] = mqtopt.h() %[[Q0_0]] : !mqtopt.Qubit
     // CHECK: %[[Q0_2:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_1]]
-    // CHECK: %[[Q1_1:.*]], %[[Q0_3:.*]] = mqtopt.x() %[[Q1_0]] nctrl %[[Q0_2]] : !mqtopt.Qubit nctrl !mqtopt.Qubit
-    // CHECK: %[[Q0_4:.*]], %[[Q1_2:.*]] = mqtopt.h() %[[Q0_3]] ctrl %[[Q1_1]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[Q0_5:.*]], %[[Q1_3:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit, !mqtopt.Qubit) {
-    // CHECK:     %[[Q1_2_if:.*]] = mqtopt.x() %[[Q1_2]] : !mqtopt.Qubit
-    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_2_if]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[c1:.*]] = arith.xori %[[c0]], %[[true]] : i1
+
+    // CHECK: %[[Q1_1:.*]] = scf.if %[[c1]] -> (!mqtopt.Qubit) {
+    // CHECK:     %[[Q1_0_if:.*]] = mqtopt.x() %[[Q1_0]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q1_0_if]] : !mqtopt.Qubit
     // CHECK: } else {
-    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_2]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q1_0]] : !mqtopt.Qubit
+    // CHECK: }
+
+    // CHECK: %[[c2:.*]] = arith.xori %[[c0]], %[[true]] : i1
+    // CHECK: %[[Q0_3:.*]] = scf.if %[[c2]] -> (!mqtopt.Qubit) {
+    // CHECK:     %[[Q0_2_if:.*]] = mqtopt.h() %[[Q0_2]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_2_if]] : !mqtopt.Qubit
+    // CHECK: } else {
+    // CHECK:     scf.yield %[[Q0_2]] : !mqtopt.Qubit
+    // CHECK: }
+
+    // CHECK: %[[QOUT:.*]]:2 = scf.if %[[c0]] -> (!mqtopt.Qubit, !mqtopt.Qubit) {
+    // CHECK:     %[[Q1_1_if:.*]] = mqtopt.x() %[[Q1_1]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_3]], %[[Q1_1_if]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: } else {
+    // CHECK:     scf.yield %[[Q0_3]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: }
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q0_2, %c0 = mqtopt.measure %q0_1
@@ -449,8 +473,8 @@ module {
         scf.yield %q0_4, %q1_2 : !mqtopt.Qubit, !mqtopt.Qubit
     }
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_5]]
-    // CHECK: mqtopt.deallocQubit %[[Q1_3]]
+    // CHECK: mqtopt.deallocQubit %[[QOUT]]#0
+    // CHECK: mqtopt.deallocQubit %[[QOUT]]#1
     mqtopt.deallocQubit %q0_5
     mqtopt.deallocQubit %q1_3
 
@@ -460,6 +484,7 @@ module {
 
 // -----
 // This test checks if a classical neg control is removed if it is implied by a quantum control.
+// Not yet implemented
 module {
   func.func @testQuantumImpliesNegClassical() attributes {passthrough = ["entry_point"]} {
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
@@ -496,6 +521,7 @@ module {
 // This test checks if a quantum neg control is removed if it is implied by a classical control.
 module {
   func.func @testClassicalImpliesNegQuantum() attributes {passthrough = ["entry_point"]} {
+    // CHECK: %[[true:.*]] = arith.constant true
     // CHECK: %[[Q0_0:.*]] = mqtopt.allocQubit
     // CHECK: %[[Q1_0:.*]] = mqtopt.allocQubit
     %q0_0 = mqtopt.allocQubit
@@ -504,12 +530,18 @@ module {
     // CHECK: %[[Q0_1:.*]] = mqtopt.h() %[[Q0_0]] : !mqtopt.Qubit
     // CHECK: %[[Q0_2:.*]], %[[c0:.*]] = mqtopt.measure %[[Q0_1]]
     // CHECK: %[[Q0_3:.*]] = mqtopt.x() %[[Q0_2]] : !mqtopt.Qubit
-    // CHECK: %[[Q1_1:.*]], %[[Q0_4:.*]] = mqtopt.h() %[[Q1_0]] ctrl %[[Q0_3]] : !mqtopt.Qubit ctrl !mqtopt.Qubit
-    // CHECK: %[[Q0_5:.*]], %[[Q1_2:.*]] = scf.if %[[c0]] -> (!mqtopt.Qubit) {
-    // CHECK:     %[[Q0_4_if:.*]] = mqtopt.x() %[[Q0_4]] : !mqtopt.Qubit
-    // CHECK:     scf.yield %[[Q0_4_if]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: %[[c1:.*]] = arith.xori %[[c0]], %[[true]] : i1
+    // CHECK: %[[Q1_1:.*]] = scf.if %[[c1]] -> (!mqtopt.Qubit) {
+    // CHECK:     %[[Q1_0_if:.*]] = mqtopt.h() %[[Q1_0]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q1_0_if]] : !mqtopt.Qubit
     // CHECK: } else {
-    // CHECK:     scf.yield %[[Q0_4]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q1_0]] : !mqtopt.Qubit
+    // CHECK: }
+    // CHECK: %[[QOUT:.*]]:2 = scf.if %[[c0]] -> (!mqtopt.Qubit, !mqtopt.Qubit) {
+    // CHECK:     %[[Q0_3_if:.*]] = mqtopt.x() %[[Q0_3]] : !mqtopt.Qubit
+    // CHECK:     scf.yield %[[Q0_3_if]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
+    // CHECK: } else {
+    // CHECK:     scf.yield %[[Q0_3]], %[[Q1_1]] : !mqtopt.Qubit, !mqtopt.Qubit
     // CHECK: }
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q0_2, %c0 = mqtopt.measure %q0_1
@@ -522,8 +554,8 @@ module {
         scf.yield %q0_4, %q1_1 : !mqtopt.Qubit, !mqtopt.Qubit
     }
 
-    // CHECK: mqtopt.deallocQubit %[[Q0_5]]
-    // CHECK: mqtopt.deallocQubit %[[Q1_2]]
+    // CHECK: mqtopt.deallocQubit %[[QOUT]]#0
+    // CHECK: mqtopt.deallocQubit %[[QOUT]]#1
     mqtopt.deallocQubit %q0_5
     mqtopt.deallocQubit %q1_2
 
@@ -543,7 +575,7 @@ module {
     // CHECK: %[[Q0_3:.*]] = mqtopt.h() %[[Q0_2]] : !mqtopt.Qubit
     %q0_1 = mqtopt.h() %q0_0 : !mqtopt.Qubit
     %q0_2 = mqtopt.z() %q0_1 : !mqtopt.Qubit
-    %q0_3 = mqtopt.h() %q0_2 : !mtopt.Qubit
+    %q0_3 = mqtopt.h() %q0_2 : !mqtopt.Qubit
     %q0_4 = mqtopt.z() %q0_3 : !mqtopt.Qubit
 
     // CHECK: mqtopt.deallocQubit %[[Q0_3]]
