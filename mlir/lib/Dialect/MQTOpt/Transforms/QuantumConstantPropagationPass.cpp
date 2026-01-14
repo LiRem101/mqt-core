@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <iterator>
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
@@ -40,6 +41,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace mqt::ir::opt {
@@ -55,6 +57,7 @@ struct qcpObjects {
   llvm::DenseMap<mlir::Value, int64_t> integerValues;
   llvm::DenseMap<mlir::Value, double> doubleValues;
   llvm::DenseMap<mlir::Value, unsigned int> bitToIndex;
+  mlir::Value trueValue;
 };
 
 namespace {
@@ -96,11 +99,16 @@ WalkResult removeIfElseBlock(scf::IfOp op, Block* blockToKeep,
 /**
  *
  */
-WalkResult handleFunc(const func::FuncOp op) {
+WalkResult handleFunc(qcpObjects* qcp, func::FuncOp op,
+                      PatternRewriter& rewriter) {
   if (!isEntryPoint(op)) {
     throw std::domain_error(
         "Constant propagation does not support nested functions.");
   }
+  // Create a true val
+  rewriter.setInsertionPointToStart(&op.front());
+  auto trueVal = rewriter.create<arith::ConstantIntOp>(op->getLoc(), 1, 1);
+  qcp->trueValue = trueVal;
   return WalkResult::advance();
 }
 
@@ -204,7 +212,7 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
 }
 
 WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
-                         const std::set<std::pair<unsigned int, bool>> conds,
+                         const std::set<std::pair<unsigned int, bool>>& conds,
                          PatternRewriter& rewriter) {
   std::vector<std::pair<Value, bool>> valConds = {};
   for (auto& [val, index] : qcp->bitToIndex) {
@@ -219,16 +227,27 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
   auto* ctx = rewriter.getContext();
   ctx->loadDialect<scf::SCFDialect>();
   ctx->loadDialect<arith::ArithDialect>();
-  auto loc = op.getLoc();
   auto cond = valConds.at(0).first;
   rewriter.setInsertionPoint(op);
+  // Negate bit if necessary
   if (!valConds.at(0).second) { // Build logical NOT: !cond == xor cond, true
-    auto trueVal = rewriter.create<arith::ConstantIntOp>(loc, 1, 1);
-    cond = rewriter.create<arith::XOrIOp>(loc, valConds.at(0).first, trueVal);
+    cond = rewriter.create<arith::XOrIOp>(op.getLoc(), valConds.at(0).first,
+                                          qcp->trueValue);
+  }
+
+  for (auto it = std::next(valConds.begin()); it != valConds.end(); ++it) {
+    auto currentCond = it->first;
+    rewriter.setInsertionPoint(op);
+    // Negate bit if necessary
+    if (!it->second) { // Build logical NOT: !cond == xor cond, true
+      currentCond = rewriter.create<arith::XOrIOp>(op.getLoc(), it->first,
+                                                   qcp->trueValue);
+    }
+    cond = rewriter.create<arith::AndIOp>(op.getLoc(), cond, currentCond);
   }
 
   auto ifOp = rewriter.create<scf::IfOp>(
-      loc, /*resultTypes=*/op->getResultTypes(), cond,
+      op.getLoc(), /*resultTypes=*/op->getResultTypes(), cond,
       /*withElseRegion=*/true);
   rewriter.setInsertionPointToStart(ifOp.thenBlock());
   UnitaryInterface thenClone = cast<UnitaryInterface>(rewriter.clone(*op));
@@ -236,7 +255,7 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getResults());
 
   rewriter.setInsertionPointToStart(ifOp.elseBlock());
-  rewriter.create<scf::YieldOp>(loc, thenClone->getOperands());
+  rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getOperands());
 
   rewriter.replaceOp(op, ifOp.getResults());
 
@@ -781,8 +800,9 @@ iterateThroughWorklist(PatternRewriter& rewriter,
               return handleConstant(qcp, op, posBitCtrls, negBitCtrls);
             })
             /// func Dialect
-            .Case<func::FuncOp>(
-                [&](const func::FuncOp op) { return handleFunc(op); })
+            .Case<func::FuncOp>([&](const func::FuncOp op) {
+              return handleFunc(qcp, op, rewriter);
+            })
             .Case<func::ReturnOp>([&]([[maybe_unused]] func::ReturnOp op) {
               return WalkResult::advance();
             })
