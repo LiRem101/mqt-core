@@ -215,13 +215,18 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       }
     }
   }
+  // TODO: Consider bit value
   auto* ctx = rewriter.getContext();
   ctx->loadDialect<scf::SCFDialect>();
   ctx->loadDialect<arith::ArithDialect>();
   auto loc = op.getLoc();
   auto cond = valConds.at(0).first;
-
   rewriter.setInsertionPoint(op);
+  if (!valConds.at(0).second) { // Build logical NOT: !cond == xor cond, true
+    auto trueVal = rewriter.create<arith::ConstantIntOp>(loc, 1, 1);
+    cond = rewriter.create<arith::XOrIOp>(loc, valConds.at(0).first, trueVal);
+  }
+
   auto ifOp = rewriter.create<scf::IfOp>(
       loc, /*resultTypes=*/op->getResultTypes(), cond,
       /*withElseRegion=*/true);
@@ -609,11 +614,10 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       const std::optional<std::pair<unsigned int, bool>> optionalImplBit =
           qcp::RewriteChecker::getEquivalentBit(qcp->ut, posCtrlQubit);
       if (optionalImplBit.has_value()) {
-        std::pair<unsigned int, bool> implyingBit = *optionalImplBit;
-        // The return says whether the inverse bit is equivalent to the
-        // qubit But we now want to now whether the dependence is pos or
-        // neg
-        implyingBit.second = !implyingBit.second;
+        std::pair<unsigned int, bool> const implyingBit = *optionalImplBit;
+        // The return says whether the bit is equivalent to the qubit (true) or
+        // its inverse (false). But we now want to now whether the dependence is
+        // pos or neg
         bitDependenceToAdd.insert(implyingBit);
         ctrlQubitsToRemove.insert(posCtrlQubit);
       }
@@ -622,7 +626,8 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       const std::optional<std::pair<unsigned int, bool>> optionalImplBit =
           qcp::RewriteChecker::getEquivalentBit(qcp->ut, negCtrlQubit);
       if (optionalImplBit.has_value()) {
-        std::pair<unsigned int, bool> const implyingBit = *optionalImplBit;
+        std::pair<unsigned int, bool> implyingBit = *optionalImplBit;
+        implyingBit.second = !implyingBit.second;
         bitDependenceToAdd.insert(implyingBit);
         ctrlQubitsToRemove.insert(negCtrlQubit);
       }
