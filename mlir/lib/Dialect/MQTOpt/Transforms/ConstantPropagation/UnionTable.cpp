@@ -46,8 +46,10 @@ bool UnionTable::checkIfOnlyOneSetIsNotZero(
   std::vector<unsigned int> qubitIndicesInGivenVector;
   for (unsigned int q : qubitIndices) {
     auto it = std::ranges::find(qubits, q);
-    const std::size_t index = it - qubits.begin();
-    qubitIndicesInGivenVector.push_back(index);
+    if (it != qubits.end()) {
+      const std::size_t index = it - qubits.begin();
+      qubitIndicesInGivenVector.push_back(index);
+    }
   }
   // Check if the hybrid states contain only one set
   for (HybridStateOrTop hs : *hRegOfQubits.at(*qubitIndices.begin())) {

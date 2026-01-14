@@ -96,6 +96,61 @@ WalkResult removeIfElseBlock(scf::IfOp op, Block* blockToKeep,
   return WalkResult::advance();
 }
 
+bool removeDiagonalGate(qcpObjects* qcp, UnitaryInterface op,
+                        std::vector<unsigned int> targets,
+                        std::vector<unsigned int> posCtrlsQuantum,
+                        std::vector<unsigned int> negCtrlsQuantum) {
+  const auto opName = op.getIdentifier().str();
+  std::set<std::string> diagonalGates = {"z",   "s", "sdg", "t",
+                                         "tdg", "p", "r",   "rzz"};
+  if (!diagonalGates.contains(opName)) {
+    return false;
+  }
+
+  if (opName == "r" || opName == "rzz") {
+    // R and Rzz add a phase to all target values, meaning they only add a
+    // global phase only if there are no controls
+    if (!posCtrlsQuantum.empty() || !negCtrlsQuantum.empty()) {
+      return false;
+    }
+
+    if (opName == "r") {
+      return qcp::RewriteChecker::isOnlyOneSetNotZero(qcp->ut, targets,
+                                                      {{0}, {1}});
+    }
+    return qcp::RewriteChecker::isOnlyOneSetNotZero(qcp->ut, targets,
+                                                    {{0, 3}, {0, 1}});
+  }
+
+  std::vector<unsigned int> qubits;
+
+  // All remaining gates put a phase to the one
+  qubits.push_back(targets.at(0));
+  unsigned int valueToAddPhase = 1;
+
+  for (unsigned int i = 0; i < negCtrlsQuantum.size(); ++i) {
+    qubits.push_back(negCtrlsQuantum.at(i));
+  }
+  for (unsigned int i = 0; i < posCtrlsQuantum.size(); ++i) {
+    qubits.push_back(posCtrlsQuantum.at(i));
+    valueToAddPhase +=
+        static_cast<unsigned int>(pow(2, 1 + negCtrlsQuantum.size() + i) + 0.1);
+  }
+
+  std::vector<unsigned int> valuesThatDoNotGetPhase = {};
+  for (unsigned int i = 0;
+       i < static_cast<unsigned int>(pow(2, 1 + negCtrlsQuantum.size() +
+                                                posCtrlsQuantum.size() + 0.1));
+       ++i) {
+    if (i != valueToAddPhase) {
+      valuesThatDoNotGetPhase.push_back(i);
+    }
+  }
+
+  return qcp::RewriteChecker::isOnlyOneSetNotZero(
+      qcp->ut, qubits, {valuesThatDoNotGetPhase, {valueToAddPhase}});
+}
+
 /**
  *
  */
@@ -211,9 +266,10 @@ UnitaryInterface removeCtrls(qcpObjects* qcp, UnitaryInterface op,
   return newOp;
 }
 
-WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
-                         const std::set<std::pair<unsigned int, bool>>& conds,
-                         PatternRewriter& rewriter) {
+UnitaryInterface
+putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
+              const std::set<std::pair<unsigned int, bool>>& conds,
+              PatternRewriter& rewriter) {
   std::vector<std::pair<Value, bool>> valConds = {};
   for (auto& [val, index] : qcp->bitToIndex) {
     for (const auto& [indexOfCond, nonInverse] : conds) {
@@ -223,7 +279,7 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       }
     }
   }
-  // TODO: Consider bit value
+
   auto* ctx = rewriter.getContext();
   ctx->loadDialect<scf::SCFDialect>();
   ctx->loadDialect<arith::ArithDialect>();
@@ -270,7 +326,7 @@ WalkResult putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
     qcp->qubitToIndex[ifResult] = qcp->qubitToIndex.at(yieldedThen);
   }
 
-  return WalkResult::advance();
+  return thenClone;
 }
 
 /**
@@ -659,6 +715,11 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
       }
     }
 
+    if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
+                           negCtrlQubitIndices)) {
+      return removeGate(op, rewriter);
+    }
+
     if (!ctrlQubitsToRemove.empty()) {
       // Remove superfluous quantum controls
       op = removeCtrls(qcp, op, ctrlQubitsToRemove, rewriter);
@@ -673,11 +734,13 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
     }
 
     if (!bitDependenceToAdd.empty()) {
-      WalkResult res = putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
-      if (res.wasInterrupted()) {
-        return res;
-      }
+      op = putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
     }
+  }
+
+  if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
+                         negCtrlQubitIndices)) {
+    return removeGate(op, rewriter);
   }
 
   const auto opName = op.getIdentifier().str();
