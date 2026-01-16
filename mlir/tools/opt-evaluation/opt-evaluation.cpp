@@ -1,25 +1,42 @@
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/Parser/Parser.h"
-#include "mlir/Support/FileUtilities.h"
-#include "mlir/Support/LogicalResult.h"
+#include "mlir/Conversion/MQTOptToMQTRef/MQTOptToMQTRef.h" // IWYU pragma: keep
+#include "mlir/Conversion/MQTRefToMQTOpt/MQTRefToMQTOpt.h" // IWYU pragma: keep
+#include "mlir/Conversion/MQTRefToQIR/MQTRefToQIR.h"       // IWYU pragma: keep
+#include "mlir/Conversion/QIRToMQTRef/QIRToMQTRef.h"       // IWYU pragma: keep
+#include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"          // IWYU pragma: keep
+#include "mlir/Dialect/MQTOpt/Transforms/Passes.h"         // IWYU pragma: keep
+#include "mlir/Dialect/MQTRef/IR/MQTRefDialect.h"          // IWYU pragma: keep
 
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/SourceMgr.h"
-
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <llvm/Support/InitLLVM.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/SourceMgr.h>
+#include <mlir/Dialect/Func/Extensions/AllExtensions.h>
+#include <mlir/IR/DialectRegistry.h>
+#include <mlir/InitAllDialects.h>
+#include <mlir/InitAllPasses.h>
+#include <mlir/Parser/Parser.h>
+#include <mlir/Tools/mlir-opt/MlirOptMain.h>
 
 int main(int argc, char** argv) {
-  if (argc < 3) {
-    std::cerr << "Usage: count_ops <file.mlir> <op-name>\n";
-    return 1;
-  }
+  std::string filename = "simpleqcp.mlir";
 
-  std::string filename = argv[1];
-  std::string targetOpName = argv[2];
+  mlir::registerAllPasses();
+  mqt::ir::opt::registerMQTOptPasses();
 
-  mlir::MLIRContext context;
-  context.allowUnregisteredDialects();
+  std::unique_ptr<mlir::MLIRContext> context;
+
+  mlir::DialectRegistry registry;
+  mlir::registerAllDialects(registry);
+  mlir::func::registerAllExtensions(registry);
+  registry.insert<mqt::ir::opt::MQTOptDialect>();
+  registry.insert<mqt::ir::ref::MQTRefDialect>();
+
+  context = std::make_unique<mlir::MLIRContext>();
+  context->appendDialectRegistry(registry);
+  context->loadAllAvailableDialects();
+  context->allowUnregisteredDialects();
 
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
       llvm::MemoryBuffer::getFile(filename);
@@ -32,7 +49,7 @@ int main(int argc, char** argv) {
   sourceMgr.AddNewSourceBuffer(std::move(*fileOrErr), llvm::SMLoc());
 
   mlir::OwningOpRef<mlir::ModuleOp> module =
-      mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
+      mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &*context);
 
   if (!module) {
     std::cerr << "Failed to parse MLIR file\n";
@@ -40,15 +57,11 @@ int main(int argc, char** argv) {
   }
 
   int count = 0;
-  module->walk([&](mlir::Operation* op) {
-    if (op->getName().getStringRef() == targetOpName)
-      count++;
-  });
+  module->walk([&](mqt::ir::opt::UnitaryInterface) { count++; });
   /*More robust:
    * module->walk([&](mlir::arith::AddIOp addOp) { count++; });
    */
 
-  std::cout << "Found " << count << " occurrences of op '" << targetOpName
-            << "'\n";
+  std::cout << "Found " << count << " occurrences of quantum instructions\n";
   return 0;
 }
