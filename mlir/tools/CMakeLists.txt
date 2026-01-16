@@ -8,3 +8,4 @@
 
 add_subdirectory(quantum-opt)
 add_subdirectory(qasm-opt)
+add_subdirectory(opt-evaluation)
