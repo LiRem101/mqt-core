@@ -33,7 +33,11 @@ struct LiftMeasurementsPass final
 
     // Define the set of patterns to use.
     mlir::RewritePatternSet patterns(ctx);
-    populateReplaceBasisStateControlsWithIfPatterns(patterns);
+    // populateReplaceBasisStateControlsWithIfPatterns(patterns); // Comment out
+    // if QCP os applied before (in a loop)
+    // populateAdaptCtrldPauliZToLiftingPatterns(patterns);
+    // populateLiftHadamardsAbovePauliGatesPatterns(patterns);
+    // populateLiftHadamardAboveCNOTPattern(patterns);
     populateLiftMeasurementsAboveControlsPatterns(patterns);
     populateLiftMeasurementsAboveGatesPatterns(patterns);
     populateDeadGateEliminationPatterns(patterns);

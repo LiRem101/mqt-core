@@ -910,8 +910,7 @@ iterateThroughWorklist(PatternRewriter& rewriter,
  * (similarly to `walkAndApplyPatterns`). Consequently, a custom driver
  * would be required in any case, which adds unnecessary code to maintain.
  */
-LogicalResult route(ModuleOp module, MLIRContext* ctx,
-                    std::vector<std::string>& v) {
+LogicalResult route(ModuleOp module, MLIRContext* ctx) {
   PatternRewriter rewriter(ctx);
 
   /// Prepare work-list.
@@ -947,17 +946,9 @@ struct QuantumConstantPropagationPass final
   using QuantumConstantPropagationPassBase::QuantumConstantPropagationPassBase;
 
   void runOnOperation() override {
-    std::vector<std::string> v = getPropagator();
-
-    if (failed(route(getOperation(), &getContext(), v))) {
+    if (failed(route(getOperation(), &getContext()))) {
       signalPassFailure();
     }
-  }
-
-private:
-  [[nodiscard]] std::vector<std::string> getPropagator() {
-    std::vector<std::string> v{"begin"};
-    return v;
   }
 };
 

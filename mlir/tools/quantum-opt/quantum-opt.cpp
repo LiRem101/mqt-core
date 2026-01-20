@@ -85,10 +85,11 @@ int main(const int argc, char** argv) {
   int ac = argc;
   llvm::InitLLVM y(ac, argv);
 
-  std::string errorFile = "ErrorHadamardMeasurementLifting";
-  std::filesystem::path inputRoot = "MLIRCollection/Synthetic Benchmarks";
+  std::string errorFile = "ErrorMeasurementLifting";
+  std::ofstream timeOut("TimesMeasureLift.csv", std::ios::app);
+  std::filesystem::path inputRoot = "/home/lian/DLR/Benchmarks/programs";
   std::filesystem::path outputRoot =
-      "LiftHadamardsMeasurements/Synthetic Benchmarks";
+      "/home/lian/DLR/Benchmarks/programsMeasurementLift";
 
   for (const auto& entry :
        std::filesystem::recursive_directory_iterator(inputRoot)) {
@@ -99,7 +100,8 @@ int main(const int argc, char** argv) {
       std::string outputFileString = outputFile.string();
 
       if (errorLines.contains(entry.path()) ||
-          std::filesystem::exists(outputFileString)) {
+          std::filesystem::exists(outputFileString) ||
+          entry.path().extension() != ".mlir") {
         std::cout << "Skipping " << entry.path() << std::endl;
         continue;
       }
@@ -119,8 +121,14 @@ int main(const int argc, char** argv) {
       std::error_code ec;
       llvm::raw_fd_ostream outStream(outputFileString, ec);
 
+      auto start = std::chrono::high_resolution_clock::now();
+
       auto res =
           mlir::MlirOptMain(outStream, std::move(mlirInput), registry, config);
+
+      auto end = std::chrono::high_resolution_clock::now();
+
+      auto duration = duration_cast<std::chrono::milliseconds>(end - start);
 
       if (res.failed()) {
         std::cerr << "Error while processing file " << entry.path()
@@ -133,6 +141,8 @@ int main(const int argc, char** argv) {
           std::cerr << "Unable to open error file";
         }
       } else {
+        timeOut << entry.path() << ";" << duration.count() << " ms"
+                << std::endl;
         std::cout << "Processed: " << entry.path() << std::endl;
       }
     }
