@@ -313,7 +313,7 @@ putIntoBranch(qcpObjects* qcp, UnitaryInterface op,
       rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getResults());
 
   rewriter.setInsertionPointToStart(ifOp.elseBlock());
-  rewriter.create<scf::YieldOp>(op.getLoc(), thenClone->getOperands());
+  rewriter.create<scf::YieldOp>(op.getLoc(), thenClone.getAllInQubits());
 
   rewriter.replaceOp(op, ifOp.getResults());
 
