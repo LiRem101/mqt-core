@@ -45,7 +45,7 @@ std::string slurp(std::ifstream& in) {
 }
 
 int main(const int argc, char** argv) {
-  std::ifstream file("ErrorMeasurementLifting");
+  std::ifstream file("ErrorQCPAndMeasLift");
   std::set<std::string> errorLines; // or std::unordered_set<std::string>
   std::string line;
   while (std::getline(file, line)) {
@@ -85,11 +85,13 @@ int main(const int argc, char** argv) {
   int ac = argc;
   llvm::InitLLVM y(ac, argv);
 
-  std::string errorFile = "ErrorMeasurementLifting";
-  std::ofstream timeOut("TimesMeasureLift.csv", std::ios::app);
+  std::string errorFile = "ErrorQCPAndMeasLift";
+  std::ofstream timeOut("DurationQCPMeasLift.csv", std::ios::app);
   std::filesystem::path inputRoot = "/home/lian/DLR/Benchmarks/programs";
   std::filesystem::path outputRoot =
-      "/home/lian/DLR/Benchmarks/programsMeasurementLift";
+      "/home/lian/DLR/Benchmarks/programsQCPMeasLift";
+
+  timeOut << "Filename;QCPAndMeasLiftDuration[ms]" << std::endl;
 
   for (const auto& entry :
        std::filesystem::recursive_directory_iterator(inputRoot)) {
@@ -105,6 +107,7 @@ int main(const int argc, char** argv) {
         std::cout << "Skipping " << entry.path() << std::endl;
         continue;
       }
+      std::cout << "Processing: " << entry.path() << std::endl;
       std::filesystem::create_directories(outputFile.parent_path());
       std::ifstream in(entry.path());
       std::string content((std::istreambuf_iterator<char>(in)),
@@ -141,8 +144,9 @@ int main(const int argc, char** argv) {
           std::cerr << "Unable to open error file";
         }
       } else {
-        timeOut << entry.path() << ";" << duration.count() << " ms"
-                << std::endl;
+        std::filesystem::path relativeInput =
+            std::filesystem::relative(entry.path(), inputRoot);
+        timeOut << relativeInput << ";" << duration.count() << std::endl;
         std::cout << "Processed: " << entry.path() << std::endl;
       }
     }
