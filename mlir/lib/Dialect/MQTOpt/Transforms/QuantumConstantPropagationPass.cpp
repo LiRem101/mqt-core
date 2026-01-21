@@ -58,6 +58,7 @@ struct qcpObjects {
   llvm::DenseMap<mlir::Value, double> doubleValues;
   llvm::DenseMap<mlir::Value, unsigned int> bitToIndex;
   mlir::Value trueValue;
+  bool changed = false;
 };
 
 namespace {
@@ -86,6 +87,7 @@ WalkResult removeIfElseBlock(scf::IfOp op, Block* blockToKeep,
        llvm::zip(op.getResults(), yieldOp->getOperands())) {
     result.replaceAllUsesWith(yielded);
   }
+  std::ranges::replace(worklist, yieldOp, static_cast<Operation*>(nullptr));
   yieldOp->erase();
   rewriter.inlineBlockBefore(blockToKeep, op, op.getResults());
   for (Operation const& operation : *blockToErase) {
@@ -341,10 +343,12 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   // TODO: What if we have more than one bit here?
   unsigned int const conditionIndex = qcp->bitToIndex.at(cond);
   if (qcp->ut.isBitAlwaysOne(conditionIndex)) {
+    qcp->changed = true;
     return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
                              rewriter);
   }
   if (qcp->ut.isBitAlwaysZero(conditionIndex)) {
+    qcp->changed = true;
     return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
                              rewriter);
   }
@@ -417,6 +421,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
       (elseWorklist.empty() ||
        llvm::isa<scf::YieldOp>(op.elseBlock()->front()))) {
     // Remove if-else
+    qcp->changed = true;
     scf::YieldOp const yieldOp =
         cast<scf::YieldOp>(op.thenBlock()->getTerminator());
     for (auto [result, yielded] :
@@ -644,6 +649,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
             negBitCtrls);
     if (superfluous.first.contains(targetQubitIndices.at(0)) ||
         !areThereSatisfiableCombinations) {
+      qcp->changed = true;
       return removeGate(op, rewriter);
     }
 
@@ -717,10 +723,12 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 
     if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
                            negCtrlQubitIndices)) {
+      qcp->changed = true;
       return removeGate(op, rewriter);
     }
 
     if (!ctrlQubitsToRemove.empty()) {
+      qcp->changed = true;
       // Remove superfluous quantum controls
       op = removeCtrls(qcp, op, ctrlQubitsToRemove, rewriter);
       posCtrlQubitIndices = {};
@@ -734,12 +742,14 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
     }
 
     if (!bitDependenceToAdd.empty()) {
+      qcp->changed = true;
       op = putIntoBranch(qcp, op, bitDependenceToAdd, rewriter);
     }
   }
 
   if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
                          negCtrlQubitIndices)) {
+    qcp->changed = true;
     return removeGate(op, rewriter);
   }
 
@@ -910,6 +920,41 @@ iterateThroughWorklist(PatternRewriter& rewriter,
  * (similarly to `walkAndApplyPatterns`). Consequently, a custom driver
  * would be required in any case, which adds unnecessary code to maintain.
  */
+bool applyQCP(ModuleOp module, MLIRContext* ctx) {
+  PatternRewriter rewriter(ctx);
+
+  /// Prepare work-list.
+  std::vector<Operation*> worklist;
+
+  for (const auto func : module.getOps<func::FuncOp>()) {
+
+    if (!isEntryPoint(func)) {
+      continue; // Ignore non entry_point functions for now.
+    }
+    func->walk<WalkOrder::PreOrder>(
+        [&](Operation* op) { worklist.push_back(op); });
+    // auto n = func->getName().stripDialect().str();
+  }
+
+  const auto ut = qcp::UnionTable(8, 8);
+  qcpObjects qcp = {
+      .ut = ut,
+      .qubitToIndex = llvm::DenseMap<Value, unsigned int>(),
+      .memrefToQubitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
+      .memrefToBitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
+      .integerValues = llvm::DenseMap<Value, int64_t>(),
+      .doubleValues = llvm::DenseMap<Value, double>(),
+      .bitToIndex = llvm::DenseMap<Value, unsigned int>()};
+
+  auto res = iterateThroughWorklist(rewriter, worklist, &qcp, {}, {});
+
+  if (res.failed()) {
+    throw std::runtime_error("Failure during QCP application.");
+  }
+
+  return qcp.changed;
+}
+
 LogicalResult route(ModuleOp module, MLIRContext* ctx) {
   PatternRewriter rewriter(ctx);
 
@@ -927,13 +972,14 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx) {
   }
 
   const auto ut = qcp::UnionTable(8, 8);
-  qcpObjects qcp = {ut,
-                    llvm::DenseMap<Value, unsigned int>(),
-                    llvm::DenseMap<Value, std::vector<unsigned int>>(),
-                    llvm::DenseMap<Value, std::vector<unsigned int>>(),
-                    llvm::DenseMap<Value, int64_t>(),
-                    llvm::DenseMap<Value, double>(),
-                    llvm::DenseMap<Value, unsigned int>()};
+  qcpObjects qcp = {
+      .ut = ut,
+      .qubitToIndex = llvm::DenseMap<Value, unsigned int>(),
+      .memrefToQubitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
+      .memrefToBitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
+      .integerValues = llvm::DenseMap<Value, int64_t>(),
+      .doubleValues = llvm::DenseMap<Value, double>(),
+      .bitToIndex = llvm::DenseMap<Value, unsigned int>()};
 
   return iterateThroughWorklist(rewriter, worklist, &qcp, {}, {});
 }
@@ -951,6 +997,24 @@ struct QuantumConstantPropagationPass final
     }
   }
 };
+
+/**
+ * This method moves all measurements as far to the front as possible, in order
+ * to execute QCP more efficiently.
+ */
+bool moveMeasurementsToFront(ModuleOp module, MLIRContext* ctx) {
+  bool changed = false;
+  PatternRewriter rewriter(ctx);
+  module.walk([&](MeasureOp op) {
+    mlir::Operation* previousInstruction = op.getInQubit().getDefiningOp();
+    if (op->getPrevNode() != previousInstruction) {
+      rewriter.moveOpAfter(op, previousInstruction);
+      changed = true;
+    }
+  });
+
+  return changed;
+}
 
 } // namespace
 } // namespace mqt::ir::opt
