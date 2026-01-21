@@ -44,10 +44,10 @@ bool UnionTable::checkIfOnlyOneSetIsNotZero(
   std::set<unsigned int> const qubitIndices = involvedIndices.begin()->first;
   // Get index of the given qubits in their vector to match with values
   std::vector<unsigned int> qubitIndicesInGivenVector;
-  for (unsigned int q : qubitIndices) {
-    auto it = std::ranges::find(qubits, q);
-    if (it != qubits.end()) {
-      const std::size_t index = it - qubits.begin();
+  for (unsigned int q : qubits) {
+    auto it = std::ranges::find(qubitIndices, q);
+    if (it != qubitIndices.end()) {
+      const std::size_t index = std::distance(qubitIndices.begin(), it);
       qubitIndicesInGivenVector.push_back(index);
     }
   }
@@ -64,12 +64,14 @@ bool UnionTable::checkIfOnlyOneSetIsNotZero(
         unsigned int localValue = 0;
         std::vector<unsigned int> localQubitVector = {};
         for (unsigned int i = 0; i < qubitIndicesInGivenVector.size(); ++i) {
-          localQubitVector.push_back(mappingGlobalToLocalQubitIndices.at(
-              qubits.at(qubitIndicesInGivenVector.at(i))));
+          auto it = qubitIndices.begin();
+          std::advance(it, qubitIndicesInGivenVector.at(i));
+          localQubitVector.push_back(mappingGlobalToLocalQubitIndices.at(*it));
+
           const unsigned int mask = static_cast<unsigned int>(
-              pow(2, qubitIndicesInGivenVector.at(i)) + 0.1);
+              pow(2, *it) + 0.1);
           if ((mask & currentValue) != 0) {
-            localValue += static_cast<unsigned int>(pow(2, i) + 0.1);
+            localValue += static_cast<unsigned int>(pow(2, mappingGlobalToLocalQubitIndices.at(*it)) + 0.1);
           }
         }
         if (!hs.hasAlwaysZeroAmplitude(localQubitVector, localValue)) {
@@ -646,6 +648,7 @@ bool UnionTable::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
     unsigned int includedQubitIndex = 0;
     unsigned int includedBitIndex = 0;
     // Retrieve local qubit values
+    int localPowerIndex = 0;
     for (unsigned int i = 0; i < qubits.size(); ++i) {
       if (qubitIndices.contains(qubits.at(i))) {
         unsigned int localQubitIndex =
@@ -656,8 +659,9 @@ bool UnionTable::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
                 static_cast<unsigned int>(pow(2, i) + 0.1);
             (value & mask) == mask) {
           localValueForQubitsInThisState +=
-              static_cast<unsigned int>(pow(2, localQubitIndex) + 0.1);
+              static_cast<unsigned int>(pow(2, localPowerIndex) + 0.1);
         }
+        ++localPowerIndex;
       }
     }
     // Retrieve global bit values
@@ -679,13 +683,13 @@ bool UnionTable::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
       } else {
         relevantStates = *hRegOfBits.at(includedBitIndex);
       }
-      bool noNonzeroAmplitude = true;
+      bool zeroAmplitude = true;
       for (HybridStateOrTop hs : relevantStates) {
-        noNonzeroAmplitude &= hs.hasAlwaysZeroAmplitude(
+        zeroAmplitude &= hs.hasAlwaysZeroAmplitude(
             qubitsInThisState, localValueForQubitsInThisState, bitsInThisState,
             valuesForBitsInThisState);
       }
-      if (noNonzeroAmplitude) {
+      if (zeroAmplitude) {
         return true;
       }
     }

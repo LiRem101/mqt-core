@@ -71,7 +71,7 @@ TEST_F(RewriteCheckerTest, ZeroIsAlwaysAntecedent) {
   ut.propagateMeasurement(0, 0);
   ut.propagateGate(qc::H, {1});
   auto [antecedentQubits, antecedentBits] =
-      RewriteChecker::getAntecedentsOfQubit(ut, 1, false, {0}, {0}, {0}, {0});
+      RewriteChecker::getAntecedentsOfQubit(ut, 1, false, {0}, {}, {0}, {});
   ASSERT_EQ(antecedentQubits.size(), 1);
   ASSERT_EQ(antecedentBits.size(), 1);
   ASSERT_EQ(*antecedentQubits.begin(), 0);

@@ -300,12 +300,18 @@ bool QubitState::isQubitAlwaysZero(const size_t q) const {
 
 bool QubitState::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
                                         const unsigned int value) const {
+  unsigned int localValue = 0;
   unsigned int mask = 0;
-  for (const unsigned int qubit : qubits) {
-    mask += static_cast<unsigned int>(pow(2, qubit) + 0.1);
+  for (unsigned int i = 0; i < qubits.size(); ++i) {
+    const unsigned int currentPower = static_cast<unsigned int>(pow(2, i) + 0.1);
+    const unsigned int qubitPower = static_cast<unsigned int>(pow(2, qubits.at(i)) + 0.1);
+    mask += qubitPower;
+    if ((value & currentPower) != 0) {
+      localValue += qubitPower;
+    }
   }
-  return std::ranges::all_of(map | std::views::keys, [mask, value](auto qbit) {
-    return (qbit & mask) != value;
+  return std::ranges::all_of(map | std::views::keys, [localValue, mask](auto qbit) {
+    return (qbit & mask) != localValue;
   });
 }
 

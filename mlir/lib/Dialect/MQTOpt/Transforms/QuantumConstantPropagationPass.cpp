@@ -936,7 +936,7 @@ bool applyQCP(ModuleOp module, MLIRContext* ctx) {
     // auto n = func->getName().stripDialect().str();
   }
 
-  const auto ut = qcp::UnionTable(8, 8);
+  const auto ut = qcp::UnionTable(17, 8);
   qcpObjects qcp = {
       .ut = ut,
       .qubitToIndex = llvm::DenseMap<Value, unsigned int>(),
