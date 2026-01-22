@@ -68,10 +68,11 @@ bool UnionTable::checkIfOnlyOneSetIsNotZero(
           std::advance(it, qubitIndicesInGivenVector.at(i));
           localQubitVector.push_back(mappingGlobalToLocalQubitIndices.at(*it));
 
-          const unsigned int mask = static_cast<unsigned int>(
-              pow(2, *it) + 0.1);
+          const unsigned int mask =
+              static_cast<unsigned int>(pow(2, *it) + 0.1);
           if ((mask & currentValue) != 0) {
-            localValue += static_cast<unsigned int>(pow(2, mappingGlobalToLocalQubitIndices.at(*it)) + 0.1);
+            localValue += static_cast<unsigned int>(
+                pow(2, mappingGlobalToLocalQubitIndices.at(*it)) + 0.1);
           }
         }
         if (!hs.hasAlwaysZeroAmplitude(localQubitVector, localValue)) {
