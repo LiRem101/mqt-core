@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <iostream>
 #include <iterator>
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
@@ -39,6 +40,7 @@
 #include <mlir/Pass/Pass.h>
 #include <mlir/Support/LLVM.h>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -57,6 +59,9 @@ struct qcpObjects {
   llvm::DenseMap<mlir::Value, int64_t> integerValues;
   llvm::DenseMap<mlir::Value, double> doubleValues;
   llvm::DenseMap<mlir::Value, unsigned int> bitToIndex;
+  llvm::DenseMap<mlir::Value,
+                 std::pair<std::vector<mlir::Value>, std::vector<mlir::Value>>>
+      bitToPosNegBits;
   mlir::Value trueValue;
   bool changed = false;
 };
@@ -162,10 +167,22 @@ WalkResult handleFunc(qcpObjects* qcp, func::FuncOp op,
     throw std::domain_error(
         "Constant propagation does not support nested functions.");
   }
+  // Check if there is a truth val at the front
+  Operation& start = op.front().front();
+  if (auto constOp = llvm::dyn_cast<arith::ConstantIntOp>(&start)) {
+    if (auto boolAttr = dyn_cast<BoolAttr>(constOp.getValue())) {
+      if (boolAttr.getValue()) {
+        qcp->trueValue = constOp.getResult();
+        qcp->bitToIndex[constOp.getResult()] = 1;
+        return WalkResult::advance();
+      }
+    }
+  }
   // Create a true val
   rewriter.setInsertionPointToStart(&op.front());
   auto trueVal = rewriter.create<arith::ConstantIntOp>(op->getLoc(), 1, 1);
   qcp->trueValue = trueVal;
+  qcp->bitToIndex[trueVal] = 1;
   return WalkResult::advance();
 }
 
@@ -340,7 +357,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
                     const std::vector<unsigned int>& negBitCtrls,
                     PatternRewriter& rewriter) {
   TypedValue<IntegerType> const cond = op.getCondition();
-  // TODO: What if we have more than one bit here?
+  // TODO: What if we have more than one bit here? Use the new qcp value
   unsigned int const conditionIndex = qcp->bitToIndex.at(cond);
   if (qcp->ut.isBitAlwaysOne(conditionIndex)) {
     qcp->changed = true;
@@ -605,6 +622,51 @@ WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op,
   return WalkResult::advance();
 }
 
+WalkResult handleXOrIOp(qcpObjects* qcp, arith::XOrIOp op) {
+  mlir::Value lhs = op.getLhs();
+  mlir::Value rhs = op.getRhs();
+  mlir::Value negatedValue = lhs;
+  if (lhs == qcp->trueValue) {
+    negatedValue = rhs;
+  } else if (rhs != qcp->trueValue) {
+    throw std::logic_error("XOr operation not using the true value.");
+  }
+  const mlir::Value newValue = op.getResult();
+  qcp->bitToPosNegBits[newValue] = {{}, {negatedValue}};
+  return WalkResult::advance();
+}
+
+WalkResult handleAndIOp(qcpObjects* qcp, arith::AndIOp op) {
+  mlir::Value lhs = op.getLhs();
+  mlir::Value rhs = op.getRhs();
+  std::pair<std::vector<mlir::Value>, std::vector<mlir::Value>> resultBits = {};
+  if (!qcp->bitToPosNegBits.contains(lhs)) {
+    resultBits.first.push_back(lhs);
+  } else {
+    auto posBits = qcp->bitToPosNegBits.at(lhs).first;
+    auto negBits = qcp->bitToPosNegBits.at(lhs).second;
+    resultBits.first.insert(resultBits.first.end(), posBits.begin(),
+                            posBits.end());
+    resultBits.second.insert(resultBits.second.end(), negBits.begin(),
+                             negBits.end());
+  }
+
+  if (!qcp->bitToPosNegBits.contains(rhs)) {
+    resultBits.first.push_back(rhs);
+  } else {
+    auto posBits = qcp->bitToPosNegBits.at(rhs).first;
+    auto negBits = qcp->bitToPosNegBits.at(rhs).second;
+    resultBits.first.insert(resultBits.first.end(), posBits.begin(),
+                            posBits.end());
+    resultBits.second.insert(resultBits.second.end(), negBits.begin(),
+                             negBits.end());
+  }
+
+  const mlir::Value newValue = op.getResult();
+  qcp->bitToPosNegBits[newValue] = resultBits;
+  return WalkResult::advance();
+}
+
 /**
  * @brief Propagate the unitary.
  */
@@ -772,7 +834,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 }
 
 /**
- * @brief Propagate the measurement.
+ * @brief Propagate the reset.
  */
 WalkResult handleReset(qcpObjects* qcp, ResetOp op,
                        const std::vector<unsigned int>& posBitCtrls,
@@ -872,6 +934,10 @@ iterateThroughWorklist(PatternRewriter& rewriter,
             .Case<arith::ConstantOp>([&](const arith::ConstantOp op) {
               return handleConstant(qcp, op, posBitCtrls, negBitCtrls);
             })
+            .Case<arith::XOrIOp>(
+                [&](const arith::XOrIOp op) { return handleXOrIOp(qcp, op); })
+            .Case<arith::AndIOp>(
+                [&](const arith::AndIOp op) { return handleAndIOp(qcp, op); })
             /// func Dialect
             .Case<func::FuncOp>([&](const func::FuncOp op) {
               return handleFunc(qcp, op, rewriter);
@@ -936,7 +1002,7 @@ bool applyQCP(ModuleOp module, MLIRContext* ctx) {
     // auto n = func->getName().stripDialect().str();
   }
 
-  const auto ut = qcp::UnionTable(17, 8);
+  const auto ut = qcp::UnionTable(16, 8);
   qcpObjects qcp = {
       .ut = ut,
       .qubitToIndex = llvm::DenseMap<Value, unsigned int>(),
@@ -944,7 +1010,10 @@ bool applyQCP(ModuleOp module, MLIRContext* ctx) {
       .memrefToBitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
       .integerValues = llvm::DenseMap<Value, int64_t>(),
       .doubleValues = llvm::DenseMap<Value, double>(),
-      .bitToIndex = llvm::DenseMap<Value, unsigned int>()};
+      .bitToIndex = llvm::DenseMap<Value, unsigned int>(),
+      .bitToPosNegBits =
+          llvm::DenseMap<Value, std::pair<std::vector<mlir::Value>,
+                                          std::vector<mlir::Value>>>()};
 
   auto res = iterateThroughWorklist(rewriter, worklist, &qcp, {}, {});
 
@@ -979,7 +1048,10 @@ LogicalResult route(ModuleOp module, MLIRContext* ctx) {
       .memrefToBitIndex = llvm::DenseMap<Value, std::vector<unsigned int>>(),
       .integerValues = llvm::DenseMap<Value, int64_t>(),
       .doubleValues = llvm::DenseMap<Value, double>(),
-      .bitToIndex = llvm::DenseMap<Value, unsigned int>()};
+      .bitToIndex = llvm::DenseMap<Value, unsigned int>(),
+      .bitToPosNegBits =
+          llvm::DenseMap<Value, std::pair<std::vector<mlir::Value>,
+                                          std::vector<mlir::Value>>>()};
 
   return iterateThroughWorklist(rewriter, worklist, &qcp, {}, {});
 }
