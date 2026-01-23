@@ -672,7 +672,7 @@ bool UnionTable::hasAlwaysZeroAmplitude(const std::vector<unsigned int>& qubits,
             mappingGlobalToLocalBitIndices.at(bits.at(i));
         bitsInThisState.push_back(localBitIndex);
         includedBitIndex = bits.at(i);
-        valuesForBitsInThisState.push_back(bitValues.at(includedBitIndex));
+        valuesForBitsInThisState.push_back(bitValues.at(i));
       }
     }
     // Call hasAlwaysNonZeroAmplitude with the local values on the respective

@@ -357,22 +357,51 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
                     const std::vector<unsigned int>& negBitCtrls,
                     PatternRewriter& rewriter) {
   TypedValue<IntegerType> const cond = op.getCondition();
-  // TODO: What if we have more than one bit here? Use the new qcp value
-  unsigned int const conditionIndex = qcp->bitToIndex.at(cond);
-  if (qcp->ut.isBitAlwaysOne(conditionIndex)) {
+
+  std::vector<unsigned int> newPosBits = {};
+  std::vector<unsigned int> newNegBits = {};
+  if (qcp->bitToIndex.contains(cond)) {
+    newPosBits.push_back(qcp->bitToIndex.at(cond));
+  } else {
+    for (const mlir::Value v : qcp->bitToPosNegBits.at(cond).first) {
+      newPosBits.push_back(qcp->bitToIndex.at(v));
+    }
+    for (const mlir::Value v : qcp->bitToPosNegBits.at(cond).second) {
+      newNegBits.push_back(qcp->bitToIndex.at(v));
+    }
+  }
+  if (std::ranges::all_of(
+          newPosBits,
+          [qcp](unsigned int bit) { return qcp->ut.isBitAlwaysOne(bit); }) &&
+      std::ranges::all_of(newNegBits, [qcp](unsigned int bit) {
+        return qcp->ut.isBitAlwaysZero(bit);
+      })) {
     qcp->changed = true;
     return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
                              rewriter);
   }
-  if (qcp->ut.isBitAlwaysZero(conditionIndex)) {
+  if (std::ranges::all_of(
+          newPosBits,
+          [qcp](unsigned int bit) { return qcp->ut.isBitAlwaysZero(bit); }) &&
+      std::ranges::all_of(newNegBits, [qcp](unsigned int bit) {
+        return qcp->ut.isBitAlwaysOne(bit);
+      })) {
     qcp->changed = true;
     return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
                              rewriter);
   }
-  auto posBitForThen = posBitCtrls;
-  posBitForThen.push_back(conditionIndex);
+  auto posBitsForThen = posBitCtrls;
+  auto negBitsForThen = negBitCtrls;
+  posBitsForThen.insert(posBitsForThen.begin(), newPosBits.begin(),
+                        newPosBits.end());
+  negBitsForThen.insert(negBitsForThen.begin(), newNegBits.begin(),
+                        newNegBits.end());
+  auto posBitsForElse = posBitCtrls;
   auto negBitsForElse = negBitCtrls;
-  negBitsForElse.push_back(conditionIndex);
+  posBitsForElse.insert(posBitsForElse.begin(), newNegBits.begin(),
+                        newNegBits.end());
+  negBitsForElse.insert(negBitsForElse.begin(), newPosBits.begin(),
+                        newPosBits.end());
 
   auto& thenRegion = op.getThenRegion();
   auto& elseRegion = op.getElseRegion();
@@ -394,8 +423,8 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     }
   }
 
-  const auto thenResult = iterateThroughWorklist(rewriter, thenWorklist, qcp,
-                                                 posBitForThen, negBitCtrls);
+  const auto thenResult = iterateThroughWorklist(
+      rewriter, thenWorklist, qcp, posBitsForThen, negBitsForThen);
 
   auto* lastThenOp = op.getThenRegion().front().getTerminator();
   auto thenYield = cast<scf::YieldOp>(lastThenOp);
@@ -412,8 +441,13 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
   }
 
   if (!elseWorklist.empty()) {
+    auto newBitSize = newPosBits.size() + newNegBits.size();
+    if (elseWorklist.size() > 1 && newBitSize > 1) {
+      throw std::domain_error("If block considers more than one bit and has a "
+                              "valid else BLock. Not supported.");
+    }
     auto elseResult = iterateThroughWorklist(rewriter, elseWorklist, qcp,
-                                             posBitCtrls, negBitsForElse);
+                                             posBitsForElse, negBitsForElse);
 
     if (elseResult.failed()) {
       return elseResult;
@@ -631,6 +665,7 @@ WalkResult handleXOrIOp(qcpObjects* qcp, arith::XOrIOp op) {
   } else if (rhs != qcp->trueValue) {
     throw std::logic_error("XOr operation not using the true value.");
   }
+  auto negV = qcp->bitToIndex.at(negatedValue);
   const mlir::Value newValue = op.getResult();
   qcp->bitToPosNegBits[newValue] = {{}, {negatedValue}};
   return WalkResult::advance();
@@ -661,7 +696,8 @@ WalkResult handleAndIOp(qcpObjects* qcp, arith::AndIOp op) {
     resultBits.second.insert(resultBits.second.end(), negBits.begin(),
                              negBits.end());
   }
-
+  auto pos = qcp->bitToIndex.at(resultBits.first.at(0));
+  auto neg = qcp->bitToIndex.at(resultBits.second.at(0));
   const mlir::Value newValue = op.getResult();
   qcp->bitToPosNegBits[newValue] = resultBits;
   return WalkResult::advance();
