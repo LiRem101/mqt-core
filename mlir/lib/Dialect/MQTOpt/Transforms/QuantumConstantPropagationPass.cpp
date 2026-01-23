@@ -478,6 +478,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
     for (auto [result, yielded] :
          llvm::zip(op.getResults(), yieldOp->getOperands())) {
       result.replaceAllUsesWith(yielded);
+      qcp->qubitToIndex[yielded] = qcp->qubitToIndex.at(result);
     }
     for (Operation const& operation : *op.thenBlock()) {
       std::ranges::replace(worklist, &operation,
@@ -665,7 +666,6 @@ WalkResult handleXOrIOp(qcpObjects* qcp, arith::XOrIOp op) {
   } else if (rhs != qcp->trueValue) {
     throw std::logic_error("XOr operation not using the true value.");
   }
-  auto negV = qcp->bitToIndex.at(negatedValue);
   const mlir::Value newValue = op.getResult();
   qcp->bitToPosNegBits[newValue] = {{}, {negatedValue}};
   return WalkResult::advance();
