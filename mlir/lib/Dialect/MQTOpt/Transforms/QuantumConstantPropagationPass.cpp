@@ -696,8 +696,6 @@ WalkResult handleAndIOp(qcpObjects* qcp, arith::AndIOp op) {
     resultBits.second.insert(resultBits.second.end(), negBits.begin(),
                              negBits.end());
   }
-  auto pos = qcp->bitToIndex.at(resultBits.first.at(0));
-  auto neg = qcp->bitToIndex.at(resultBits.second.at(0));
   const mlir::Value newValue = op.getResult();
   qcp->bitToPosNegBits[newValue] = resultBits;
   return WalkResult::advance();
@@ -1115,7 +1113,12 @@ bool moveMeasurementsToFront(ModuleOp module, MLIRContext* ctx) {
   PatternRewriter rewriter(ctx);
   module.walk([&](MeasureOp op) {
     mlir::Operation* previousInstruction = op.getInQubit().getDefiningOp();
-    if (op->getPrevNode() != previousInstruction) {
+    mlir::Operation* previousNode = op->getPrevNode();
+    while (llvm::dyn_cast<MeasureOp>(previousNode) &&
+           previousInstruction != previousNode) {
+      previousNode = previousNode->getPrevNode();
+    }
+    if (previousNode != previousInstruction) {
       rewriter.moveOpAfter(op, previousInstruction);
       changed = true;
     }
