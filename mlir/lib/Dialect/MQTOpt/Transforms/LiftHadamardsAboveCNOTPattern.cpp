@@ -158,6 +158,9 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
           /* in_qubits = */ inQubit,
           /* pos_ctrl_in_qubits = */ mlir::ValueRange{},
           /* neg_ctrl_in_qubits = */ mlir::ValueRange{});
+
+      rewriter.moveOpAfter(newHOp, gate);
+
       rewriter.replaceUsesWithIf(
           newHOp.getInQubits().front(), newHOp.getOutQubits().front(),
           [&](mlir::OpOperand& operand) {
@@ -203,7 +206,7 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
       return mlir::failure();
     }
 
-    // Remove the hadmard gate
+    // Remove the Hadamard gate
     for (auto outQubit : hadamardGate.getAllOutQubits()) {
       rewriter.replaceAllUsesWith(outQubit,
                                   hadamardGate.getCorrespondingInput(outQubit));
