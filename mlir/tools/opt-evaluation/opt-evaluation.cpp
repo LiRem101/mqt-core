@@ -37,25 +37,44 @@ int main(int argc, char** argv) {
   context->allowUnregisteredDialects();
 
   std::string errorFile =
-      "/home/lian/DLR/mqt-core/mqt-core/LiftEvaluationError";
-  std::filesystem::path originalInput = "/home/lian/DLR/Benchmarks/programs";
+      "/home/lian/DLR/mqt-core/mqt-core/RandomEvaluationError";
+  std::filesystem::path originalInput =
+      "/home/lian/DLR/Benchmarks/programs/random-measurements";
   std::filesystem::path measurementLiftInput =
-      "/home/lian/DLR/Benchmarks/programsMeasurementLift";
+      "/home/lian/DLR/Benchmarks/programsMeasLift/random-measurements";
   std::filesystem::path hadamardMeasurementLiftInput =
-      "/home/lian/DLR/Benchmarks/programsHadamardMeasurementLift";
-  std::ofstream out("/home/lian/DLR/mqt-core/mqt-core/EvaluationOfLifting.csv",
+      "/home/lian/DLR/Benchmarks/programsMeasLiftHadamardLift/"
+      "random-measurements";
+  std::filesystem::path qcpInput =
+      "/home/lian/DLR/Benchmarks/programsQCP/random-measurements";
+  std::filesystem::path qcpMeasurementLiftInput =
+      "/home/lian/DLR/Benchmarks/programsQCPMeasLift/random-measurements";
+  std::filesystem::path qcpLiftFullInput =
+      "/home/lian/DLR/Benchmarks/programsQCPLiftFull/random-measurements";
+  std::ofstream out("/home/lian/DLR/mqt-core/mqt-core/EvaluationRandom.csv",
                     std::ios::app);
 
-  out << "Filename;OriginalCountOfGates;OriginalCountOfUncontrolledGates;"
-         "OriginalCountOfControllingQubits;AfterMeasLiftingCountOfGates;"
-         "AfterMeasLiftingCountOfUncontrolledGates;"
-         "AfterMeasLiftingCountOfControllingQubits;"
-         "AfterHadamardAndMeasLiftingCountOfGates;"
-         "AfterHadamardAndMeasLiftingCountOfUncontrolledGates;"
-         "AfterHadamardAndMeasLiftingCountOfControllingQubits;\n";
+  out << "Filename;OriginalCountOfGates;"
+         "OriginalCountOfUncontrolledGates;"
+         "OriginalCountOfControllingQubits;"
+         "MeasLiftCountOfGates;"
+         "MeasLiftCountOfUncontrolledGates;"
+         "MeasLiftCountOfControllingQubits;"
+         "MeasLiftHadamardLiftCountOfGates;"
+         "MeasLiftHadamardLiftCountOfUncontrolledGates;"
+         "MeasLiftHadamardLiftCountOfControllingQubits;"
+         "QCPCountOfGates;"
+         "QCPCountOfUncontrolledGates;"
+         "QCPCountOfControllingQubits;"
+         "QCPMeasLiftCountOfGates;"
+         "QCPMeasLiftCountOfUncontrolledGates;"
+         "QCPMeasLiftCountOfControllingQubits;"
+         "QCPLiftFullCountOfGates;"
+         "QCPLiftFullCountOfUncontrolledGates;"
+         "QCPLiftFullCountOfControllingQubits\n";
 
   std::ifstream csvFile(
-      "/home/lian/DLR/mqt-core/mqt-core/EvaluationOfLifting.csv");
+      "/home/lian/DLR/mqt-core/mqt-core/EvaluationRandom.csv");
   std::set<std::string> processedLines; // or std::unordered_set<std::string>
   std::string line;
   while (std::getline(csvFile, line)) {
@@ -69,22 +88,27 @@ int main(int argc, char** argv) {
 
   for (const auto& entry :
        std::filesystem::recursive_directory_iterator(originalInput)) {
-    if (entry.is_regular_file()) {
+    if (entry.is_regular_file() && entry.path().extension() == ".mlir") {
       std::filesystem::path relative =
           std::filesystem::relative(entry.path(), originalInput);
       std::filesystem::path mLFile = measurementLiftInput / relative;
       std::filesystem::path hmLFile = hadamardMeasurementLiftInput / relative;
-      std::vector<std::string> files = {entry.path().string(), mLFile.string(),
-                                        hmLFile.string()};
-      // if (processedLines.contains(relative)) {
-      //   std::cout << "Skipping " << relative << std::endl;
-      //   continue;
-      // }
-      out << relative << ";";
+      std::filesystem::path qcpFile = qcpInput / relative;
+      std::filesystem::path qcpMLFile = qcpMeasurementLiftInput / relative;
+      std::filesystem::path qcpMLFullFile = qcpLiftFullInput / relative;
+      std::vector<std::string> files = {
+          entry.path().string(), mLFile.string(),    hmLFile.string(),
+          qcpFile.string(),      qcpMLFile.string(), qcpMLFullFile.string()};
+      if (processedLines.contains(relative)) {
+        std::cout << "Skipping " << relative << std::endl;
+        continue;
+      }
+      out << "\"random-measurements/" << relative;
 
       for (const auto currentFile : files) {
         llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
             llvm::MemoryBuffer::getFile(currentFile);
+        std::cout << "Processing " << entry.path() << '\n';
         if (std::error_code ec = fileOrErr.getError()) {
           std::cerr << "Error reading file: " << ec.message() << "\n";
           out << ";;;";
@@ -141,8 +165,8 @@ int main(int argc, char** argv) {
           }
           countOfGates++;
         });
-        out << countOfGates << ";" << countOfSingleGates << ";"
-            << countOfCtrlQubits << ";";
+        out << ";" << countOfGates << ";" << countOfSingleGates << ";"
+            << countOfCtrlQubits;
         // std::cout << "Found " << countOfGates
         //           << " occurrences of quantum instructions\n";
       }
