@@ -939,7 +939,11 @@ iterateThroughWorklist(PatternRewriter& rewriter,
                        const std::vector<unsigned int>& posBitCtrls,
                        const std::vector<unsigned int>& negBitCtrls) {
   /// Iterate work-list.
+  bool addedAtLeastOneQubit = false;
   for (Operation* curr : worklist) {
+    if (addedAtLeastOneQubit && qcp->ut.allTop()) {
+      return success();
+    }
     if (curr == nullptr) {
       continue; // Skip erased ops.
     }
@@ -960,6 +964,7 @@ iterateThroughWorklist(PatternRewriter& rewriter,
               return handleMeasure(qcp, op, posBitCtrls, negBitCtrls);
             })
             .Case<AllocQubitOp>([&](const AllocQubitOp op) {
+              addedAtLeastOneQubit = true;
               return handleQubitAlloc(qcp, op);
             })
             .Case<DeallocQubitOp>([&]([[maybe_unused]] DeallocQubitOp op) {
