@@ -63,6 +63,7 @@ struct qcpObjects {
                  std::pair<std::vector<mlir::Value>, std::vector<mlir::Value>>>
       bitToPosNegBits;
   mlir::Value trueValue;
+  mlir::Value falseValue;
   bool changed = false;
 };
 
@@ -357,6 +358,17 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
                     const std::vector<unsigned int>& negBitCtrls,
                     PatternRewriter& rewriter) {
   TypedValue<IntegerType> const cond = op.getCondition();
+
+  if (cond == qcp->trueValue) {
+    qcp->changed = true;
+    return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
+                             rewriter);
+  }
+  if (cond == qcp->falseValue) {
+    qcp->changed = true;
+    return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
+                             rewriter);
+  }
 
   std::vector<unsigned int> newPosBits = {};
   std::vector<unsigned int> newNegBits = {};
@@ -653,6 +665,14 @@ WalkResult handleConstant(qcpObjects* qcp, arith::ConstantOp op,
   if (const auto doubleAttr = dyn_cast<FloatAttr>(attr)) {
     const double v = doubleAttr.getValueAsDouble();
     qcp->doubleValues[res] = v;
+  }
+  if (const auto boolAttr = dyn_cast<BoolAttr>(attr)) {
+    const bool v = boolAttr.getValue();
+    if (v) {
+      qcp->trueValue = res;
+    } else {
+      qcp->falseValue = res;
+    }
   }
   return WalkResult::advance();
 }
