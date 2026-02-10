@@ -36,22 +36,19 @@ int main(int argc, char** argv) {
   context->loadAllAvailableDialects();
   context->allowUnregisteredDialects();
 
-  std::string errorFile =
-      "/home/lian/DLR/mqt-core/mqt-core/RandomEvaluationError";
-  std::filesystem::path originalInput =
-      "/home/lian/DLR/Benchmarks/programs/random-measurements";
+  std::string errorFile = "/home/lian/DLR/mqt-core/mqt-core/EvaluationError";
+  std::filesystem::path originalInput = "/home/lian/DLR/Benchmarks/programs";
   std::filesystem::path measurementLiftInput =
-      "/home/lian/DLR/Benchmarks/programsMeasLift/random-measurements";
+      "/home/lian/DLR/Benchmarks/programsMeasLift";
   std::filesystem::path hadamardMeasurementLiftInput =
-      "/home/lian/DLR/Benchmarks/programsMeasLiftHadamardLift/"
-      "random-measurements";
+      "/home/lian/DLR/Benchmarks/programsMeasLiftHadamardLift";
   std::filesystem::path qcpInput =
-      "/home/lian/DLR/Benchmarks/programsQCP/random-measurements";
+      "/home/lian/DLR/Benchmarks/programsQCP";
   std::filesystem::path qcpMeasurementLiftInput =
-      "/home/lian/DLR/Benchmarks/programsQCPMeasLift/random-measurements";
+      "/home/lian/DLR/Benchmarks/programsQCPMeasLift";
   std::filesystem::path qcpLiftFullInput =
-      "/home/lian/DLR/Benchmarks/programsQCPLiftFull/random-measurements";
-  std::ofstream out("/home/lian/DLR/mqt-core/mqt-core/EvaluationRandom.csv",
+      "/home/lian/DLR/Benchmarks/programsQCPLiftFull";
+  std::ofstream out("/home/lian/DLR/mqt-core/mqt-core/Evaluation.csv",
                     std::ios::app);
 
   out << "Filename;OriginalCountOfGates;"
@@ -74,7 +71,7 @@ int main(int argc, char** argv) {
          "QCPLiftFullCountOfControllingQubits\n";
 
   std::ifstream csvFile(
-      "/home/lian/DLR/mqt-core/mqt-core/EvaluationRandom.csv");
+      "/home/lian/DLR/mqt-core/mqt-core/Evaluation.csv");
   std::set<std::string> processedLines; // or std::unordered_set<std::string>
   std::string line;
   while (std::getline(csvFile, line)) {
@@ -103,7 +100,7 @@ int main(int argc, char** argv) {
         std::cout << "Skipping " << relative << std::endl;
         continue;
       }
-      out << "\"random-measurements/" << relative;
+      out << relative;
 
       for (const auto currentFile : files) {
         llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
