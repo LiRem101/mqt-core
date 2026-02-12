@@ -45,7 +45,7 @@ std::string slurp(std::ifstream& in) {
 }
 
 int main(const int argc, char** argv) {
-  std::ifstream file("ErrorQCPLiftFull");
+  std::ifstream file("ErrorQCPMQTBench");
   std::set<std::string> errorLines; // or std::unordered_set<std::string>
   std::string line;
   while (std::getline(file, line)) {
@@ -85,13 +85,13 @@ int main(const int argc, char** argv) {
   int ac = argc;
   llvm::InitLLVM y(ac, argv);
 
-  std::string errorFile = "ErrorQCPLiftFull";
+  std::string errorFile = "ErrorQCPMQTBench";
   std::ofstream timeOut("DurationQCPLiftFull.csv", std::ios::app);
-  std::filesystem::path inputRoot = "/home/lian/DLR/Benchmarks/programs";
-  std::filesystem::path outputRoot =
-      "/home/lian/DLR/Benchmarks/programsQCPLiftFull";
+  std::filesystem::path inputRoot =
+      "/home/lian/DLR/Benchmarks/MLIRCollection/MQTBench";
+  std::filesystem::path outputRoot = "/home/lian/DLR/Benchmarks/MQTBenchQCP";
 
-  timeOut << "Filename;QCPLiftFullDuration[ms]" << std::endl;
+  timeOut << "Filename;QCPDuration[ms]" << std::endl;
 
   for (const auto& entry :
        std::filesystem::recursive_directory_iterator(inputRoot)) {
