@@ -296,6 +296,8 @@ HybridState::getIsBitEquivalentToQubit(const unsigned int bit,
   return {};
 }
 
+bool HybridState::isQuantumStateTop() { return qState.isTop(); }
+
 HybridStateOrTop::HybridStateOrTop() : variant(TOP::T) {}
 
 HybridStateOrTop::HybridStateOrTop(TOP top) : variant(top) {}

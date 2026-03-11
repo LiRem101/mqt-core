@@ -191,6 +191,8 @@ public:
    */
   std::optional<bool> getIsBitEquivalentToQubit(unsigned int bit,
                                                 unsigned int qubit);
+
+  bool isQuantumStateTop();
 };
 
 class HybridStateOrTop {
