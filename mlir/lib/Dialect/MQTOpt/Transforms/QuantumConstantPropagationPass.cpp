@@ -984,8 +984,10 @@ iterateThroughWorklist(PatternRewriter& rewriter,
                 [&]([[maybe_unused]] const memref::DeallocOp op) {
                   return WalkResult::advance();
                 })
-            .Case<memref::LoadOp>(
-                [&](const memref::LoadOp op) { return handleLoad(qcp, op); })
+            .Case<memref::LoadOp>([&](const memref::LoadOp op) {
+              addedAtLeastOneQubit = true;
+              return handleLoad(qcp, op);
+            })
             .Case<memref::StoreOp>([&](const memref::StoreOp op) {
               return handleStore(qcp, op, posBitCtrls, negBitCtrls);
             })
@@ -1061,7 +1063,7 @@ bool applyQCP(ModuleOp module, MLIRContext* ctx) {
     // auto n = func->getName().stripDialect().str();
   }
 
-  const auto ut = qcp::UnionTable(16, 8);
+  const auto ut = qcp::UnionTable(16, 4);
   qcpObjects qcp = {
       .ut = ut,
       .qubitToIndex = llvm::DenseMap<Value, unsigned int>(),
