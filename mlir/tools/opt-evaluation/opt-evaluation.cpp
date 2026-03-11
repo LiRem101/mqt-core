@@ -52,22 +52,19 @@ int main(int argc, char** argv) {
                     std::ios::app);
 
   out << "Filename;OriginalCountOfGates;"
-         "OriginalCountOfUncontrolledGates;"
+         "OriginalCountOfControlledGates;"
          "OriginalCountOfControllingQubits;"
          "MeasLiftCountOfGates;"
-         "MeasLiftCountOfUncontrolledGates;"
+         "MeasLiftCountOfControlledGates;"
          "MeasLiftCountOfControllingQubits;"
          "MeasLiftHadamardLiftCountOfGates;"
-         "MeasLiftHadamardLiftCountOfUncontrolledGates;"
+         "MeasLiftHadamardLiftCountOfControlledGates;"
          "MeasLiftHadamardLiftCountOfControllingQubits;"
          "QCPCountOfGates;"
-         "QCPCountOfUncontrolledGates;"
+         "QCPCountOfControlledGates;"
          "QCPCountOfControllingQubits;"
-         "QCPMeasLiftCountOfGates;"
-         "QCPMeasLiftCountOfUncontrolledGates;"
-         "QCPMeasLiftCountOfControllingQubits;"
          "QCPLiftFullCountOfGates;"
-         "QCPLiftFullCountOfUncontrolledGates;"
+         "QCPLiftFullCountOfControlledGates;"
          "QCPLiftFullCountOfControllingQubits\n";
 
   std::ifstream csvFile(
@@ -91,11 +88,11 @@ int main(int argc, char** argv) {
       std::filesystem::path mLFile = measurementLiftInput / relative;
       std::filesystem::path hmLFile = hadamardMeasurementLiftInput / relative;
       std::filesystem::path qcpFile = qcpInput / relative;
-      std::filesystem::path qcpMLFile = qcpMeasurementLiftInput / relative;
+      //  std::filesystem::path qcpMLFile = qcpMeasurementLiftInput / relative;
       std::filesystem::path qcpMLFullFile = qcpLiftFullInput / relative;
       std::vector<std::string> files = {
           entry.path().string(), mLFile.string(),    hmLFile.string(),
-          qcpFile.string(),      qcpMLFile.string(), qcpMLFullFile.string()};
+          qcpFile.string(), /*  qcpMLFile.string(),*/ qcpMLFullFile.string()};
       if (processedLines.contains(relative)) {
         std::cout << "Skipping " << relative << std::endl;
         continue;
@@ -152,17 +149,16 @@ int main(int argc, char** argv) {
         }
 
         int countOfGates = 0;
-        int countOfSingleGates = 0;
+        int countOfControlledGates = 0;
         int countOfCtrlQubits = 0;
         module->walk([&](mqt::ir::opt::UnitaryInterface op) {
           if (op.isControlled()) {
             countOfCtrlQubits += op.getAllCtrlInQubits().size();
-          } else {
-            countOfSingleGates++;
+            countOfControlledGates++;
           }
           countOfGates++;
         });
-        out << ";" << countOfGates << ";" << countOfSingleGates << ";"
+        out << ";" << countOfGates << ";" << countOfControlledGates << ";"
             << countOfCtrlQubits;
         // std::cout << "Found " << countOfGates
         //           << " occurrences of quantum instructions\n";
