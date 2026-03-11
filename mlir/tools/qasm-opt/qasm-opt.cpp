@@ -130,7 +130,21 @@ int main(const int argc, char** argv) {
         continue;
       }
 
-      auto module = translateQuantumComputationToMLIR(context.get(), qc);
+      mlir::OwningOpRef<mlir::ModuleOp> module;
+      try {
+        module = translateQuantumComputationToMLIR(context.get(), qc);
+      } catch (const std::runtime_error& e) {
+        std::cerr << "Error while processing file " << entry.path()
+                  << " due to " << e.what() << std::endl;
+        std::ofstream outFile(errorFile, std::ios::app);
+        if (outFile.is_open()) {
+          outFile << entry.path() << "; " << e.what() << std::endl;
+          outFile.close();
+        } else {
+          std::cerr << "Unable to open error file";
+        }
+        continue;
+      }
 
       const auto mqtRefString = getOutputString(&module);
 
