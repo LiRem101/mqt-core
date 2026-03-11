@@ -241,11 +241,11 @@ void UnionTable::applySwapGate(const unsigned int target1,
     }
   }
   if (changed) {
-    indicesInSameState.insert(newStates1);
-    indicesInSameState.insert(newStates2);
     for (const auto& erasing : toErase) {
       indicesInSameState.erase(erasing);
     }
+    indicesInSameState.insert(newStates1);
+    indicesInSameState.insert(newStates2);
   }
 
   const unsigned int localTarget2 =
@@ -625,14 +625,17 @@ bool UnionTable::allTop() {
     std::vector<HybridStateOrTop> states;
     if (!qubitIndices.empty()) {
       states = *hRegOfQubits.at(*qubitIndices.begin());
-    } else {
-      states = *hRegOfBits.at(*bitIndices.begin());
-    }
-    for (HybridStateOrTop hs : states) {
-      if (hs.isHybridState()) {
-        return false;
+      for (HybridStateOrTop hs : states) {
+        if (hs.isHybridState()) {
+          auto qsTop = hs.getHybridState()->isQuantumStateTop();
+          if (!qsTop) {
+            return false;
+          }
+        }
       }
-    }
+    } // else {
+      /// states = *hRegOfBits.at(*bitIndices.begin());
+    // }
   }
   return true;
 }
