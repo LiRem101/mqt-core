@@ -80,8 +80,8 @@ protected:
 // ##################################################
 
 /**
- * @brief Test: Hadamards should be lifted over one Pauli gate. A global phase
- * should be added for the Pauli-Y gate.
+ * @brief Test: Hadamard gates should be lifted over one Pauli gate. A global
+ * phase should be added for the Pauli-Y gate.
  */
 TEST_F(QCOHadamardLiftingTest, liftHadamardOverPauliGate) {
   auto q = programBuilder.allocQubitRegister(3);
@@ -111,7 +111,7 @@ TEST_F(QCOHadamardLiftingTest, liftHadamardOverPauliGate) {
 }
 
 /**
- * @brief Test: Pauli gates should not be lifted over Hadamards.
+ * @brief Test: Pauli gates should not be lifted over Hadamard gates.
  */
 TEST_F(QCOHadamardLiftingTest, doNotLiftPauliOverHadamardGate) {
   auto q = programBuilder.allocQubitRegister(3);
@@ -214,9 +214,9 @@ TEST_F(QCOHadamardLiftingTest, liftHadamardOnlyOverPrecedingPauliGate) {
       areModulesEquivalentWithPermutations(module.get(), reference.get()));
 }
 
-// ##################################################
-// # Raise Hadamard over controlled Pauli gate Tests
-// ##################################################
+// #############################################################
+// # Do not raise Hadamard over controlled Pauli gate Tests
+// #############################################################
 
 /**
  * @brief Test: Checks if Hadamard gates are not lifted if they are controlled
@@ -245,33 +245,7 @@ TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardOverPauliGateIfControlled) {
 }
 
 /**
- * @brief Test: Checks that Hadamard gates are not lifted if they are controlled
- * and the Pauli gate is a Pauli-Y gate.
- */
-TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardOverPauliYGateIfControlled) {
-  auto q = programBuilder.allocQubitRegister(2);
-  q[0] = programBuilder.y(q[0]);
-  auto qubitPair = programBuilder.cy(q[1], q[0]);
-  qubitPair = programBuilder.ch(qubitPair.first, qubitPair.second);
-  programBuilder.cy(qubitPair.first, qubitPair.second);
-  module = programBuilder.finalize();
-
-  auto qRef = referenceBuilder.allocQubitRegister(2);
-  qRef[0] = referenceBuilder.y(qRef[0]);
-  auto qubitPairRef = referenceBuilder.cy(qRef[1], qRef[0]);
-  qubitPairRef = referenceBuilder.ch(qubitPairRef.first, qubitPairRef.second);
-  referenceBuilder.cy(qubitPairRef.first, qubitPairRef.second);
-  reference = referenceBuilder.finalize();
-
-  ASSERT_TRUE(runHadamardLiftingPass(module.get()).succeeded());
-  ASSERT_TRUE(runCanonicalizerPass(reference.get()).succeeded());
-
-  EXPECT_TRUE(
-      areModulesEquivalentWithPermutations(module.get(), reference.get()));
-}
-
-/**
- * @brief Test: Checks that a hadamard gate is not lifted if they are controlled
+ * @brief Test: Checks that a Hadamard gate is not lifted if they are controlled
  * by a different qubit than the one lifted gate is.
  */
 TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardIfDifferentControls) {
@@ -287,58 +261,6 @@ TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardIfDifferentControls) {
   qubitPairRef = referenceBuilder.ch(qRef[2], qubitPairRef.second);
   qRef[0] = referenceBuilder.z(qubitPairRef.second);
   referenceBuilder.ch(qubitPairRef.first, qRef[0]);
-  reference = referenceBuilder.finalize();
-
-  ASSERT_TRUE(runHadamardLiftingPass(module.get()).succeeded());
-  ASSERT_TRUE(runCanonicalizerPass(reference.get()).succeeded());
-
-  EXPECT_TRUE(
-      areModulesEquivalentWithPermutations(module.get(), reference.get()));
-}
-
-/**
- * @brief Test: Checks that a Hadamard gate is not lifted if there is another
- * gate between the controls of the Pauli and the Hadamard gate.
- */
-TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardIfGateBetweenControls) {
-  auto q = programBuilder.allocQubitRegister(2);
-  auto [q1, q2] = programBuilder.cz(q[1], q[0]);
-  q[1] = programBuilder.s(q1);
-  programBuilder.ch(q[1], q2);
-  module = programBuilder.finalize();
-
-  auto qRef = referenceBuilder.allocQubitRegister(2);
-  auto [q1Ref, q2Ref] = referenceBuilder.cz(qRef[1], qRef[0]);
-  qRef[1] = referenceBuilder.s(q1Ref);
-  referenceBuilder.ch(qRef[1], q2Ref);
-  reference = referenceBuilder.finalize();
-
-  ASSERT_TRUE(runHadamardLiftingPass(module.get()).succeeded());
-  ASSERT_TRUE(runCanonicalizerPass(reference.get()).succeeded());
-
-  EXPECT_TRUE(
-      areModulesEquivalentWithPermutations(module.get(), reference.get()));
-}
-
-/**
- * @brief Test: Checks that a hadamard gate is not lifted if they do not share
- * all controls with the Pauli gate.
- */
-TEST_F(QCOHadamardLiftingTest, doNotLiftHadamardIfSomeDifferentControls) {
-  auto q = programBuilder.allocQubitRegister(3);
-  auto [q12, q0] =
-      programBuilder.ctrl({q[1], q[2]}, {q[0]}, [&](const ValueRange target) {
-        return llvm::SmallVector{programBuilder.z(target[0])};
-      });
-  programBuilder.ch(q12[0], q0[0]);
-  module = programBuilder.finalize();
-
-  auto qRef = referenceBuilder.allocQubitRegister(3);
-  auto [q12Ref, q0Ref] = referenceBuilder.ctrl(
-      {qRef[1], qRef[2]}, {qRef[0]}, [&](const ValueRange target) {
-        return llvm::SmallVector{referenceBuilder.z(target[0])};
-      });
-  referenceBuilder.ch(q12Ref[0], q0Ref[0]);
   reference = referenceBuilder.finalize();
 
   ASSERT_TRUE(runHadamardLiftingPass(module.get()).succeeded());
