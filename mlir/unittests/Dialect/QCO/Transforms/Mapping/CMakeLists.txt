@@ -11,8 +11,8 @@ add_executable(${target_name} test_mapping.cpp)
 
 target_link_libraries(
   ${target_name}
-        PRIVATE GTest::gtest_main
-        MLIRParser
+  PRIVATE GTest::gtest_main
+          MLIRParser
           MLIRQCProgramBuilder
           MLIRQCOProgramBuilder
           MLIRQCOUtils

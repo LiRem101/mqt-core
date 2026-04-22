@@ -338,7 +338,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 <!-- Version links -->
 
 [unreleased]: https://github.com/munich-quantum-toolkit/core/compare/v3.5.0...HEAD
-
 [3.5.0]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.5.0
 [3.4.1]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.4.1
 [3.4.0]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.4.0
@@ -357,15 +356,10 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 <!-- PR links -->
 
 [#1652]: https://github.com/munich-quantum-toolkit/core/pull/1652
-
 [#1637]: https://github.com/munich-quantum-toolkit/core/pull/1637
-
 [#1635]: https://github.com/munich-quantum-toolkit/core/pull/1635
-
 [#1627]: https://github.com/munich-quantum-toolkit/core/pull/1627
-
 [#1626]: https://github.com/munich-quantum-toolkit/core/pull/1626
-
 [#1624]: https://github.com/munich-quantum-toolkit/core/pull/1624
 [#1623]: https://github.com/munich-quantum-toolkit/core/pull/1623
 [#1602]: https://github.com/munich-quantum-toolkit/core/pull/1602
@@ -391,7 +385,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1547]: https://github.com/munich-quantum-toolkit/core/pull/1547
 [#1542]: https://github.com/munich-quantum-toolkit/core/pull/1542
 [#1537]: https://github.com/munich-quantum-toolkit/core/pull/1537
-
 [#1528]: https://github.com/munich-quantum-toolkit/core/pull/1528
 [#1521]: https://github.com/munich-quantum-toolkit/core/pull/1521
 [#1513]: https://github.com/munich-quantum-toolkit/core/pull/1513
@@ -423,7 +416,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1413]: https://github.com/munich-quantum-toolkit/core/pull/1413
 [#1412]: https://github.com/munich-quantum-toolkit/core/pull/1412
 [#1411]: https://github.com/munich-quantum-toolkit/core/pull/1411
-
 [#1407]: https://github.com/munich-quantum-toolkit/core/pull/1407
 [#1406]: https://github.com/munich-quantum-toolkit/core/pull/1406
 [#1403]: https://github.com/munich-quantum-toolkit/core/pull/1403
@@ -433,7 +425,6 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1383]: https://github.com/munich-quantum-toolkit/core/pull/1383
 [#1382]: https://github.com/munich-quantum-toolkit/core/pull/1382
 [#1381]: https://github.com/munich-quantum-toolkit/core/pull/1381
-
 [#1380]: https://github.com/munich-quantum-toolkit/core/pull/1380
 [#1378]: https://github.com/munich-quantum-toolkit/core/pull/1378
 [#1375]: https://github.com/munich-quantum-toolkit/core/pull/1375
@@ -583,9 +574,7 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [**@lirem101**]: https://github.com/lirem101
 [**@Ectras**]: https://github.com/Ectras
 [**@simon1hofmann**]: https://github.com/simon1hofmann
-
 [**@keefehuang**]: https://github.com/keefehuang
-
 [**@J4MMlE**]: https://github.com/J4MMlE
 
 <!-- General links -->
