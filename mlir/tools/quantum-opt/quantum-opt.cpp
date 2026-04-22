@@ -20,6 +20,7 @@
 #include <iostream>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <mlir/IR/AsmState.h>
 
 // Suppress warnings about implicit captures of `this` in lambdas
 #ifdef __clang__
@@ -45,7 +46,7 @@ std::string slurp(std::ifstream& in) {
 }
 
 int main(const int argc, char** argv) {
-  std::ifstream file("ErrorQCPMQTBench");
+  std::ifstream file("ErrorMQTBenchMeasLiftHadamardLift");
   std::set<std::string> errorLines; // or std::unordered_set<std::string>
   std::string line;
   while (std::getline(file, line)) {
@@ -53,6 +54,9 @@ int main(const int argc, char** argv) {
     line.erase(0, 1);
     errorLines.insert(line);
   }
+
+  int ac = argc;
+  llvm::InitLLVM y(ac, argv);
 
   mlir::registerAllPasses();
   mqt::ir::opt::registerMQTOptPasses();
@@ -63,11 +67,21 @@ int main(const int argc, char** argv) {
 
   std::unique_ptr<mlir::MLIRContext> context;
 
+  mlir::registerMLIRContextCLOptions();
+  mlir::registerPassManagerCLOptions();
+  mlir::registerDefaultTimingManagerCLOptions();
+
   mlir::DialectRegistry registry;
   mlir::registerAllDialects(registry);
   mlir::func::registerAllExtensions(registry);
   registry.insert<mqt::ir::opt::MQTOptDialect>();
   registry.insert<mqt::ir::ref::MQTRefDialect>();
+
+  std::string toolName = "Quantum optimizer driver\n";
+
+  std::string inputFilename, outputFilename;
+  std::tie(inputFilename, outputFilename) =
+      registerAndParseCLIOptions(argc, argv, toolName, registry);
 
   context = std::make_unique<mlir::MLIRContext>();
   context->appendDialectRegistry(registry);
@@ -76,22 +90,22 @@ int main(const int argc, char** argv) {
   mlir::MlirOptMainConfig config =
       mlir::MlirOptMainConfig::createFromCLOptions();
 
-  std::string toolName = "Quantum optimizer driver\n";
-
-  std::string inputFilename, outputFilename;
-  std::tie(inputFilename, outputFilename) =
-      registerAndParseCLIOptions(argc, argv, toolName, registry);
-
-  int ac = argc;
-  llvm::InitLLVM y(ac, argv);
-
   std::string errorFile = "ErrorQCPMQTBench";
-  std::ofstream timeOut("DurationQCPLiftFull.csv", std::ios::app);
+  std::ofstream timeOut("EvalQCP.csv", std::ios::app);
   std::filesystem::path inputRoot =
       "/home/lian/DLR/Benchmarks/MLIRCollection/MQTBench";
-  std::filesystem::path outputRoot = "/home/lian/DLR/Benchmarks/MQTBenchQCP";
+  std::filesystem::path outputRoot =
+      "/home/lian/DLR/Benchmarks/MQTBenchAllsQCP";
 
-  timeOut << "Filename;QCPDuration[ms]" << std::endl;
+  timeOut << "Filename;QCPDuration[ms];LiftMeasurementsAboveControls;"
+             "LiftMeasurementsAbovePhaseGates;"
+             "AdaptCtrldPauliZToLifting;"
+             "LiftHadamardsAbovePauliGates;LiftHadamardAboveCNOT;"
+             "LiftHadamardsAboveControlledPauliGates;"
+             "RemoveClassicalCondValueIsTrueFalse;RemoveGatesNeverExecutable;"
+             "RemoveDiagonalGates;RemoveSuperfluousQCtrls;RemoveImpliedQCtrls;"
+             "ExchangeQCtrlsToCCtrls"
+          << std::endl;
 
   for (const auto& entry :
        std::filesystem::recursive_directory_iterator(inputRoot)) {
@@ -126,12 +140,44 @@ int main(const int argc, char** argv) {
 
       auto start = std::chrono::high_resolution_clock::now();
 
+      std::ostringstream oss;
+      std::streambuf* old = std::cout.rdbuf(oss.rdbuf());
+
       auto res =
           mlir::MlirOptMain(outStream, std::move(mlirInput), registry, config);
 
       auto end = std::chrono::high_resolution_clock::now();
 
+      std::cout.rdbuf(old); // restore
+      auto appliedTrafos = oss.str();
+
       auto duration = duration_cast<std::chrono::milliseconds>(end - start);
+
+      int numberAdapatCtrldPauliZToLifting = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'A'));
+      int numberLiftHadamardsAbovePauliGates = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'B'));
+      int numberLiftHadamardsAboveCNOT = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'C'));
+      int numberLiftMeasurementsAbovePhaseGates = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'D'));
+      int numberLiftMeasurementsAboveControls = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'E'));
+      int numberLiftHadamardsAboveControlledPauliGates =
+          static_cast<unsigned int>(
+              std::count(appliedTrafos.begin(), appliedTrafos.end(), 'F'));
+      int numberRemoveClassicalCondValueIsTrueFalse = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'G'));
+      int numberRemoveGatesNeverExecutable = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'H'));
+      int numberRemoveDiagonalGates = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'I'));
+      int numberRemoveSuperfluousQCtrls = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'J'));
+      int numberRemoveImpliedQCtrls = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'K'));
+      int numberExchangeQCtrlsToCCtrls = static_cast<unsigned int>(
+          std::count(appliedTrafos.begin(), appliedTrafos.end(), 'L'));
 
       if (res.failed()) {
         std::cerr << "Error while processing file " << entry.path()
@@ -146,7 +192,19 @@ int main(const int argc, char** argv) {
       } else {
         std::filesystem::path relativeInput =
             std::filesystem::relative(entry.path(), inputRoot);
-        timeOut << relativeInput << ";" << duration.count() << std::endl;
+        timeOut << relativeInput << ";" << duration.count() << ";"
+                << numberLiftMeasurementsAboveControls << ";"
+                << numberLiftMeasurementsAbovePhaseGates << ";"
+                << numberAdapatCtrldPauliZToLifting << ";"
+                << numberLiftHadamardsAbovePauliGates << ";"
+                << numberLiftHadamardsAboveCNOT << ";"
+                << numberLiftHadamardsAboveControlledPauliGates << ";"
+                << numberRemoveClassicalCondValueIsTrueFalse << ";"
+                << numberRemoveGatesNeverExecutable << ";"
+                << numberRemoveDiagonalGates << ";"
+                << numberRemoveSuperfluousQCtrls << ";"
+                << numberRemoveImpliedQCtrls << ";"
+                << numberExchangeQCtrlsToCCtrls << std::endl;
         std::cout << "Processed: " << entry.path() << std::endl;
       }
     }

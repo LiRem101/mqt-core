@@ -12,6 +12,7 @@
 #include "mlir/Dialect/MQTOpt/Transforms/LiftMeasurementsPasses.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Passes.h"
 
+#include <iostream>
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/PatternMatch.h>
@@ -51,6 +52,7 @@ struct LiftMeasurementsAboveControlsPattern final
 
     swapGateWithMeasurement(predecessorUnitary, op, rewriter);
 
+    std::cout << "E";
     return mlir::success();
   }
 };

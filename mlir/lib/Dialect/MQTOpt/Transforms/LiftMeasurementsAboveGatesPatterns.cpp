@@ -12,6 +12,7 @@
 #include "mlir/Dialect/MQTOpt/Transforms/LiftMeasurementsPasses.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Passes.h"
 
+#include <iostream>
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/IR/MLIRContext.h>
@@ -80,6 +81,7 @@ struct LiftMeasurementsAbovePhaseGatesPattern final
     const auto name = predecessorUnitary->getName().stripDialect().str();
     if (DIAGONAL_GATES.count(name) == 1) {
       swapGateWithMeasurement(predecessorUnitary, op, rewriter);
+      std::cout << "D";
       return mlir::success();
     }
 
@@ -140,6 +142,7 @@ struct LiftMeasurementsAboveInvertingGatesPattern final
                                  [&](mlir::OpOperand& operand) {
                                    return operand.getOwner() != inversion;
                                  });
+      std::cout << "D";
       return mlir::success();
     }
 

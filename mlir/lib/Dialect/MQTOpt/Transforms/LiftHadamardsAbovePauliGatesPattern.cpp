@@ -12,6 +12,7 @@
 #include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 #include "mlir/Dialect/MQTOpt/Transforms/Passes.h"
 
+#include <iostream>
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/IR/MLIRContext.h>
@@ -183,7 +184,16 @@ struct LiftHadamardsAbovePauliGatesPattern final
       return mlir::failure();
     }
 
-    return swapGateWithHadamard(op, hadamardGate, rewriter);
+    auto res = swapGateWithHadamard(op, hadamardGate, rewriter);
+    if (res.succeeded()) {
+      if (op.isControlled()) {
+        std::cout << "F";
+      } else {
+        std::cout << "B";
+      }
+      return mlir::success();
+    }
+    return mlir::failure();
   }
 };
 

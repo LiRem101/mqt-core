@@ -10,6 +10,7 @@
 
 #include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 
+#include <iostream>
 #include <mlir/Dialect/SparseTensor/IR/Enums.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/PatternMatch.h>
@@ -229,6 +230,7 @@ struct LiftHadamardAboveCNOTPattern final : mlir::OpRewritePattern<MeasureOp> {
                cnotGate.getInQubits().front(), op, newHOPAfterCtrl,
                newHOPBefore.getInQubits().front(), rewriter);
 
+    std::cout << "C";
     return mlir::success();
   }
 };

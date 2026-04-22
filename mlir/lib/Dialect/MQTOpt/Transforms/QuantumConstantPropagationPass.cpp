@@ -361,11 +361,13 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
 
   if (cond == qcp->trueValue) {
     qcp->changed = true;
+    std::cout << "G";
     return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
                              rewriter);
   }
   if (cond == qcp->falseValue) {
     qcp->changed = true;
+    std::cout << "G";
     return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
                              rewriter);
   }
@@ -389,6 +391,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
         return qcp->ut.isBitAlwaysZero(bit);
       })) {
     qcp->changed = true;
+    std::cout << "G";
     return removeIfElseBlock(op, op.thenBlock(), op.elseBlock(), worklist,
                              rewriter);
   }
@@ -399,6 +402,7 @@ WalkResult handleIf(qcpObjects* qcp, scf::IfOp op,
         return qcp->ut.isBitAlwaysOne(bit);
       })) {
     qcp->changed = true;
+    std::cout << "G";
     return removeIfElseBlock(op, op.elseBlock(), op.thenBlock(), worklist,
                              rewriter);
   }
@@ -765,11 +769,19 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
             negBitCtrls);
     if (superfluous.first.contains(targetQubitIndices.at(0)) ||
         !areThereSatisfiableCombinations) {
+      std::cout << "H";
       qcp->changed = true;
       return removeGate(op, rewriter);
     }
 
+    unsigned int removedQubitsSuperfluous = 0;
+    unsigned int removedQubitsImplied = 0;
+    unsigned int changedQubitsToClassicalControl = 0;
+
     std::set<unsigned int> ctrlQubitsToRemove = superfluous.first;
+    for (unsigned int i = 0; i < ctrlQubitsToRemove.size(); ++i) {
+      removedQubitsSuperfluous++;
+    }
     std::set<unsigned int> remainingPosCtrlQubits = {};
     std::set<unsigned int> remainingNegCtrlQubits = {};
     std::ranges::set_difference(
@@ -789,6 +801,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
               remainingNegCtrlQubits, setPosBitCtrl, setNegBitCtrl);
       if (!antecedents.first.empty() || !antecedents.second.empty()) {
         ctrlQubitsToRemove.insert(posCtrlQubit);
+        removedQubitsImplied++;
       }
     }
     for (const unsigned int negCtrlQubit : remainingNegCtrlQubits) {
@@ -798,6 +811,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
               remainingNegCtrlQubits, setPosBitCtrl, setNegBitCtrl);
       if (!antecedents.first.empty() || !antecedents.second.empty()) {
         ctrlQubitsToRemove.insert(negCtrlQubit);
+        removedQubitsImplied++;
       }
     }
     // Check whether to replace by bit
@@ -817,6 +831,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         // pos or neg
         bitDependenceToAdd.insert(implyingBit);
         ctrlQubitsToRemove.insert(posCtrlQubit);
+        changedQubitsToClassicalControl++;
       }
     }
     for (const auto negCtrlQubit : remainingNegCtrlQubits) {
@@ -827,6 +842,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
         implyingBit.second = !implyingBit.second;
         bitDependenceToAdd.insert(implyingBit);
         ctrlQubitsToRemove.insert(negCtrlQubit);
+        changedQubitsToClassicalControl++;
       }
     }
     for (const auto& [bitIndex, value] : bitDependenceToAdd) {
@@ -839,8 +855,20 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 
     if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
                            negCtrlQubitIndices)) {
+      std::cout << "I";
       qcp->changed = true;
       return removeGate(op, rewriter);
+    }
+
+    // Print the found changes
+    for (unsigned int i = 0; i < removedQubitsSuperfluous; ++i) {
+      std::cout << "J";
+    }
+    for (unsigned int i = 0; i < removedQubitsImplied; ++i) {
+      std::cout << "K";
+    }
+    for (unsigned int i = 0; i < changedQubitsToClassicalControl; ++i) {
+      std::cout << "L";
     }
 
     if (!ctrlQubitsToRemove.empty()) {
@@ -865,6 +893,7 @@ WalkResult handleUnitary(qcpObjects* qcp, UnitaryInterface op,
 
   if (removeDiagonalGate(qcp, op, targetQubitIndices, posCtrlQubitIndices,
                          negCtrlQubitIndices)) {
+    std::cout << "I";
     qcp->changed = true;
     return removeGate(op, rewriter);
   }

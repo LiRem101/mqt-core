@@ -10,6 +10,7 @@
 
 #include "mlir/Dialect/MQTOpt/IR/MQTOptDialect.h"
 
+#include <iostream>
 #include <mlir/Dialect/Vector/IR/VectorOps.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/PatternMatch.h>
@@ -160,6 +161,7 @@ struct AdaptCtrldPauliZToLiftingPattern final
     exchangeTwoQubitsAtGate(rewriter, hadamardGate, targetQubitHadamard,
                             newTargetQubitH, temporary);
 
+    std::cout << "A";
     return mlir::success();
   }
 };
