@@ -11,7 +11,8 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 ### Added
 
-- ✨ Add Sampler and Estimator Primitives to the QDMI-Qiskit Interface ([#1507]) ([**@marcelwa**])
+- ✨ Add a `merge-single-qubit-rotation-gates` pass for merging consecutive rotation gates using quaternions ([#1407]) ([
+  **@J4MMlE**])
 - ✨ Add conversions between `jeff` and QCO ([#1479], [#1548], [#1565], [#1637]) ([**@denialhaag**])
 - ✨ Add a `place-and-route` pass for mapping circuits to architectures with restricted topologies ([#1537], [#1547], [#1568], [#1581], [#1583], [#1588]) ([**@MatthiasReumann**])
 - ✨ Add a `hadamard-lifting` pass for lifting Hadamard gates above Pauli gates ([#1605]) ([**@lirem101**])
@@ -21,10 +22,6 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 ### Changed
 
-- 📦 Switch to component-based installation for the MQT Core Python package ([#1596]) ([**@burgholzer**])
-- ⬆️ Update QDMI to latest version from stable `v1.2.x` branch ([#1593]) ([**@burgholzer**])
-- ⬆️ Update `clang-tidy` to version 22 ([#1564]) ([**@denialhaag**], [**@burgholzer**])
-- 👷 Build on `macos-26`/`macos-26-intel` by default and `macos-15`/`macos-15-intel` for extensive tests ([#1571]) ([**@denialhaag**])
 - ⬆️ Require LLVM 22.1 for C++ library builds ([#1549]) ([**@burgholzer**], [**@denialhaag**])
 - 📦 Build MLIR by default for C++ library builds ([#1356]) ([**@burgholzer**], [**@denialhaag**])
 
@@ -32,6 +29,25 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 
 - 🔥 Remove the density matrix support from the MQT Core DD package ([#1466]) ([**@burgholzer**])
 - 🔥 Remove `datastructures` (`ds`) (sub)library from MQT Core ([#1458]) ([**@burgholzer**])
+
+## [3.5.0] - 2026-04-21
+
+_If you are upgrading: please see [`UPGRADING.md`](UPGRADING.md#350)._
+
+### Added
+
+- ✨ Add support for multi-controlled gates to ZX package ([#1380]) ([**@keefehuang**])
+- ✨ Add Sampler and Estimator primitives to the QDMI-Qiskit interface ([#1507]) ([**@marcelwa**])
+
+### Changed
+
+- ⬆️ Update `nanobind` to version 2.12.0 ([#1528])
+- ⬆️ Update QDMI to `v1.3.0` ([#1652]) ([**@burgholzer**])
+- 📦 Switch to component-based installation for the MQT Core Python package ([#1596]) ([**@burgholzer**])
+- ⬆️ Update QDMI to latest version from stable `v1.2.x` branch ([#1593]) ([**@burgholzer**])
+- ⬆️ Update `clang-tidy` to version 22 ([#1564]) ([**@denialhaag**], [**@burgholzer**])
+- 👷 Build on `macos-26`/`macos-26-intel` by default and `macos-15`/`macos-15-intel` for extensive tests ([#1571]) ([*
+  *@denialhaag**])
 
 ## [3.4.1] - 2026-02-01
 
@@ -50,6 +66,8 @@ This project adheres to [Semantic Versioning], with the exception that minor rel
 - 🔥 No longer actively type check Python code with `mypy` and solely rely on `ty` ([#1437]) ([**@burgholzer**])
 
 ## [3.4.0] - 2026-01-08
+
+_If you are upgrading: please see [`UPGRADING.md`](UPGRADING.md#340)._
 
 ### Added
 
@@ -319,7 +337,9 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-toolkit/core/compare/v3.4.1...HEAD
+[unreleased]: https://github.com/munich-quantum-toolkit/core/compare/v3.5.0...HEAD
+
+[3.5.0]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.5.0
 [3.4.1]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.4.1
 [3.4.0]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.4.0
 [3.3.3]: https://github.com/munich-quantum-toolkit/core/releases/tag/v3.3.3
@@ -336,6 +356,17 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 
 <!-- PR links -->
 
+[#1652]: https://github.com/munich-quantum-toolkit/core/pull/1652
+
+[#1637]: https://github.com/munich-quantum-toolkit/core/pull/1637
+
+[#1635]: https://github.com/munich-quantum-toolkit/core/pull/1635
+
+[#1627]: https://github.com/munich-quantum-toolkit/core/pull/1627
+
+[#1626]: https://github.com/munich-quantum-toolkit/core/pull/1626
+
+[#1624]: https://github.com/munich-quantum-toolkit/core/pull/1624
 [#1623]: https://github.com/munich-quantum-toolkit/core/pull/1623
 [#1602]: https://github.com/munich-quantum-toolkit/core/pull/1602
 [#1596]: https://github.com/munich-quantum-toolkit/core/pull/1596
@@ -360,6 +391,8 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1547]: https://github.com/munich-quantum-toolkit/core/pull/1547
 [#1542]: https://github.com/munich-quantum-toolkit/core/pull/1542
 [#1537]: https://github.com/munich-quantum-toolkit/core/pull/1537
+
+[#1528]: https://github.com/munich-quantum-toolkit/core/pull/1528
 [#1521]: https://github.com/munich-quantum-toolkit/core/pull/1521
 [#1513]: https://github.com/munich-quantum-toolkit/core/pull/1513
 [#1510]: https://github.com/munich-quantum-toolkit/core/pull/1510
@@ -390,6 +423,8 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1413]: https://github.com/munich-quantum-toolkit/core/pull/1413
 [#1412]: https://github.com/munich-quantum-toolkit/core/pull/1412
 [#1411]: https://github.com/munich-quantum-toolkit/core/pull/1411
+
+[#1407]: https://github.com/munich-quantum-toolkit/core/pull/1407
 [#1406]: https://github.com/munich-quantum-toolkit/core/pull/1406
 [#1403]: https://github.com/munich-quantum-toolkit/core/pull/1403
 [#1402]: https://github.com/munich-quantum-toolkit/core/pull/1402
@@ -398,6 +433,8 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [#1383]: https://github.com/munich-quantum-toolkit/core/pull/1383
 [#1382]: https://github.com/munich-quantum-toolkit/core/pull/1382
 [#1381]: https://github.com/munich-quantum-toolkit/core/pull/1381
+
+[#1380]: https://github.com/munich-quantum-toolkit/core/pull/1380
 [#1378]: https://github.com/munich-quantum-toolkit/core/pull/1378
 [#1375]: https://github.com/munich-quantum-toolkit/core/pull/1375
 [#1371]: https://github.com/munich-quantum-toolkit/core/pull/1371
@@ -546,6 +583,10 @@ _📚 Refer to the [GitHub Release Notes](https://github.com/munich-quantum-tool
 [**@lirem101**]: https://github.com/lirem101
 [**@Ectras**]: https://github.com/Ectras
 [**@simon1hofmann**]: https://github.com/simon1hofmann
+
+[**@keefehuang**]: https://github.com/keefehuang
+
+[**@J4MMlE**]: https://github.com/J4MMlE
 
 <!-- General links -->
 

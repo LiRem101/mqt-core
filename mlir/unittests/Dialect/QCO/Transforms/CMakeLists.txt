@@ -7,4 +7,4 @@
 # Licensed under the MIT License
 
 add_subdirectory(Mapping)
-add_subdirectory(Optimization)
+add_subdirectory(Optimizations)
