@@ -14,7 +14,6 @@
 #include "mlir/Support/IRVerification.h"
 
 #include <gtest/gtest.h>
-#include <llvm/ADT/SmallVector.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/BuiltinOps.h>
@@ -22,6 +21,7 @@
 #include <mlir/IR/OwningOpRef.h>
 #include <mlir/IR/Value.h>
 #include <mlir/Pass/PassManager.h>
+#include <mlir/Support/LLVM.h>
 #include <mlir/Support/LogicalResult.h>
 #include <mlir/Transforms/Passes.h>
 
@@ -313,7 +313,7 @@ TEST_F(QCOHadamardLiftingTest, liftHadamardOverMultipleControlledXGate) {
   const auto b = programBuilder.allocClassicalBitRegister(1);
   auto [q12, q0] =
       programBuilder.ctrl({q[1], q[2]}, {q[0]}, [&](const ValueRange target) {
-        return llvm::SmallVector{programBuilder.x(target[0])};
+        return SmallVector{programBuilder.x(target[0])};
       });
   q[1] = programBuilder.h(q0[0]);
   programBuilder.measure(q[1], b[0]);
@@ -325,7 +325,7 @@ TEST_F(QCOHadamardLiftingTest, liftHadamardOverMultipleControlledXGate) {
   qRef[1] = referenceBuilder.h(qRef[1]);
   auto [q02Ref, q1Ref] = referenceBuilder.ctrl(
       {qRef[0], qRef[2]}, {qRef[1]}, [&](const ValueRange target) {
-        return llvm::SmallVector{referenceBuilder.x(target[0])};
+        return SmallVector{referenceBuilder.x(target[0])};
       });
   referenceBuilder.h(q1Ref[0]);
   referenceBuilder.measure(q02Ref[0], bRef[0]);
@@ -390,7 +390,7 @@ TEST_F(QCOHadamardLiftingTest,
   programBuilder.measure(q1, b[1]);
   auto [q34, q2] =
       programBuilder.ctrl({q[3], q[4]}, {q[2]}, [&](const ValueRange target) {
-        return llvm::SmallVector{programBuilder.x(target[0])};
+        return SmallVector{programBuilder.x(target[0])};
       });
   q[2] = programBuilder.h(q2[0]);
   programBuilder.measure(q[2], b[2]);
@@ -408,7 +408,7 @@ TEST_F(QCOHadamardLiftingTest,
   qRef[4] = referenceBuilder.h(qRef[4]);
   auto [qRef32, qRef4] = referenceBuilder.ctrl(
       {qRef[3], qRef[2]}, {qRef[4]}, [&](const ValueRange target) {
-        return llvm::SmallVector{referenceBuilder.x(target[0])};
+        return SmallVector{referenceBuilder.x(target[0])};
       });
   qRef[4] = referenceBuilder.h(qRef4[0]);
   referenceBuilder.measure(qRef32[1], bRef[2]);

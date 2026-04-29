@@ -14,7 +14,6 @@
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/TypeSwitch.h>
-#include <llvm/Support/Casting.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/IR/Value.h>
@@ -100,12 +99,12 @@ struct LiftHadamardsAbovePauliGatesPattern final
   LogicalResult matchAndRewrite(UnitaryOpInterface op,
                                 PatternRewriter& rewriter) const override {
     // op needs to be an uncontrolled Pauli gate
-    if (!llvm::isa<XOp>(op) && !llvm::isa<YOp>(op) && !llvm::isa<ZOp>(op)) {
+    if (!isa<XOp>(op) && !isa<YOp>(op) && !isa<ZOp>(op)) {
       return failure();
     }
 
     // op needs to be in front of a Hadamard gate
-    auto hadamardGate = llvm::dyn_cast<HOp>(*op->getUsers().begin());
+    auto hadamardGate = dyn_cast<HOp>(*op->getUsers().begin());
 
     if (!hadamardGate ||
         op.getOutputTarget(0) != hadamardGate.getInputTarget(0)) {
@@ -263,7 +262,7 @@ struct LiftHadamardAboveCNOTPattern final : OpRewritePattern<MeasureOp> {
     // A Hadamard gate needs to be in front of the measurement
     const auto qubitInMeasurement = op.getQubitIn();
     auto* predecessor = qubitInMeasurement.getDefiningOp();
-    auto hadamardGate = llvm::dyn_cast<HOp>(predecessor);
+    auto hadamardGate = dyn_cast<HOp>(predecessor);
     if (!hadamardGate) {
       return failure();
     }
@@ -271,20 +270,20 @@ struct LiftHadamardAboveCNOTPattern final : OpRewritePattern<MeasureOp> {
     // The Hadamard gate must be successor of the target of a CNOT
     const auto inQubitHadamard = hadamardGate.getInputQubit(0);
     predecessor = inQubitHadamard.getDefiningOp();
-    auto cnotGate = llvm::dyn_cast<CtrlOp>(predecessor);
+    auto cnotGate = dyn_cast<CtrlOp>(predecessor);
     if (!cnotGate) {
       return failure();
     }
     if (cnotGate.getNumTargets() != 1 ||
         cnotGate.getOutputTarget(0) != inQubitHadamard ||
-        !llvm::isa<XOp>(cnotGate.getBodyUnitary())) {
+        !isa<XOp>(cnotGate.getBodyUnitary())) {
       return failure();
     }
     // Determine the index of the control that will become the new target. The
     // control must not be succeeded by a measurement.
     unsigned int controlIndex = 0;
     for (unsigned int i = 0; i < cnotGate.getNumControls(); i++) {
-      if (llvm::dyn_cast<MeasureOp>(
+      if (dyn_cast<MeasureOp>(
               *cnotGate.getOutputControl(i).getUsers().begin())) {
         if (i == cnotGate.getNumControls() - 1) {
           return failure();
