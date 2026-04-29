@@ -49,8 +49,7 @@ Anyone relying on an installed version of `mqt-core` shall update from `3.5.0` t
 ## [3.5.0]
 
 The shared library ABI version (`SOVERSION`) is increased from `3.4` to `3.5`.
-Thus, consuming libraries need to update their wheel repair configuration for `cibuildwheel` to ensure the `mqt-core`
-libraries are properly skipped in the wheel repair step.
+Thus, consuming libraries need to update their wheel repair configuration for `cibuildwheel` to ensure the `mqt-core` libraries are properly skipped in the wheel repair step.
 
 ### `nanobind` updated to version 2.12.0
 
